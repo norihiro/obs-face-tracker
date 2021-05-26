@@ -1,61 +1,38 @@
-# OBS Plugin Template
+# OBS Face Tracker Plugin
 
 ## Introduction
 
-This plugin is meant to make it easy to quickstart development of new OBS plugins. It includes:
+This plugin provide a filter for face detection and face tracking for mainly a speaking person.
 
-- The CMake project file
-- Boilerplate plugin source code
-- A continuous-integration configuration for automated builds (a.k.a Build Bot)
+This plugin employs [dlib](http://dlib.net/) on face detection and object tracking.
+The frame of the source is periodically taken to face detection algorithm.
+Once a face is found, the face is tracked.
+Based on the location and the size of the face under tracking, the frame will be cropped.
 
-## Configuring
+## Building
 
-Open `CMakeLists.txt` and edit the following lines at the beginning:
+This plugin requires [dlib](http://dlib.net/) to be built.
+The `dlib` should be extracted under `obs-face-tracker` so that it will be linked statically.
 
-```cmake
-# Change `obs-plugintemplate` to your plugin's name in a machine-readable format
-# (e.g.: obs-myawesomeplugin) and set the value next to `VERSION` as your plugin's current version
-project(obs-plugintemplate VERSION 1.0.0)
+```
+d0="$PWD"
+git clone https://github.com/obsproject/obs-studio.git
+mkdir obs-studio/build && cd obs-studio/build
+cmake ..
+make
+cd "$d0"
 
-# Replace `Your Name Here` with the name (yours or your organization's) you want
-# to see as the author of the plugin (in the plugin's metadata itself and in the installers)
-set(PLUGIN_AUTHOR "Your Name Here")
-
-# Replace `com.example.obs-plugin-template` with a unique Bundle ID for macOS releases
-# (used both in the installer and when submitting the installer for notarization)
-set(MACOS_BUNDLEID "com.example.obs-plugintemplate")
-
-# Replace `me@contoso.com` with the maintainer email address you want to put in Linux packages
-set(LINUX_MAINTAINER_EMAIL "me@contoso.com")
+git clone https://github.com/norihiro/obs-face-tracker.git
+cd obs-face-tracker
+git clone https://github.com/davisking/dlib.git
+mkdir build && cd build
+cmake -DLIBOBS_INCLUDE_DIR=$d0/obs-studio/libobs -DCMAKE_BUILD_TYPE=RelWithDebInfo  ..
+make
 ```
 
-## CI / Build Bot
+## License
+This plugin is licensed under GPLv2.
 
-The CI scripts are made for Azure Pipelines. The sections below detail some of the common tasks possible with that CI configuration.
-
-### Retrieving build artifacts
-
-Each build produces installers and packages that you can use for testing and releases. These artifacts can be found a Build's page on Azure Pipelines.
-
-#### Building a Release
-
-Simply create and push a tag, and Azure Pipelines will run the pipeline in Release Mode. This mode uses the tag as its version number instead of the git ref in normal mode.
-
-### Signing and Notarizing on macOS
-
-On macOS, Release Mode builds will be signed and sent to Apple for notarization if `macosSignAndNotarize` is set to `True` at the top of the `azure-pipelines.yml` file. **You'll need a paid Apple Developer Account for this.**
-
-In addition to enabling `macosSignAndNotarize`, you'll need to setup a few more things for Signing and Notarizing to work:
-
-- On your Apple Developer dashboard, go to "Certificates, IDs & Profiles" and create two signing certificates:
-    - One of the "Developer ID Application" type. It will be used to sign the plugin's binaries
-    - One of the "Developer ID Installer" type. It will be used to sign the plugin's installer
-- Using the Keychain app on macOS, export these two certificates and keys into a .p12 file **protected with a strong password**
-- Add that `Certificates.P12` file as a [Secure File in Azure Pipelines](https://docs.microsoft.com/en-us/azure/devops/pipelines/library/secure-files?view=azure-devops) and make sure it is named `Certificates.p12`
-- Add the following secrets in your pipeline settings:
-    - `secrets.macOS.certificatesImportPassword`: Password of the .p12 file generated earlier
-    - `secrets.macOS.codeSigningIdentity`: Name of the "Developer ID Application" signing certificate generated earlier
-    - `secrets.macOS.installerSigningIdentity`: Name of "Developer ID Installer" signing certificate generated earlier
-    - `secrets.macOS.notarization.username`: Your Apple Developer Account's username
-    - `secrets.macOS.notarization.password`: Your Apple Developer Account's password
-    - `secrets.macOS.notarization.providerShortName`: Identifier (`Provider Short Name`, as Apple calls it) of the Developer Team to which the signing certificates belong. 
+## Acknowledgments
+- [dlib](http://dlib.net/) - [git hub repository](https://github.com/davisking/dlib)
+- [OBS Project](https://obsproject.com/)
