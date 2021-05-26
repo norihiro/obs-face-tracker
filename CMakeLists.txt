@@ -51,12 +51,16 @@ set(PLUGIN_SOURCES
 	src/face-tracker.cpp
 	src/face-detector-base.cpp
 	src/face-detector-dlib.cpp
+	src/face-tracker-base.cpp
+	src/face-tracker-dlib.cpp
 )
 
 set(PLUGIN_HEADERS
 	src/plugin-macros.generated.h
 	src/face-detector-base.h
 	src/face-detector-dlib.h
+	src/face-tracker-base.h
+	src/face-tracker-dlib.h
 )
 
 # --- Platform-independent build settings ---
