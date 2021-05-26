@@ -4,7 +4,6 @@
 #include "plugin-macros.generated.h"
 #include "face-detector-dlib.h"
 
-#include <opencv2/opencv.hpp>
 #include <dlib/image_processing/frontal_face_detector.h>
 
 #define SCALE 2

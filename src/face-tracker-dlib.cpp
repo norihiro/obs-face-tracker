@@ -4,7 +4,6 @@
 #include "plugin-macros.generated.h"
 #include "face-tracker-dlib.h"
 
-#include <opencv2/opencv.hpp>
 #include <dlib/image_processing/scan_fhog_pyramid.h>
 #include <dlib/image_processing/correlation_tracker.h>
 
