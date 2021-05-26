@@ -23,14 +23,17 @@ echo add_subdirectory(obs-frontend-api) > UI/CMakeLists.txt
 if not exist build32 mkdir build32
 if not exist build64 mkdir build64
 
+if "%buildWin32%" == "false" then goto skippedWin32
 echo   Running cmake for obs-studio %OBSLatestTag% 32-bit...
 cd build32
 cmake -G "Visual Studio 16 2019" -A Win32 -DCMAKE_SYSTEM_VERSION=10.0 -DQTDIR="%QTDIR32%" -DDepsPath="%DepsPath32%" -DBUILD_CAPTIONS=true -DDISABLE_PLUGINS=true -DCOPIED_DEPENDENCIES=false -DCOPY_DEPENDENCIES=true ..
 echo:
 echo:
+cd ..
+:skippedWin32
 
 echo   Running cmake for obs-studio %OBSLatestTag% 64-bit...
-cd ..\build64
+cd build64
 cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_SYSTEM_VERSION=10.0 -DQTDIR="%QTDIR64%" -DDepsPath="%DepsPath64%" -DBUILD_CAPTIONS=true -DDISABLE_PLUGINS=true -DCOPIED_DEPENDENCIES=false -DCOPY_DEPENDENCIES=true ..
 echo:
 echo:

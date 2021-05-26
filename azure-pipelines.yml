@@ -1,6 +1,8 @@
 variables:
   macosSignAndNotarize: false
-  isReleaseMode: ${{ and(eq(variables['isReleaseMode'], true), startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}
+  isReleaseMode: ${{ and(eq(variables['isReleaseMode'], true), startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}
+  buildWin32: false
+  buildWin64: true
 
 trigger:
   branches:
@@ -24,6 +26,7 @@ jobs:
     QTDIR32: '$(QtBaseDir)\5.10.1\msvc2017'
     QTDIR64: '$(QtBaseDir)\5.10.1\msvc2017_64'
     OBSPath: 'D:\obs-studio'
+  condition: or(eq(variables['buildWin32'], true), eq(variables['buildWin64'], true))
   steps:
     - checkout: self
       submodules: true
@@ -61,15 +64,19 @@ jobs:
         QTDIR32: $(QTDIR32)
         QTDIR64: $(QTDIR64)
         OBSPath: $(OBSPath)
+        buildWin32: $(buildWin32)
+        buildWin64: $(buildWin64)
 
     - task: MSBuild@1
       displayName: 'Build OBS Studio 32-bit'
+      condition: eq(variables['buildWin32'], true)
       inputs:
         msbuildArguments: '/m /p:Configuration=$(build_config)'
         solution: '$(OBSPath)\build32\obs-studio.sln'
 
     - task: MSBuild@1
       displayName: 'Build OBS Studio 64-bit'
+      condition: eq(variables['buildWin64'], true)
       inputs:
         msbuildArguments: '/m /p:Configuration=$(build_config)'
         solution: '$(OBSPath)\build64\obs-studio.sln'
@@ -81,15 +88,19 @@ jobs:
         QTDIR32: $(QTDIR32)
         QTDIR64: $(QTDIR64)
         OBSPath: $(OBSPath)
+        buildWin32: $(buildWin32)
+        buildWin64: $(buildWin64)
 
     - task: MSBuild@1
       displayName: 'Build Plugin 32-bit'
+      condition: eq(variables['buildWin32'], true)
       inputs:
         msbuildArguments: '/m /p:Configuration=$(build_config)'
         solution: '.\build32\main.sln'
 
     - task: MSBuild@1
       displayName: 'Build Plugin 64-bit'
+      condition: eq(variables['buildWin64'], true)
       inputs:
         msbuildArguments: '/m /p:Configuration=$(build_config)'
         solution: '.\build64\main.sln'
@@ -143,22 +154,10 @@ jobs:
     - script: ./ci/macos/build-macos.sh
       displayName: 'Build Plugin'
 
-    - task: InstallAppleCertificate@1
-      displayName: 'Install release signing certificates'
-      condition: eq(variables['isReleaseMode'], true)
-      inputs:
-        certSecureFile: 'Certificates.p12'
-        certPwd: $(secrets.macOS.certificatesImportPassword)
-
     - script: ./ci/macos/package-macos.sh
       displayName: 'Package Plugin'
       env:
         RELEASE_MODE: $(isReleaseMode)
-        CODE_SIGNING_IDENTITY: $(secrets.macOS.codeSigningIdentity)
-        INSTALLER_SIGNING_IDENTITY: $(secrets.macOS.installerSigningIdentity)
-        AC_USERNAME: $(secrets.macOS.notarization.username)
-        AC_PASSWORD: $(secrets.macOS.notarization.password)
-        AC_PROVIDER_SHORTNAME: $(secrets.macOS.notarization.providerShortName)
 
     - task: PublishBuildArtifacts@1
       inputs:
