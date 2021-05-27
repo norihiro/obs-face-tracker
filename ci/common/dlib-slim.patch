@@ -1,5 +1,5 @@
 diff --git a/dlib/CMakeLists.txt b/dlib/CMakeLists.txt
-index bbf7ad56..8cc3ccc1 100644
+index bbf7ad56..f34a19b7 100644
 --- a/dlib/CMakeLists.txt
 +++ b/dlib/CMakeLists.txt
 @@ -193,7 +193,7 @@ if (NOT TARGET dlib)
@@ -30,7 +30,7 @@ index bbf7ad56..8cc3ccc1 100644
        #option(DLIB_USE_FFTW ${DLIB_USE_FFTW_STR} ON)
        option(DLIB_USE_MKL_FFT ${DLIB_USE_MKL_FFT_STR} ON)
     endif()
-@@ -262,18 +262,14 @@ if (NOT TARGET dlib)
+@@ -262,14 +262,11 @@ if (NOT TARGET dlib)
  
     set(source_files 
        base64/base64_kernel_1.cpp
@@ -45,11 +45,7 @@ index bbf7ad56..8cc3ccc1 100644
        md5/md5_kernel_1.cpp
        tokenizer/tokenizer_kernel_1.cpp
        unicode/unicode.cpp
--      test_for_odr_violations.cpp
-       )
- 
- 
-@@ -285,31 +281,13 @@ if (NOT TARGET dlib)
+@@ -285,31 +282,13 @@ if (NOT TARGET dlib)
     else()
  
        set(source_files ${source_files}
