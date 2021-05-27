@@ -18,6 +18,7 @@ class face_detector_base
 	pthread_t thread;
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
+	bool running;
 	volatile bool request_stop;
 
 	static void* thread_routine(void *);

@@ -19,9 +19,8 @@ endif()
 find_package(LibObs REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 
-find_package(OpenCV REQUIRED)
-
 set(CMAKE_POSITION_INDEPENDENT_CODE True)
+set(DLIB_NO_GUI_SUPPORT ON)
 add_subdirectory(dlib)
 
 configure_file(
@@ -70,7 +69,6 @@ include_directories(
 	"${LIBOBS_INCLUDE_DIR}/../UI/obs-frontend-api"
 	${Qt5Core_INCLUDES}
 	${Qt5Widgets_INCLUDES}
-	${OpenCV_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/dlib
 )
 
@@ -78,7 +76,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	libobs
 	Qt5::Core
 	Qt5::Widgets
-	${OpenCV_LIBS}
 	dlib
 )
 
@@ -109,6 +106,7 @@ if(WIN32)
 	)
 
 	target_link_libraries(${CMAKE_PROJECT_NAME}
+		${PTHREAD_LIBS}
 		"${OBS_FRONTEND_LIB}"
     )
 

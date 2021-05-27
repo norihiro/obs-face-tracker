@@ -14,6 +14,13 @@ if [ "${HAS_CMAKE}" = "" ]; then
     exit 1
 fi
 
+echo "=> Cloning dlib..."
+git clone https://github.com/davisking/dlib.git
+cd dlib
+git checkout `git describe --tags --abbrev=0 --exclude="*-rc*"`
+patch -p1 < ../ci/common/dlib-slim.patch
+cd ..
+
 #export QT_PREFIX="$(find /usr/local/Cellar/qt5 -d 1 | tail -n 1)"
 
 echo "=> Building plugin for macOS."

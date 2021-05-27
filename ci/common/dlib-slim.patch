@@ -1,0 +1,79 @@
+diff --git a/dlib/CMakeLists.txt b/dlib/CMakeLists.txt
+index bbf7ad56..f34a19b7 100644
+--- a/dlib/CMakeLists.txt
++++ b/dlib/CMakeLists.txt
+@@ -193,7 +193,7 @@ if (NOT TARGET dlib)
+    option(DLIB_ENABLE_ASSERTS ${DLIB_ENABLE_ASSERTS_STR} OFF)
+    option(DLIB_ISO_CPP_ONLY ${DLIB_ISO_CPP_ONLY_STR} OFF)
+    toggle_preprocessor_switch(DLIB_ISO_CPP_ONLY)
+-   option(DLIB_NO_GUI_SUPPORT ${DLIB_NO_GUI_SUPPORT_STR} OFF)
++   option(DLIB_NO_GUI_SUPPORT ${DLIB_NO_GUI_SUPPORT_STR} ON)
+    toggle_preprocessor_switch(DLIB_NO_GUI_SUPPORT)
+    option(DLIB_ENABLE_STACK_TRACE ${DLIB_ENABLE_STACK_TRACE_STR} OFF)
+    toggle_preprocessor_switch(DLIB_ENABLE_STACK_TRACE)
+@@ -240,13 +240,13 @@ if (NOT TARGET dlib)
+       #option(DLIB_USE_FFTW ${DLIB_USE_FFTW_STR} OFF)
+       option(DLIB_USE_MKL_FFT ${DLIB_USE_MKL_FFT_STR} OFF)
+    else()
+-      option(DLIB_JPEG_SUPPORT ${DLIB_JPEG_SUPPORT_STR} ON)
+-      option(DLIB_LINK_WITH_SQLITE3 ${DLIB_LINK_WITH_SQLITE3_STR} ON)
+-      option(DLIB_USE_BLAS ${DLIB_USE_BLAS_STR} ON)
++      option(DLIB_JPEG_SUPPORT ${DLIB_JPEG_SUPPORT_STR} OFF)
++      option(DLIB_LINK_WITH_SQLITE3 ${DLIB_LINK_WITH_SQLITE3_STR} OFF)
++      option(DLIB_USE_BLAS ${DLIB_USE_BLAS_STR} OFF)
+       option(DLIB_USE_LAPACK ${DLIB_USE_LAPACK_STR} ON)
+       option(DLIB_USE_CUDA ${DLIB_USE_CUDA_STR} ON)
+-      option(DLIB_PNG_SUPPORT ${DLIB_PNG_SUPPORT_STR} ON)
+-      option(DLIB_GIF_SUPPORT ${DLIB_GIF_SUPPORT_STR} ON)
++      option(DLIB_PNG_SUPPORT ${DLIB_PNG_SUPPORT_STR} OFF)
++      option(DLIB_GIF_SUPPORT ${DLIB_GIF_SUPPORT_STR} OFF)
+       #option(DLIB_USE_FFTW ${DLIB_USE_FFTW_STR} ON)
+       option(DLIB_USE_MKL_FFT ${DLIB_USE_MKL_FFT_STR} ON)
+    endif()
+@@ -262,14 +262,11 @@ if (NOT TARGET dlib)
+ 
+    set(source_files 
+       base64/base64_kernel_1.cpp
+-      bigint/bigint_kernel_1.cpp
+-      bigint/bigint_kernel_2.cpp
+       bit_stream/bit_stream_kernel_1.cpp
+       entropy_decoder/entropy_decoder_kernel_1.cpp
+       entropy_decoder/entropy_decoder_kernel_2.cpp
+       entropy_encoder/entropy_encoder_kernel_1.cpp
+       entropy_encoder/entropy_encoder_kernel_2.cpp
+-      gui_widgets/fonts.cpp
+       md5/md5_kernel_1.cpp
+       tokenizer/tokenizer_kernel_1.cpp
+       unicode/unicode.cpp
+@@ -285,31 +282,13 @@ if (NOT TARGET dlib)
+    else()
+ 
+       set(source_files ${source_files}
+-         sockets/sockets_kernel_1.cpp
+          bsp/bsp.cpp
+          dir_nav/dir_nav_kernel_1.cpp
+          dir_nav/dir_nav_kernel_2.cpp
+          dir_nav/dir_nav_extensions.cpp
+          linker/linker_kernel_1.cpp
+-         logger/extra_logger_headers.cpp
+-         logger/logger_kernel_1.cpp
+-         logger/logger_config_file.cpp
+          misc_api/misc_api_kernel_1.cpp
+          misc_api/misc_api_kernel_2.cpp
+-         sockets/sockets_extensions.cpp
+-         sockets/sockets_kernel_2.cpp
+-         sockstreambuf/sockstreambuf.cpp
+-         sockstreambuf/sockstreambuf_unbuffered.cpp
+-         server/server_kernel.cpp
+-         server/server_iostream.cpp
+-         server/server_http.cpp
+-         threads/multithreaded_object_extension.cpp
+-         threads/threaded_object_extension.cpp
+-         threads/threads_kernel_1.cpp
+-         threads/threads_kernel_2.cpp
+-         threads/threads_kernel_shared.cpp
+-         threads/thread_pool_extension.cpp
+-         threads/async.cpp
+          timer/timer.cpp
+          stack_trace.cpp
+          cuda/cpu_dlib.cpp
