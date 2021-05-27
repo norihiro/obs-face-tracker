@@ -106,6 +106,7 @@ if(WIN32)
 	)
 
 	target_link_libraries(${CMAKE_PROJECT_NAME}
+		${PTHREAD_LIBS}
 		"${OBS_FRONTEND_LIB}"
     )
 
