@@ -10,6 +10,7 @@ class face_tracker_base
 	pthread_t thread;
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
+	bool running;
 	volatile bool stop_requested;
 	volatile bool stopped;
 	volatile bool suspend_requested;

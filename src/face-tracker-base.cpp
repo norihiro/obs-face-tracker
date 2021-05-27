@@ -13,6 +13,7 @@ face_tracker_base::face_tracker_base()
 	pthread_mutex_init(&mutex, NULL);
 	pthread_cond_init(&cond, NULL);
 	stop_requested = 0;
+	running = 0;
 }
 
 face_tracker_base::~face_tracker_base()
@@ -48,8 +49,10 @@ void face_tracker_base::start()
 	stop_requested = 0;
 	stopped = 0;
 	suspend_requested = 0;
-	if (!thread)
+	if (!running) {
 		pthread_create(&thread, NULL, thread_routine, (void*)this);
+		running = 1;
+	}
 	else {
 		lock();
 		signal();
@@ -64,8 +67,10 @@ void face_tracker_base::stop()
 	stop_requested = 1;
 	signal();
 	unlock();
-	pthread_join(thread, NULL);
-	thread = 0;
+	if (running) {
+		pthread_join(thread, NULL);
+		running = 0;
+	}
 	blog(LOG_INFO, "face_tracker_base: stopped the thread...");
 }
 
@@ -80,8 +85,10 @@ void face_tracker_base::request_stop()
 bool face_tracker_base::is_stopped()
 {
 	if (stopped) {
-		pthread_join(thread, NULL);
-		thread = 0;
+		if (running) {
+			pthread_join(thread, NULL);
+			running = 0;
+		}
 		return 1;
 	}
 	else

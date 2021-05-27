@@ -13,6 +13,7 @@ face_detector_base::face_detector_base()
 	pthread_mutex_init(&mutex, NULL);
 	pthread_cond_init(&cond, NULL);
 	request_stop = 0;
+	running = 0;
 }
 
 face_detector_base::~face_detector_base()
@@ -46,6 +47,7 @@ void face_detector_base::start()
 	blog(LOG_INFO, "face_detector_base: starting the thread.");
 	request_stop = 0;
 	pthread_create(&thread, NULL, thread_routine, (void*)this);
+	running = 1;
 }
 
 void face_detector_base::stop()
@@ -55,7 +57,9 @@ void face_detector_base::stop()
 	request_stop = 1;
 	signal();
 	unlock();
-	pthread_join(thread, NULL);
-	thread = 0;
+	if (running) {
+		pthread_join(thread, NULL);
+		running = 0;
+	}
 	blog(LOG_INFO, "face_detector_base: stopped the thread...");
 }
