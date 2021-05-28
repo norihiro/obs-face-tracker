@@ -9,6 +9,12 @@ The frame of the source is periodically taken to face detection algorithm.
 Once a face is found, the face is tracked.
 Based on the location and the size of the face under tracking, the frame will be cropped.
 
+## Usage
+The face tracker is implemented as an effect filter.
+Open filters for a source on OBS Studio, then add `Face Tracker` from the add button on `Effect Filters`.
+
+See [Properties](doc/properties.md) for the description of each property.
+
 ## Building
 
 This plugin requires [dlib](http://dlib.net/) to be built.
@@ -47,6 +53,12 @@ cmake ^
 make
 ```
 For full build flow, see `azure-pipelines.yml`.
+
+## Known issues
+This plugin is heavily under development. So far these issues are under investigation.
+- Memory usage is gradually increasing when continuously detecting faces.
+- It consumes a lot of CPU resource.
+- The frame sometimes vibrates because the face detection results vibrates.
 
 ## License
 This plugin is licensed under GPLv2.
