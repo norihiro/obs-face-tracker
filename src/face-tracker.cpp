@@ -170,21 +170,38 @@ static obs_properties_t *ftf_properties(void *unused)
 	obs_properties_t *props;
 	props = obs_properties_create();
 
-	obs_properties_add_float(props, "upsize_l", "Upsize Left", -0.4, 4.0, 0.2);
-	obs_properties_add_float(props, "upsize_r", "Upsize Right", -0.4, 4.0, 0.2);
-	obs_properties_add_float(props, "upsize_t", "Upsize Top", -0.4, 4.0, 0.2);
-	obs_properties_add_float(props, "upsize_b", "Upsize Bottom", -0.4, 4.0, 0.2);
-	obs_properties_add_float(props, "track_z", "Tracking Zoom", 0.1, 2.0, 0.1);
-	obs_properties_add_float(props, "track_x", "Tracking X", -1.0, +1.0, 0.05);
-	obs_properties_add_float(props, "track_y", "Tracking Y", -1.0, +1.0, 0.05);
-	obs_properties_add_float(props, "scale_max", "Scale max", 1.0, 20.0, 1.0);
+	{
+		obs_properties_t *pp = obs_properties_create();
+		obs_properties_add_float(pp, "upsize_l", obs_module_text("Left"), -0.4, 4.0, 0.2);
+		obs_properties_add_float(pp, "upsize_r", obs_module_text("Right"), -0.4, 4.0, 0.2);
+		obs_properties_add_float(pp, "upsize_t", obs_module_text("Top"), -0.4, 4.0, 0.2);
+		obs_properties_add_float(pp, "upsize_b", obs_module_text("Bottom"), -0.4, 4.0, 0.2);
+		obs_properties_add_group(props, "upsize", obs_module_text("Upsize recognized face"), OBS_GROUP_NORMAL, pp);
+	}
 
-	obs_properties_add_float(props, "Kp", "Track Kp", 0.01, 10.0, 0.1);
-	obs_properties_add_float(props, "Td", "Track Td", 0.0, 5.0, 0.01);
-	obs_properties_add_float(props, "Tdlpf", "Track LPF for Td", 0.0, 2.0, 0.002);
+	{
+		obs_properties_t *pp = obs_properties_create();
+		obs_properties_add_float(pp, "track_z", obs_module_text("Zoom"), 0.1, 2.0, 0.1);
+		obs_properties_add_float(pp, "track_x", obs_module_text("X"), -1.0, +1.0, 0.05);
+		obs_properties_add_float(pp, "track_y", obs_module_text("Y"), -1.0, +1.0, 0.05);
+		obs_properties_add_float(pp, "scale_max", obs_module_text("Scale max"), 1.0, 20.0, 1.0);
+		obs_properties_add_group(props, "track", obs_module_text("Tracking target location"), OBS_GROUP_NORMAL, pp);
+	}
 
-	obs_properties_add_bool(props, "debug_faces", "Show face detection results");
-	obs_properties_add_bool(props, "debug_notrack", "Stop tracking faces");
+	{
+		obs_properties_t *pp = obs_properties_create();
+		obs_properties_add_float(pp, "Kp", "Track Kp", 0.01, 10.0, 0.1);
+		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
+		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 2.0, 0.002);
+		obs_properties_add_group(props, "ctrl", obs_module_text("Tracking response"), OBS_GROUP_NORMAL, pp);
+	}
+
+	{
+		obs_properties_t *pp = obs_properties_create();
+		obs_properties_add_bool(pp, "debug_faces", "Show face detection results");
+		obs_properties_add_bool(pp, "debug_notrack", "Stop tracking faces");
+		obs_properties_add_group(props, "debug", obs_module_text("Debugging"), OBS_GROUP_NORMAL, pp);
+	}
 
 	return props;
 }
