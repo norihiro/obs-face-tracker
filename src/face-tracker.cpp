@@ -92,9 +92,11 @@ struct face_tracker_filter
 	float scale_max;
 
 	float kp;
+	float ki;
 	float klpf;
 	float tlpf;
 	f4 filter_int_out;
+	f4 filter_int;
 	f4 filter_lpf;
 
 	bool debug_faces;
@@ -121,8 +123,10 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->scale_max = obs_data_get_double(settings, "scale_max");
 
 	double kp = obs_data_get_double(settings, "Kp");
+	float ki = (float)obs_data_get_double(settings, "Ki");
 	double td = obs_data_get_double(settings, "Td");
 	s->kp = (float)kp;
+	s->ki = ki;
 	s->klpf = (float)(td * kp);
 	s->tlpf = (float)obs_data_get_double(settings, "Tdlpf");
 
@@ -191,6 +195,7 @@ static obs_properties_t *ftf_properties(void *unused)
 	{
 		obs_properties_t *pp = obs_properties_create();
 		obs_properties_add_float(pp, "Kp", "Track Kp", 0.01, 10.0, 0.1);
+		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 2.0, 0.002);
 		obs_properties_add_group(props, "ctrl", obs_module_text("Tracking response"), OBS_GROUP_NORMAL, pp);
@@ -217,6 +222,7 @@ static void ftf_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "scale_max", 10.0);
 
 	obs_data_set_default_double(settings, "Kp", 0.5);
+	obs_data_set_default_double(settings, "Ki", 0.2);
 	obs_data_set_default_double(settings, "Td", 0.05);
 	obs_data_set_default_double(settings, "Tdlpf", 0.025);
 }
@@ -225,7 +231,8 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 {
 	f4 e = s->detect_err;
 
-	s->filter_int_out += e * (second * s->kp);
+	s->filter_int_out += (e + s->filter_int) * (second * s->kp);
+	s->filter_int += e * (second * s->ki);
 	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
 
 	f4 u = s->filter_int_out + s->filter_lpf * s->klpf;
