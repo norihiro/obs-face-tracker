@@ -402,6 +402,8 @@ static inline void calculate_error(struct face_tracker_filter *s)
 	std::deque<struct tracker_inst_s> &trackers = *s->trackers;
 	for (int i=0; i<trackers.size(); i++) if (trackers[i].state == tracker_inst_s::tracker_state_available) {
 		f3 r (trackers[i].rect);
+		r.v[0] -= get_width(trackers[i].crop_rect) * s->track_x;
+		r.v[1] += get_height(trackers[i].crop_rect) * s->track_y;
 		r.v[2] /= s->track_z;
 		r = ensure_range(r, s->range_min, s->range_max);
 		f3 w (trackers[i].crop_rect);
