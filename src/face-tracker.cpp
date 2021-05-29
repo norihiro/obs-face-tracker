@@ -11,16 +11,17 @@
 #include <math.h>
 #include <graphics/matrix4.h>
 
-struct f4
+struct f3
 {
-	float v[4];
+	float v[3];
 
-	f4 (const f4 &a) {*this=a;}
-	f4 (float a, float b, float c, float d) { v[0]=a; v[1]=b; v[2]=c; v[3]=d; }
-	f4 (const rect_s &a) { v[0]=(float)a.x0; v[1]=(float)a.y0; v[2]=(float)a.x1; v[3]=(float)a.y1; }
-	f4 operator + (const f4 &a) { return f4 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2], v[3]+a.v[3]); }
-	f4 operator * (float a) { return f4 (v[0]*a, v[1]*a, v[2]*a, v[3]*a); }
-	f4 & operator += (const f4 &a) { return *this = f4 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2], v[3]+a.v[3]); }
+	f3 (const f3 &a) {*this=a;}
+	f3 (float a, float b, float c) { v[0]=a; v[1]=b; v[2]=c; }
+	f3 (const rect_s &a) { v[0]=(a.x0+a.x1)*0.5f; v[1]=(a.y0+a.y1)*0.5f; v[2]=sqrtf((a.x1-a.x0)*(a.y1-a.y0)); }
+	f3 operator + (const f3 &a) { return f3 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2]); }
+	f3 operator - (const f3 &a) { return f3 (v[0]-a.v[0], v[1]-a.v[1], v[2]-a.v[2]); }
+	f3 operator * (float a) { return f3 (v[0]*a, v[1]*a, v[2]*a); }
+	f3 & operator += (const f3 &a) { return *this = f3 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2]); }
 };
 
 static inline int get_width (const rect_s &r) { return r.x1 - r.x0; }
@@ -85,7 +86,8 @@ struct face_tracker_filter
 
 	rect_s crop_cur;
 	rect_s detect_crop;
-	rect_s detect_err;
+	f3 detect_err;
+	f3 range_min, range_max;
 
 	float upsize_l, upsize_r, upsize_t, upsize_b;
 	float track_z, track_x, track_y;
@@ -95,9 +97,9 @@ struct face_tracker_filter
 	float ki;
 	float klpf;
 	float tlpf;
-	f4 filter_int_out;
-	f4 filter_int;
-	f4 filter_lpf;
+	f3 filter_int_out;
+	f3 filter_int;
+	f3 filter_lpf;
 
 	bool debug_faces;
 	bool debug_notrack;
@@ -229,38 +231,43 @@ static void ftf_get_defaults(obs_data_t *settings)
 
 static void tick_filter(struct face_tracker_filter *s, float second)
 {
-	f4 e = s->detect_err;
+	f3 e = s->detect_err;
 
 	s->filter_int_out += (e + s->filter_int) * (second * s->kp);
 	s->filter_int += e * (second * s->ki);
 	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
 
-	f4 u = s->filter_int_out + s->filter_lpf * s->klpf;
+	f3 u = s->filter_int_out + s->filter_lpf * s->klpf;
 
 	const float h = s->known_height / s->scale_max;
 	const float w = s->known_width / s->scale_max;
+	const float s2h = s->known_height / sqrtf(s->known_width*s->known_height);
+	const float s2w = s->known_width / sqrtf(s->known_width*s->known_height);
 	const float h1 = s->known_height - h;
 	const float w1 = s->known_width - w;
 
-	const f4 range_min(0.0f, 0.0f, w, h);
-	const f4 range_max(w1, h1, s->known_width, s->known_height);
-	for (int i=0; i<4; i++) {
-		if (u.v[i] < range_min.v[i]) {
-			u.v[0] = range_min.v[i];
-			if (s->filter_int_out.v[i] < range_min.v[i])
-				s->filter_int_out.v[i] = range_min.v[i];
+	for (int i=0; i<3; i++) {
+		if (isnan(u.v[i]))
+			u.v[i] = s->range_min.v[i];
+		else if (u.v[i] < s->range_min.v[i]) {
+			u.v[i] = s->range_min.v[i];
+			if (s->filter_int_out.v[i] < s->range_min.v[i])
+				s->filter_int_out.v[i] = s->range_min.v[i];
 		}
-		else if (u.v[i] > range_max.v[i]) {
-			u.v[i] = range_max.v[i];
-			if (s->filter_int_out.v[i] > range_max.v[i])
-				s->filter_int_out.v[i] = range_max.v[i];
+		else if (u.v[i] > s->range_max.v[i]) {
+			u.v[i] = s->range_max.v[i];
+			if (s->filter_int_out.v[i] > s->range_max.v[i])
+				s->filter_int_out.v[i] = s->range_max.v[i];
 		}
 	}
 
-	s->crop_cur.x0 = (int)u.v[0];
-	s->crop_cur.y0 = (int)u.v[1];
-	s->crop_cur.x1 = (int)u.v[2];
-	s->crop_cur.y1 = (int)u.v[3];
+	s->crop_cur.x0 = (int)(u.v[0] - s2w * u.v[2]);
+	s->crop_cur.x1 = (int)(u.v[0] + s2w * u.v[2]);
+	s->crop_cur.y0 = (int)(u.v[1] - s2h * u.v[2]);
+	s->crop_cur.y1 = (int)(u.v[1] + s2h * u.v[2]);
+
+	blog(LOG_INFO, "tick_filter u: %f %f %f, crop: %d %d %d %d", u.v[0], u.v[1], u.v[2], s->crop_cur.x0, s->crop_cur.y0, s->crop_cur.x1, s->crop_cur.y1);
+
 }
 
 static void ftf_activate(void *data)
@@ -307,6 +314,12 @@ static void ftf_tick(void *data, float second)
 		s->filter_int_out = s->crop_cur;
 	}
 	else if (was_rendered) {
+		s->range_min.v[0] = get_width(s->crop_cur) * 0.5f;
+		s->range_max.v[0] = s->known_width - get_width(s->crop_cur) * 0.5f;
+		s->range_min.v[1] = get_height(s->crop_cur) * 0.5f;
+		s->range_max.v[1] = s->known_height - get_height(s->crop_cur) * 0.5f;
+		s->range_min.v[2] = sqrtf(s->known_width*s->known_height) / s->scale_max;
+		s->range_max.v[2] = sqrtf(s->known_width*s->known_height);
 		calculate_error(s);
 		tick_filter(s, second);
 	}
@@ -349,75 +362,42 @@ static inline void render_target(struct face_tracker_filter *s, obs_source_t *ta
 	s->staged = false;
 }
 
-static inline rect_s calculate_error_one(struct face_tracker_filter *s, rect_s d, rect_s crop)
+static inline f3 ensure_range(f3 u, const f3 &range_min, const f3 &range_max)
 {
-	// blog(LOG_INFO, "calculate_error_one: d=%d %d %d %d", d.x0, d.y0, d.x1, d.y1);
-	// blog(LOG_INFO, "calculate_error_one: crop=%d %d %d %d", crop.x0, crop.y0, crop.x1, crop.y1);
-	const int width = s->known_width;
-	const int height = s->known_height;
-	if (get_height(d) < 2) {
-		rect_s r{0};
-		return r;
+	for (int i=0; i<3; i++) {
+		if (isnan(u.v[i]))
+			u.v[i] = range_min.v[i];
+		else if (u.v[i] < range_min.v[i]) {
+			u.v[i] = range_min.v[i];
+		}
+		else if (u.v[i] > range_max.v[i]) {
+			u.v[i] = range_max.v[i];
+		}
 	}
-	float scale = height / get_height(d) * s->track_z;
-	if (scale > s->scale_max) scale = s->scale_max;
-	else if (scale < 1.0f) scale = 1.0f;
-	float cx = (d.x0 + d.x1) * 0.5f;
-	float cy = (d.y0 + d.y1) * 0.5f;
-	float w = width / scale;
-	float h = height / scale;
-	d.x0 = cx - w/2 - width * s->track_x / 2;
-	d.x1 = cx + w/2 - width * s->track_x / 2;
-	d.y0 = cy - h/2 + height * s->track_y / 2;
-	d.y1 = cy + h/2 + height * s->track_y / 2;
-	if (d.x0 < 0) { d.x1 -= d.x0; d.x0 = 0; }
-	if (d.x1 > width) { d.x0 += width-d.x1; d.x1 = width; }
-	if (d.y0 < 0) { d.y1 -= d.y0; d.y0 = 0; }
-	if (d.y1 > height) { d.y0 += height-d.y1; d.y1 = height; }
-
-	// blog(LOG_INFO, "calculate_error_one: expected: %d %d %d %d", d.x0, d.y0, d.x1, d.y1);
-	d.x0 -= crop.x0;
-	d.x1 -= crop.x1;
-	d.y0 -= crop.y0;
-	d.y1 -= crop.y1;
-	// blog(LOG_INFO, "calculate_error_one: error: %d %d %d %d score=%f", d.x0, d.y0, d.x1, d.y1, d.score);
-	return d;
+	return u;
 }
 
 static inline void calculate_error(struct face_tracker_filter *s)
 {
-	// blog(LOG_INFO, "entering calculate_error");
 	const int width = s->known_width;
 	const int height = s->known_height;
-	rect_s e_tot;
-	float x0_tot = 0.0f, x1_tot = 0.0f, y0_tot = 0.0f, y1_tot = 0.0f;
+	f3 e_tot(0.0f, 0.0f, 0.0f);
 	float sc_tot = 0.0f;
 	std::deque<struct tracker_inst_s> &trackers = *s->trackers;
 	for (int i=0; i<trackers.size(); i++) if (trackers[i].state == tracker_inst_s::tracker_state_available) {
-		rect_s r = trackers[i].rect;
-		r.score = r.score * trackers[i].att;
-		rect_s e = calculate_error_one(s, r, trackers[i].crop_rect);
-		x0_tot += e.x0 * e.score;
-		y0_tot += e.y0 * e.score;
-		x1_tot += e.x1 * e.score;
-		y1_tot += e.y1 * e.score;
-		sc_tot += e.score;
+		f3 r (trackers[i].rect);
+		r.v[2] /= s->track_z;
+		r = ensure_range(r, s->range_min, s->range_max);
+		f3 w (trackers[i].crop_rect);
+		float score = trackers[i].rect.score * trackers[i].att;
+		e_tot += (r-w) * score;
+		sc_tot += score;
 	}
 
-	// blog(LOG_INFO, "calculate_error %f %f %f %f %f", x0_tot/sc_tot, x1_tot / sc_tot, y0_tot / sc_tot, y1_tot / sc_tot, sc_tot);
-
-	if (sc_tot > 1e-19f) {
-		s->detect_err.x0 = x0_tot / sc_tot;
-		s->detect_err.x1 = x1_tot / sc_tot;
-		s->detect_err.y0 = y0_tot / sc_tot;
-		s->detect_err.y1 = y1_tot / sc_tot;
-	}
-	else {
-		s->detect_err.x0 = 0.0f;
-		s->detect_err.x1 = 0.0f;
-		s->detect_err.y0 = 0.0f;
-		s->detect_err.y1 = 0.0f;
-	}
+	if (sc_tot > 1e-19f)
+		s->detect_err = e_tot * (1.0f / sc_tot);
+	else
+		s->detect_err = f3(0, 0, 0);
 }
 
 static inline void retire_tracker(struct face_tracker_filter *s, int ix)
