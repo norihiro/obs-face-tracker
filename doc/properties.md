@@ -5,13 +5,14 @@
 ### Left, right, top, bottom
 These properties upsize (or downsize) the recognized face by multiple of the width or height.
 
-The background is that the face recognition returns a rectangle that is smaller than the actual face.
+The motivation is that the face recognition returns a rectangle that is smaller than the actual face.
 
 ## Tracking target location
 
 ### Zoom
-This property set the target zoom amount in multiple of the screen height.
-For example, zoom set to `0.5` will result the face consumes half of the screen height.
+This property set the target zoom amount in multiple of the screen size.
+If set to `1.0`, face size and screen size is same.
+Smaller value results smaller face, i.e. less zoom.
 
 ### X, Y
 This property set the location where the center of the face is placed.
