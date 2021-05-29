@@ -197,7 +197,7 @@ static obs_properties_t *ftf_properties(void *unused)
 		obs_properties_add_float(pp, "Kp", "Track Kp", 0.01, 10.0, 0.1);
 		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
-		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 2.0, 0.002);
+		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 10.0, 0.1);
 		obs_properties_add_group(props, "ctrl", obs_module_text("Tracking response"), OBS_GROUP_NORMAL, pp);
 	}
 
@@ -221,10 +221,10 @@ static void ftf_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "track_y", +0.00); // +0.00 +0.10 +0.30
 	obs_data_set_default_double(settings, "scale_max", 10.0);
 
-	obs_data_set_default_double(settings, "Kp", 0.5);
-	obs_data_set_default_double(settings, "Ki", 0.2);
-	obs_data_set_default_double(settings, "Td", 0.05);
-	obs_data_set_default_double(settings, "Tdlpf", 0.025);
+	obs_data_set_default_double(settings, "Kp", 0.95);
+	obs_data_set_default_double(settings, "Ki", 0.3);
+	obs_data_set_default_double(settings, "Td", 0.42);
+	obs_data_set_default_double(settings, "Tdlpf", 2.0);
 }
 
 static void tick_filter(struct face_tracker_filter *s, float second)
