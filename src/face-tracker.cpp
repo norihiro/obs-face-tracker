@@ -170,11 +170,28 @@ static void ftf_destroy(void *data)
 	bfree(s);
 }
 
+static bool ftf_reset_tracking(obs_properties_t *, obs_property_t *, void *data)
+{
+	auto *s = (struct face_tracker_filter*)data;
+
+	float w = s->known_width;
+	float h = s->known_height;
+	float z = sqrtf(w*h);
+	s->detect_err = f3(0, 0, 0);
+	s->filter_int_out = f3(w*0.5f, h*0.5f, z);
+	s->filter_int = f3(0, 0, 0);
+	s->filter_lpf = f3(0, 0, 0);
+
+	return true;
+}
+
 static obs_properties_t *ftf_properties(void *unused)
 {
 	UNUSED_PARAMETER(unused);
 	obs_properties_t *props;
 	props = obs_properties_create();
+
+	obs_properties_add_button(props, "ftf_reset_tracking", obs_module_text("Reset tracking"), ftf_reset_tracking);
 
 	{
 		obs_properties_t *pp = obs_properties_create();
@@ -261,10 +278,10 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 		}
 	}
 
-	s->crop_cur.x0 = (int)(u.v[0] - s2w * u.v[2]);
-	s->crop_cur.x1 = (int)(u.v[0] + s2w * u.v[2]);
-	s->crop_cur.y0 = (int)(u.v[1] - s2h * u.v[2]);
-	s->crop_cur.y1 = (int)(u.v[1] + s2h * u.v[2]);
+	s->crop_cur.x0 = (int)(u.v[0] - s2w * u.v[2] * 0.5f);
+	s->crop_cur.x1 = (int)(u.v[0] + s2w * u.v[2] * 0.5f);
+	s->crop_cur.y0 = (int)(u.v[1] - s2h * u.v[2] * 0.5f);
+	s->crop_cur.y1 = (int)(u.v[1] + s2h * u.v[2] * 0.5f);
 
 	blog(LOG_INFO, "tick_filter u: %f %f %f, crop: %d %d %d %d", u.v[0], u.v[1], u.v[2], s->crop_cur.x0, s->crop_cur.y0, s->crop_cur.x1, s->crop_cur.y1);
 
@@ -306,12 +323,11 @@ static void ftf_tick(void *data, float second)
 		goto err;
 
 	if (s->crop_cur.x1<0 || s->crop_cur.y1<0) {
-		// reset crop_cur
+		ftf_reset_tracking(NULL, NULL, s);
 		s->crop_cur.x0 = 0;
 		s->crop_cur.y0 = 0;
 		s->crop_cur.x1 = s->known_width;
 		s->crop_cur.y1 = s->known_height;
-		s->filter_int_out = s->crop_cur;
 	}
 	else if (was_rendered) {
 		s->range_min.v[0] = get_width(s->crop_cur) * 0.5f;
