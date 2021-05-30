@@ -308,7 +308,14 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 			x -= d + n * 0.5f;
 		else
 			x += d + n * 0.5f;
-		e_int.v[i] = samesign(s->filter_int.v[i], e.v[i]) ? x : e.v[i];
+		if (second * s->ki > 1.0e-10) {
+			if (s->filter_int.v[i] < 0.0f && e.v[i] > 0.0f)
+				e_int.v[i] = std::min(e.v[i], -s->filter_int.v[i] / (second * s->ki));
+			else if (s->filter_int.v[i] > 0.0f && e.v[i] < 0.0f)
+				e_int.v[i] = std::max(e.v[i], -s->filter_int.v[i] / (second * s->ki));
+			else
+				e_int.v[i] = x;
+		}
 		e.v[i] = x;
 	}
 
