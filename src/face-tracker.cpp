@@ -259,6 +259,15 @@ static void ftf_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "Tdlpf", 2.0);
 }
 
+template <typename T> static inline bool samesign(const T &a, const T &b)
+{
+	if (a>0 && b>0)
+		return true;
+	if (a<0 && b<0)
+		return true;
+	return false;
+}
+
 static inline float sqf(float x) { return x*x; }
 
 static void tick_filter(struct face_tracker_filter *s, float second)
@@ -272,13 +281,14 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 	const float s2w = width / srwh;
 
 	f3 e = s->detect_err;
+	f3 e_int = e;
 	for (int i=0; i<3; i++) {
 		float x = e.v[i];
 		float d = srwh * s->e_deadband.v[i];
 		float n = srwh * s->e_nonlinear.v[i];
 		if (std::abs(x) <= d)
 			x = 0.0f;
-		else if (std::abs(e.v[i]) < (d + n)) {
+		else if (std::abs(x) < (d + n)) {
 			if (x > 0)
 				x = +sqf(x - d) / (2.0f * n);
 			else
@@ -288,11 +298,12 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 			x -= d + n * 0.5f;
 		else
 			x += d + n * 0.5f;
+		e_int.v[i] = samesign(s->filter_int.v[i], e.v[i]) ? x : e.v[i];
 		e.v[i] = x;
 	}
 
 	s->filter_int_out += (e + s->filter_int) * (second * s->kp);
-	s->filter_int += e * (second * s->ki);
+	s->filter_int += e_int * (second * s->ki);
 	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
 
 	f3 u = s->filter_int_out + s->filter_lpf * s->klpf;
