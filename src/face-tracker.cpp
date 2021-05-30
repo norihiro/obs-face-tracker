@@ -142,12 +142,12 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->ki = ki;
 	s->klpf = (float)(td * kp);
 	s->tlpf = (float)obs_data_get_double(settings, "Tdlpf");
-	s->e_deadband.v[0] = (float)obs_data_get_double(settings, "e_deadband_x");
-	s->e_deadband.v[1] = (float)obs_data_get_double(settings, "e_deadband_y");
-	s->e_deadband.v[2] = (float)obs_data_get_double(settings, "e_deadband_z");
-	s->e_nonlinear.v[0] = (float)obs_data_get_double(settings, "e_nonlinear_x");
-	s->e_nonlinear.v[1] = (float)obs_data_get_double(settings, "e_nonlinear_y");
-	s->e_nonlinear.v[2] = (float)obs_data_get_double(settings, "e_nonlinear_z");
+	s->e_deadband.v[0] = (float)obs_data_get_double(settings, "e_deadband_x") * 1e-2;
+	s->e_deadband.v[1] = (float)obs_data_get_double(settings, "e_deadband_y") * 1e-2;
+	s->e_deadband.v[2] = (float)obs_data_get_double(settings, "e_deadband_z") * 1e-2;
+	s->e_nonlinear.v[0] = (float)obs_data_get_double(settings, "e_nonlinear_x") * 1e-2;
+	s->e_nonlinear.v[1] = (float)obs_data_get_double(settings, "e_nonlinear_y") * 1e-2;
+	s->e_nonlinear.v[2] = (float)obs_data_get_double(settings, "e_nonlinear_z") * 1e-2;
 
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
@@ -234,12 +234,12 @@ static obs_properties_t *ftf_properties(void *unused)
 		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 10.0, 0.1);
-		obs_properties_add_float(pp, "e_deadband_x", "Dead band (X)", 0.0, 0.5, 0.001);
-		obs_properties_add_float(pp, "e_deadband_y", "Dead band (Y)", 0.0, 0.5, 0.001);
-		obs_properties_add_float(pp, "e_deadband_z", "Dead band (Z)", 0.0, 0.5, 0.001);
-		obs_properties_add_float(pp, "e_nonlinear_x", "Nonlinear band (X)", 0.0, 0.5, 0.001);
-		obs_properties_add_float(pp, "e_nonlinear_y", "Nonlinear band (Y)", 0.0, 0.5, 0.001);
-		obs_properties_add_float(pp, "e_nonlinear_z", "Nonlinear band (Z)", 0.0, 0.5, 0.001);
+		obs_properties_add_float(pp, "e_deadband_x", "Dead band (X)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_deadband_y", "Dead band (Y)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_deadband_z", "Dead band (Z)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_nonlinear_x", "Nonlinear band (X)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_nonlinear_y", "Nonlinear band (Y)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_nonlinear_z", "Nonlinear band (Z)", 0.0, 50, 0.1);
 		obs_properties_add_group(props, "ctrl", obs_module_text("Tracking response"), OBS_GROUP_NORMAL, pp);
 	}
 
