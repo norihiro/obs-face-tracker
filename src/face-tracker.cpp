@@ -97,6 +97,7 @@ struct face_tracker_filter
 	float ki;
 	float klpf;
 	float tlpf;
+	f3 e_deadband, e_nonlinear; // deadband and nonlinear amount for error input
 	f3 filter_int_out;
 	f3 filter_int;
 	f3 filter_lpf;
@@ -131,6 +132,12 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->ki = ki;
 	s->klpf = (float)(td * kp);
 	s->tlpf = (float)obs_data_get_double(settings, "Tdlpf");
+	s->e_deadband.v[0] = (float)obs_data_get_double(settings, "e_deadband_x");
+	s->e_deadband.v[1] = (float)obs_data_get_double(settings, "e_deadband_y");
+	s->e_deadband.v[2] = (float)obs_data_get_double(settings, "e_deadband_z");
+	s->e_nonlinear.v[0] = (float)obs_data_get_double(settings, "e_nonlinear_x");
+	s->e_nonlinear.v[1] = (float)obs_data_get_double(settings, "e_nonlinear_y");
+	s->e_nonlinear.v[2] = (float)obs_data_get_double(settings, "e_nonlinear_z");
 
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
@@ -217,6 +224,12 @@ static obs_properties_t *ftf_properties(void *unused)
 		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 10.0, 0.1);
+		obs_properties_add_float(pp, "e_deadband_x", "Dead band (X)", 0.0, 0.5, 0.001);
+		obs_properties_add_float(pp, "e_deadband_y", "Dead band (Y)", 0.0, 0.5, 0.001);
+		obs_properties_add_float(pp, "e_deadband_z", "Dead band (Z)", 0.0, 0.5, 0.001);
+		obs_properties_add_float(pp, "e_nonlinear_x", "Nonlinear band (X)", 0.0, 0.5, 0.001);
+		obs_properties_add_float(pp, "e_nonlinear_y", "Nonlinear band (Y)", 0.0, 0.5, 0.001);
+		obs_properties_add_float(pp, "e_nonlinear_z", "Nonlinear band (Z)", 0.0, 0.5, 0.001);
 		obs_properties_add_group(props, "ctrl", obs_module_text("Tracking response"), OBS_GROUP_NORMAL, pp);
 	}
 
@@ -246,22 +259,43 @@ static void ftf_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "Tdlpf", 2.0);
 }
 
+static inline float sqf(float x) { return x*x; }
+
 static void tick_filter(struct face_tracker_filter *s, float second)
 {
+	const float width = s->known_width;
+	const float height = s->known_height;
+	const float srwh = sqrtf(width * height);
+	const float h = height / s->scale_max;
+	const float w = width / s->scale_max;
+	const float s2h = height / srwh;
+	const float s2w = width / srwh;
+
 	f3 e = s->detect_err;
+	for (int i=0; i<3; i++) {
+		float x = e.v[i];
+		float d = srwh * s->e_deadband.v[i];
+		float n = srwh * s->e_nonlinear.v[i];
+		if (std::abs(x) <= d)
+			x = 0.0f;
+		else if (std::abs(e.v[i]) < (d + n)) {
+			if (x > 0)
+				x = +sqf(x - d) / (2.0f * n);
+			else
+				x = -sqf(x - d) / (2.0f * n);
+		}
+		else if (x > 0)
+			x -= d + n * 0.5f;
+		else
+			x += d + n * 0.5f;
+		e.v[i] = x;
+	}
 
 	s->filter_int_out += (e + s->filter_int) * (second * s->kp);
 	s->filter_int += e * (second * s->ki);
 	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
 
 	f3 u = s->filter_int_out + s->filter_lpf * s->klpf;
-
-	const float h = s->known_height / s->scale_max;
-	const float w = s->known_width / s->scale_max;
-	const float s2h = s->known_height / sqrtf(s->known_width*s->known_height);
-	const float s2w = s->known_width / sqrtf(s->known_width*s->known_height);
-	const float h1 = s->known_height - h;
-	const float w1 = s->known_width - w;
 
 	for (int i=0; i<3; i++) {
 		if (isnan(u.v[i]))
