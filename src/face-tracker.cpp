@@ -501,7 +501,7 @@ static inline void attenuate_tracker(struct face_tracker_filter *s)
 				continue;
 			float a = common_area(r, trackers[i].rect);
 			a_overlap_sum += a;
-			if (a>a0*1e-2f && a_overlap_sum > a0*1.0f)
+			if (a>a0*0.1f && a_overlap_sum > a0*0.5f)
 				retire_tracker(s, i);
 		}
 	}
