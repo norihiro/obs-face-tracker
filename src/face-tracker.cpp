@@ -458,6 +458,7 @@ static inline void calculate_error(struct face_tracker_filter *s)
 	const int height = s->known_height;
 	f3 e_tot(0.0f, 0.0f, 0.0f);
 	float sc_tot = 0.0f;
+	bool found = false;
 	std::deque<struct tracker_inst_s> &trackers = *s->trackers;
 	for (int i=0; i<trackers.size(); i++) if (trackers[i].state == tracker_inst_s::tracker_state_available) {
 		f3 r (trackers[i].rect);
@@ -469,9 +470,10 @@ static inline void calculate_error(struct face_tracker_filter *s)
 		float score = trackers[i].rect.score * trackers[i].att;
 		e_tot += (r-w) * score;
 		sc_tot += score;
+		found = true;
 	}
 
-	if (sc_tot > 1e-19f)
+	if (found)
 		s->detect_err = e_tot * (1.0f / sc_tot);
 	else
 		s->detect_err = f3(0, 0, 0);
@@ -499,7 +501,7 @@ static inline void attenuate_tracker(struct face_tracker_filter *s)
 				continue;
 			float a = common_area(r, trackers[i].rect);
 			a_overlap_sum += a;
-			if (a>a0*1e-2f && a_overlap_sum > a0*1.0f)
+			if (a>a0*0.1f && a_overlap_sum > a0*0.5f)
 				retire_tracker(s, i);
 		}
 	}
@@ -521,7 +523,7 @@ static inline void attenuate_tracker(struct face_tracker_filter *s)
 		t.att *= powf(amax / a1, 0.1f); // if no faces, remove the tracker
 	}
 
-	float score_max = 0.0f;
+	float score_max = 1e-17f;
 	for (int i=0; i<trackers.size(); i++) {
 		if (trackers[i].state == tracker_inst_s::tracker_state_available) {
 			float s = trackers[i].att * trackers[i].rect.score;
@@ -536,7 +538,6 @@ static inline void attenuate_tracker(struct face_tracker_filter *s)
 		else
 			i++;
 	}
-	blog(LOG_INFO, "attenuate_tracker: trackers.size=%d total=%d", trackers.size(), trackers.size()+s->trackers_idlepool->size());
 }
 
 static inline void copy_detector_to_tracker(struct face_tracker_filter *s)
