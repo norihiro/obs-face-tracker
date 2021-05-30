@@ -1,5 +1,9 @@
 # Face Tracker Properties
 
+### Reset tracking (button)
+When clicked, tracking state is reset to the initial condition; zero crop, reset internal states of the integrators.
+(This is not a property.)
+
 ## Upsize recognized face
 
 ### Left, right, top, bottom
