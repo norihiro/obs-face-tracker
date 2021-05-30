@@ -37,9 +37,7 @@ void *face_detector_base::thread_routine(void *p)
 
 	base->lock();
 	while(!base->request_stop) {
-		blog(LOG_INFO, "face_detector_base: calling detect_main...");
 		base->detect_main();
-		blog(LOG_INFO, "face_detector_base: waiting next signal...");
 		pthread_cond_wait(&base->cond, &base->mutex);
 	}
 	base->unlock();

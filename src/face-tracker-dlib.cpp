@@ -49,7 +49,6 @@ void face_tracker_dlib::set_texture(uint8_t *data, uint32_t linesize, uint32_t w
 			row[j] = (+306*r +601*g +117*b)/1024; // BT.601
 		}
 	}
-	blog(LOG_INFO, "face_tracker_dlib: got image %dx%d", width, height);
 }
 
 void face_tracker_dlib::set_position(const rect_s &rect)
@@ -69,7 +68,6 @@ void face_tracker_dlib::track_main()
 		p->tracker->start_track(p->img, r);
 		p->score0 = p->rect.score;
 		p->need_restart = false;
-		blog(LOG_INFO, "face_tracker_dlib::track_main: %p starting correlation_tracker score0=%f", this, p->score0);
 		p->pslr_max = 0.0f;
 		p->pslr_min = 1e9f;
 	}

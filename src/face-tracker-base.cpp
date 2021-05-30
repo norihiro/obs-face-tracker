@@ -36,10 +36,8 @@ void *face_tracker_base::thread_routine(void *p)
 
 	base->lock();
 	while(!base->stop_requested) {
-		blog(LOG_INFO, "face_tracker_base: calling detect_main...");
 		if (!base->suspend_requested)
 			base->track_main();
-		blog(LOG_INFO, "face_tracker_base: waiting next signal...");
 		pthread_cond_wait(&base->cond, &base->mutex);
 	}
 	base->stopped = 1;
@@ -49,11 +47,11 @@ void *face_tracker_base::thread_routine(void *p)
 
 void face_tracker_base::start()
 {
-	blog(LOG_INFO, "face_tracker_base: starting the thread.");
 	stop_requested = 0;
 	stopped = 0;
 	suspend_requested = 0;
 	if (!running) {
+		blog(LOG_INFO, "face_tracker_base: starting a new thread.");
 		pthread_create(&thread, NULL, thread_routine, (void*)this);
 		running = 1;
 	}
@@ -66,16 +64,16 @@ void face_tracker_base::start()
 
 void face_tracker_base::stop()
 {
-	blog(LOG_INFO, "face_tracker_base: stopping the thread...");
 	lock();
 	stop_requested = 1;
 	signal();
 	unlock();
 	if (running) {
+		blog(LOG_INFO, "face_tracker_base: joining the thread...");
 		pthread_join(thread, NULL);
 		running = 0;
+		blog(LOG_INFO, "face_tracker_base: joined the thread.");
 	}
-	blog(LOG_INFO, "face_tracker_base: stopped the thread...");
 }
 
 void face_tracker_base::request_stop()
@@ -90,6 +88,7 @@ bool face_tracker_base::is_stopped()
 {
 	if (stopped) {
 		if (running) {
+			blog(LOG_INFO, "face_tracker_base: joining the thread...");
 			pthread_join(thread, NULL);
 			running = 0;
 		}

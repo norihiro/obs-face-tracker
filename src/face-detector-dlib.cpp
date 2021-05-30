@@ -43,7 +43,6 @@ void face_detector_dlib::set_texture(uint8_t *data, uint32_t linesize, uint32_t 
 			row[j] = (+306*r +601*g +117*b)/1024; // BT.601
 		}
 	}
-	blog(LOG_INFO, "face_detector_dlib: got image %dx%d", width, height);
 }
 
 void face_detector_dlib::detect_main()
@@ -51,12 +50,10 @@ void face_detector_dlib::detect_main()
 	if (p->img.nc()<80 || p->img.nr()<80)
 		return;
 
-	blog(LOG_INFO, "face_detector_dlib: processing image %dx%d", p->img.nc(), p->img.nr());
 	if (!p->detector)
 		p->detector = new dlib::frontal_face_detector(dlib::get_frontal_face_detector());
 
 	std::vector<dlib::rectangle> dets = (*p->detector)(p->img);
-	blog(LOG_INFO, "face_detector_dlib: number of faces detected: %d\n", dets.size());
 	p->rects.resize(dets.size());
 	for (size_t i=0; i<dets.size(); i++) {
 		rect_s &r = p->rects[i];
@@ -64,7 +61,6 @@ void face_detector_dlib::detect_main()
 		r.y0 = dets[i].top() * SCALE;
 		r.x1 = dets[i].right() * SCALE;
 		r.y1 = dets[i].bottom() * SCALE;
-		blog(LOG_INFO, "face_detector_dlib:  rect[%d] %d,%d %dx%d\n", i, r.x0, r.y0, r.x1, r.y1);
 		r.score = 1.0; // TODO: implement me
 	}
 }
