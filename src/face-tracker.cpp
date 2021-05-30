@@ -11,6 +11,14 @@
 #include <math.h>
 #include <graphics/matrix4.h>
 
+struct rectf_s
+{
+	float x0;
+	float y0;
+	float x1;
+	float y1;
+};
+
 struct f3
 {
 	float v[3];
@@ -18,6 +26,7 @@ struct f3
 	f3 (const f3 &a) {*this=a;}
 	f3 (float a, float b, float c) { v[0]=a; v[1]=b; v[2]=c; }
 	f3 (const rect_s &a) { v[0]=(a.x0+a.x1)*0.5f; v[1]=(a.y0+a.y1)*0.5f; v[2]=sqrtf((a.x1-a.x0)*(a.y1-a.y0)); }
+	f3 (const rectf_s &a) { v[0]=(a.x0+a.x1)*0.5f; v[1]=(a.y0+a.y1)*0.5f; v[2]=sqrtf((a.x1-a.x0)*(a.y1-a.y0)); }
 	f3 operator + (const f3 &a) { return f3 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2]); }
 	f3 operator - (const f3 &a) { return f3 (v[0]-a.v[0], v[1]-a.v[1], v[2]-a.v[2]); }
 	f3 operator * (float a) { return f3 (v[0]*a, v[1]*a, v[2]*a); }
@@ -26,6 +35,8 @@ struct f3
 
 static inline int get_width (const rect_s &r) { return r.x1 - r.x0; }
 static inline int get_height(const rect_s &r) { return r.y1 - r.y0; }
+static inline int get_width (const rectf_s &r) { return r.x1 - r.x0; }
+static inline int get_height(const rectf_s &r) { return r.y1 - r.y0; }
 
 static inline float common_length(float a0, float a1, float b0, float b1)
 {
@@ -48,8 +59,8 @@ struct tracker_inst_s
 {
 	face_tracker_base *tracker;
 	rect_s rect;
-	rect_s crop_tracker; // crop corresponding to current processing image
-	rect_s crop_rect; // crop corresponding to rect
+	rectf_s crop_tracker; // crop corresponding to current processing image
+	rectf_s crop_rect; // crop corresponding to rect
 	float att;
 	enum tracker_state_e {
 		tracker_state_init = 0,
@@ -84,8 +95,7 @@ struct face_tracker_filter
 	std::deque<struct tracker_inst_s> *trackers;
 	std::deque<struct tracker_inst_s> *trackers_idlepool;
 
-	rect_s crop_cur;
-	rect_s detect_crop;
+	rectf_s crop_cur;
 	f3 detect_err;
 	f3 range_min, range_max;
 
@@ -147,7 +157,7 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 {
 	auto *s = (struct face_tracker_filter*)bzalloc(sizeof(struct face_tracker_filter));
 	s->rects = new std::vector<rect_s>;
-	s->crop_cur.x1 = s->crop_cur.y1 = -1;
+	s->crop_cur.x1 = s->crop_cur.y1 = -2;
 	s->context = context;
 	s->detect = new face_detector_dlib();
 	s->detect->start();
@@ -323,13 +333,10 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 		}
 	}
 
-	s->crop_cur.x0 = (int)(u.v[0] - s2w * u.v[2] * 0.5f);
-	s->crop_cur.x1 = (int)(u.v[0] + s2w * u.v[2] * 0.5f);
-	s->crop_cur.y0 = (int)(u.v[1] - s2h * u.v[2] * 0.5f);
-	s->crop_cur.y1 = (int)(u.v[1] + s2h * u.v[2] * 0.5f);
-
-	blog(LOG_INFO, "tick_filter u: %f %f %f, crop: %d %d %d %d", u.v[0], u.v[1], u.v[2], s->crop_cur.x0, s->crop_cur.y0, s->crop_cur.x1, s->crop_cur.y1);
-
+	s->crop_cur.x0 = u.v[0] - s2w * u.v[2] * 0.5f;
+	s->crop_cur.x1 = u.v[0] + s2w * u.v[2] * 0.5f;
+	s->crop_cur.y0 = u.v[1] - s2h * u.v[2] * 0.5f;
+	s->crop_cur.y1 = u.v[1] + s2h * u.v[2] * 0.5f;
 }
 
 static void ftf_activate(void *data)
@@ -367,7 +374,7 @@ static void ftf_tick(void *data, float second)
 	if (s->known_width<=0 || s->known_height<=0)
 		goto err;
 
-	if (s->crop_cur.x1<0 || s->crop_cur.y1<0) {
+	if (s->crop_cur.x1<-1 || s->crop_cur.y1<-1) {
 		ftf_reset_tracking(NULL, NULL, s);
 		s->crop_cur.x0 = 0;
 		s->crop_cur.y0 = 0;
@@ -611,7 +618,6 @@ static inline void stage_to_detector(struct face_tracker_filter *s)
 			uint32_t height = s->known_height;
 			s->detect->set_texture(video_data, video_linesize, width, height);
 			gs_stagesurface_unmap(s->stagesurface);
-			s->detect_crop = s->crop_cur;
 			s->detect->signal();
 			s->detector_in_progress = true;
 			s->detect_tick = s->tick_cnt;
@@ -709,7 +715,7 @@ static inline void draw_frame(struct face_tracker_filter *s)
 
 	gs_matrix_push();
 	if (width>0 && height>0) {
-		const rect_s &crop_cur = s->crop_cur;
+		const rectf_s &crop_cur = s->crop_cur;
 		float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
 		struct matrix4 tr;
 		matrix4_identity(&tr);
@@ -780,16 +786,26 @@ static inline void draw_frame(struct face_tracker_filter *s)
 			}
 			if (s->debug_notrack) {
 				gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
-				const rect_s &r = s->crop_cur;
+				const rectf_s &r = s->crop_cur;
 				gs_render_start(true);
 				gs_vertex2f(r.x0, r.y0);
 				gs_vertex2f(r.x0, r.y1);
+				gs_vertex2f(r.x0, r.y1);
+				gs_vertex2f(r.x1, r.y1);
 				gs_vertex2f(r.x1, r.y1);
 				gs_vertex2f(r.x1, r.y0);
+				gs_vertex2f(r.x1, r.y0);
 				gs_vertex2f(r.x0, r.y0);
+				const float srwhr2 = sqrtf((r.x1-r.x0) * (r.y1-r.y0)) * 0.5f;
+				const float rcx = (r.x0+r.x1)*0.5f + (r.x1-r.x0)*s->track_x;
+				const float rcy = (r.y0+r.y1)*0.5f - (r.y1-r.y0)*s->track_y;
+				gs_vertex2f(rcx-srwhr2*s->track_z, rcy);
+				gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
+				gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
+				gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
 				gs_vertbuffer_t *vb = gs_render_save();
 				gs_load_vertexbuffer(vb);
-				gs_draw(GS_LINESTRIP, 0, 0);
+				gs_draw(GS_LINES, 0, 0);
 				gs_vertexbuffer_destroy(vb);
 			}
 		}
