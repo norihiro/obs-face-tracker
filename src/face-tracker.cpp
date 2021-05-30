@@ -11,6 +11,14 @@
 #include <math.h>
 #include <graphics/matrix4.h>
 
+struct rectf_s
+{
+	float x0;
+	float y0;
+	float x1;
+	float y1;
+};
+
 struct f3
 {
 	float v[3];
@@ -18,6 +26,7 @@ struct f3
 	f3 (const f3 &a) {*this=a;}
 	f3 (float a, float b, float c) { v[0]=a; v[1]=b; v[2]=c; }
 	f3 (const rect_s &a) { v[0]=(a.x0+a.x1)*0.5f; v[1]=(a.y0+a.y1)*0.5f; v[2]=sqrtf((a.x1-a.x0)*(a.y1-a.y0)); }
+	f3 (const rectf_s &a) { v[0]=(a.x0+a.x1)*0.5f; v[1]=(a.y0+a.y1)*0.5f; v[2]=sqrtf((a.x1-a.x0)*(a.y1-a.y0)); }
 	f3 operator + (const f3 &a) { return f3 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2]); }
 	f3 operator - (const f3 &a) { return f3 (v[0]-a.v[0], v[1]-a.v[1], v[2]-a.v[2]); }
 	f3 operator * (float a) { return f3 (v[0]*a, v[1]*a, v[2]*a); }
@@ -26,6 +35,8 @@ struct f3
 
 static inline int get_width (const rect_s &r) { return r.x1 - r.x0; }
 static inline int get_height(const rect_s &r) { return r.y1 - r.y0; }
+static inline int get_width (const rectf_s &r) { return r.x1 - r.x0; }
+static inline int get_height(const rectf_s &r) { return r.y1 - r.y0; }
 
 static inline float common_length(float a0, float a1, float b0, float b1)
 {
@@ -48,8 +59,8 @@ struct tracker_inst_s
 {
 	face_tracker_base *tracker;
 	rect_s rect;
-	rect_s crop_tracker; // crop corresponding to current processing image
-	rect_s crop_rect; // crop corresponding to rect
+	rectf_s crop_tracker; // crop corresponding to current processing image
+	rectf_s crop_rect; // crop corresponding to rect
 	float att;
 	enum tracker_state_e {
 		tracker_state_init = 0,
@@ -84,8 +95,7 @@ struct face_tracker_filter
 	std::deque<struct tracker_inst_s> *trackers;
 	std::deque<struct tracker_inst_s> *trackers_idlepool;
 
-	rect_s crop_cur;
-	rect_s detect_crop;
+	rectf_s crop_cur;
 	f3 detect_err;
 	f3 range_min, range_max;
 
@@ -97,6 +107,7 @@ struct face_tracker_filter
 	float ki;
 	float klpf;
 	float tlpf;
+	f3 e_deadband, e_nonlinear; // deadband and nonlinear amount for error input
 	f3 filter_int_out;
 	f3 filter_int;
 	f3 filter_lpf;
@@ -131,6 +142,12 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->ki = ki;
 	s->klpf = (float)(td * kp);
 	s->tlpf = (float)obs_data_get_double(settings, "Tdlpf");
+	s->e_deadband.v[0] = (float)obs_data_get_double(settings, "e_deadband_x") * 1e-2;
+	s->e_deadband.v[1] = (float)obs_data_get_double(settings, "e_deadband_y") * 1e-2;
+	s->e_deadband.v[2] = (float)obs_data_get_double(settings, "e_deadband_z") * 1e-2;
+	s->e_nonlinear.v[0] = (float)obs_data_get_double(settings, "e_nonlinear_x") * 1e-2;
+	s->e_nonlinear.v[1] = (float)obs_data_get_double(settings, "e_nonlinear_y") * 1e-2;
+	s->e_nonlinear.v[2] = (float)obs_data_get_double(settings, "e_nonlinear_z") * 1e-2;
 
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
@@ -140,7 +157,7 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 {
 	auto *s = (struct face_tracker_filter*)bzalloc(sizeof(struct face_tracker_filter));
 	s->rects = new std::vector<rect_s>;
-	s->crop_cur.x1 = s->crop_cur.y1 = -1;
+	s->crop_cur.x1 = s->crop_cur.y1 = -2;
 	s->context = context;
 	s->detect = new face_detector_dlib();
 	s->detect->start();
@@ -217,6 +234,12 @@ static obs_properties_t *ftf_properties(void *unused)
 		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 10.0, 0.1);
+		obs_properties_add_float(pp, "e_deadband_x", "Dead band (X)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_deadband_y", "Dead band (Y)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_deadband_z", "Dead band (Z)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_nonlinear_x", "Nonlinear band (X)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_nonlinear_y", "Nonlinear band (Y)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "e_nonlinear_z", "Nonlinear band (Z)", 0.0, 50, 0.1);
 		obs_properties_add_group(props, "ctrl", obs_module_text("Tracking response"), OBS_GROUP_NORMAL, pp);
 	}
 
@@ -246,22 +269,61 @@ static void ftf_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "Tdlpf", 2.0);
 }
 
+template <typename T> static inline bool samesign(const T &a, const T &b)
+{
+	if (a>0 && b>0)
+		return true;
+	if (a<0 && b<0)
+		return true;
+	return false;
+}
+
+static inline float sqf(float x) { return x*x; }
+
 static void tick_filter(struct face_tracker_filter *s, float second)
 {
+	const float width = s->known_width;
+	const float height = s->known_height;
+	const float srwh = sqrtf(width * height);
+	const float h = height / s->scale_max;
+	const float w = width / s->scale_max;
+	const float s2h = height / srwh;
+	const float s2w = width / srwh;
+
 	f3 e = s->detect_err;
+	f3 e_int = e;
+	for (int i=0; i<3; i++) {
+		float x = e.v[i];
+		float d = srwh * s->e_deadband.v[i];
+		float n = srwh * s->e_nonlinear.v[i];
+		if (std::abs(x) <= d)
+			x = 0.0f;
+		else if (std::abs(x) < (d + n)) {
+			if (x > 0)
+				x = +sqf(x - d) / (2.0f * n);
+			else
+				x = -sqf(x - d) / (2.0f * n);
+		}
+		else if (x > 0)
+			x -= d + n * 0.5f;
+		else
+			x += d + n * 0.5f;
+		if (second * s->ki > 1.0e-10) {
+			if (s->filter_int.v[i] < 0.0f && e.v[i] > 0.0f)
+				e_int.v[i] = std::min(e.v[i], -s->filter_int.v[i] / (second * s->ki));
+			else if (s->filter_int.v[i] > 0.0f && e.v[i] < 0.0f)
+				e_int.v[i] = std::max(e.v[i], -s->filter_int.v[i] / (second * s->ki));
+			else
+				e_int.v[i] = x;
+		}
+		e.v[i] = x;
+	}
 
 	s->filter_int_out += (e + s->filter_int) * (second * s->kp);
-	s->filter_int += e * (second * s->ki);
+	s->filter_int += e_int * (second * s->ki);
 	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
 
 	f3 u = s->filter_int_out + s->filter_lpf * s->klpf;
-
-	const float h = s->known_height / s->scale_max;
-	const float w = s->known_width / s->scale_max;
-	const float s2h = s->known_height / sqrtf(s->known_width*s->known_height);
-	const float s2w = s->known_width / sqrtf(s->known_width*s->known_height);
-	const float h1 = s->known_height - h;
-	const float w1 = s->known_width - w;
 
 	for (int i=0; i<3; i++) {
 		if (isnan(u.v[i]))
@@ -278,13 +340,10 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 		}
 	}
 
-	s->crop_cur.x0 = (int)(u.v[0] - s2w * u.v[2] * 0.5f);
-	s->crop_cur.x1 = (int)(u.v[0] + s2w * u.v[2] * 0.5f);
-	s->crop_cur.y0 = (int)(u.v[1] - s2h * u.v[2] * 0.5f);
-	s->crop_cur.y1 = (int)(u.v[1] + s2h * u.v[2] * 0.5f);
-
-	blog(LOG_INFO, "tick_filter u: %f %f %f, crop: %d %d %d %d", u.v[0], u.v[1], u.v[2], s->crop_cur.x0, s->crop_cur.y0, s->crop_cur.x1, s->crop_cur.y1);
-
+	s->crop_cur.x0 = u.v[0] - s2w * u.v[2] * 0.5f;
+	s->crop_cur.x1 = u.v[0] + s2w * u.v[2] * 0.5f;
+	s->crop_cur.y0 = u.v[1] - s2h * u.v[2] * 0.5f;
+	s->crop_cur.y1 = u.v[1] + s2h * u.v[2] * 0.5f;
 }
 
 static void ftf_activate(void *data)
@@ -322,7 +381,7 @@ static void ftf_tick(void *data, float second)
 	if (s->known_width<=0 || s->known_height<=0)
 		goto err;
 
-	if (s->crop_cur.x1<0 || s->crop_cur.y1<0) {
+	if (s->crop_cur.x1<-1 || s->crop_cur.y1<-1) {
 		ftf_reset_tracking(NULL, NULL, s);
 		s->crop_cur.x0 = 0;
 		s->crop_cur.y0 = 0;
@@ -566,7 +625,6 @@ static inline void stage_to_detector(struct face_tracker_filter *s)
 			uint32_t height = s->known_height;
 			s->detect->set_texture(video_data, video_linesize, width, height);
 			gs_stagesurface_unmap(s->stagesurface);
-			s->detect_crop = s->crop_cur;
 			s->detect->signal();
 			s->detector_in_progress = true;
 			s->detect_tick = s->tick_cnt;
@@ -664,7 +722,7 @@ static inline void draw_frame(struct face_tracker_filter *s)
 
 	gs_matrix_push();
 	if (width>0 && height>0) {
-		const rect_s &crop_cur = s->crop_cur;
+		const rectf_s &crop_cur = s->crop_cur;
 		float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
 		struct matrix4 tr;
 		matrix4_identity(&tr);
@@ -735,16 +793,26 @@ static inline void draw_frame(struct face_tracker_filter *s)
 			}
 			if (s->debug_notrack) {
 				gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
-				const rect_s &r = s->crop_cur;
+				const rectf_s &r = s->crop_cur;
 				gs_render_start(true);
 				gs_vertex2f(r.x0, r.y0);
 				gs_vertex2f(r.x0, r.y1);
+				gs_vertex2f(r.x0, r.y1);
+				gs_vertex2f(r.x1, r.y1);
 				gs_vertex2f(r.x1, r.y1);
 				gs_vertex2f(r.x1, r.y0);
+				gs_vertex2f(r.x1, r.y0);
 				gs_vertex2f(r.x0, r.y0);
+				const float srwhr2 = sqrtf((r.x1-r.x0) * (r.y1-r.y0)) * 0.5f;
+				const float rcx = (r.x0+r.x1)*0.5f + (r.x1-r.x0)*s->track_x;
+				const float rcy = (r.y0+r.y1)*0.5f - (r.y1-r.y0)*s->track_y;
+				gs_vertex2f(rcx-srwhr2*s->track_z, rcy);
+				gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
+				gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
+				gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
 				gs_vertbuffer_t *vb = gs_render_save();
 				gs_load_vertexbuffer(vb);
-				gs_draw(GS_LINESTRIP, 0, 0);
+				gs_draw(GS_LINES, 0, 0);
 				gs_vertexbuffer_destroy(vb);
 			}
 		}
