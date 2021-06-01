@@ -35,3 +35,5 @@ echo 'add_subdirectory(obs-frontend-api)' > UI/CMakeLists.txt
 
 export TERM=
 ./CI/full-build-macos.sh
+
+brew install openblas
