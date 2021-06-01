@@ -21,6 +21,8 @@ This plugin requires [dlib](http://dlib.net/) to be built.
 The `dlib` should be extracted under `obs-face-tracker` so that it will be linked statically.
 
 For Linux and MacOS,
+expand `obs-face-tracker` outside `obs-studio` and expand `dlib` under `obs-face-tracker`.
+Then, apply patch file to `dlib` so that dlib won't try to link `openblasp` but `openblas`.
 ```
 d0="$PWD"
 git clone https://github.com/obsproject/obs-studio.git
@@ -32,6 +34,9 @@ cd "$d0"
 git clone https://github.com/norihiro/obs-face-tracker.git
 cd obs-face-tracker
 git clone https://github.com/davisking/dlib.git
+cd dlib
+patch -p1 < ../ci/common/dlib-cmake-no-openblasp.patch
+cd ..
 mkdir build && cd build
 cmake -DLIBOBS_INCLUDE_DIR=$d0/obs-studio/libobs -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 make
