@@ -19,6 +19,7 @@ git clone https://github.com/davisking/dlib.git
 cd dlib
 git checkout `git describe --tags --abbrev=0 --exclude="*-rc*"`
 patch -p1 < ../ci/common/dlib-slim.patch
+patch -p1 < ../ci/common/dlib-cmake-no-openblasp.patch
 cd ..
 
 #export QT_PREFIX="$(find /usr/local/Cellar/qt5 -d 1 | tail -n 1)"
