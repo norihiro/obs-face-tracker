@@ -437,18 +437,34 @@ static inline void render_target(struct face_tracker_filter *s, obs_source_t *ta
 	s->staged = false;
 }
 
-static inline f3 ensure_range(f3 u, const f3 &range_min, const f3 &range_max)
+static inline f3 ensure_range(f3 u, const struct face_tracker_filter *s)
 {
-	for (int i=0; i<3; i++) {
-		if (isnan(u.v[i]))
-			u.v[i] = range_min.v[i];
-		else if (u.v[i] < range_min.v[i]) {
-			u.v[i] = range_min.v[i];
-		}
-		else if (u.v[i] > range_max.v[i]) {
-			u.v[i] = range_max.v[i];
-		}
-	}
+	const float srwh = sqrtf(s->known_width * s->known_height);
+	const float s2h = s->known_height / srwh;
+	const float s2w = s->known_width / srwh;
+
+	if (isnan(u.v[2]))
+		u.v[2] = s->range_min.v[2];
+	else if (u.v[2] < s->range_min.v[2])
+		u.v[2] = s->range_min.v[2];
+	else if (u.v[2] > s->range_max.v[2])
+		u.v[2] = s->range_max.v[2];
+
+	float x0 = u.v[0] - s2w * u.v[2] * 0.5f;
+	float x1 = u.v[0] + s2w * u.v[2] * 0.5f;
+	float y0 = u.v[1] - s2h * u.v[2] * 0.5f;
+	float y1 = u.v[1] + s2h * u.v[2] * 0.5f;
+
+	if (x0 < 0)
+		u.v[0] += -x0;
+	else if (x1 > s->known_width)
+		u.v[0] -= x1 - s->known_width;
+
+	if (y0 < 0)
+		u.v[1] += -y0;
+	else if (y1 > s->known_height)
+		u.v[1] -= y1 - s->known_height;
+
 	return u;
 }
 
@@ -465,7 +481,7 @@ static inline void calculate_error(struct face_tracker_filter *s)
 		r.v[0] -= get_width(trackers[i].crop_rect) * s->track_x;
 		r.v[1] += get_height(trackers[i].crop_rect) * s->track_y;
 		r.v[2] /= s->track_z;
-		r = ensure_range(r, s->range_min, s->range_max);
+		r = ensure_range(r, s);
 		f3 w (trackers[i].crop_rect);
 		float score = trackers[i].rect.score * trackers[i].att;
 		e_tot += (r-w) * score;
