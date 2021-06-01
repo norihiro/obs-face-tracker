@@ -1,35 +1,7 @@
 diff --git a/dlib/CMakeLists.txt b/dlib/CMakeLists.txt
-index bbf7ad56..f34a19b7 100644
+index bbf7ad56..8674fd1b 100644
 --- a/dlib/CMakeLists.txt
 +++ b/dlib/CMakeLists.txt
-@@ -193,7 +193,7 @@ if (NOT TARGET dlib)
-    option(DLIB_ENABLE_ASSERTS ${DLIB_ENABLE_ASSERTS_STR} OFF)
-    option(DLIB_ISO_CPP_ONLY ${DLIB_ISO_CPP_ONLY_STR} OFF)
-    toggle_preprocessor_switch(DLIB_ISO_CPP_ONLY)
--   option(DLIB_NO_GUI_SUPPORT ${DLIB_NO_GUI_SUPPORT_STR} OFF)
-+   option(DLIB_NO_GUI_SUPPORT ${DLIB_NO_GUI_SUPPORT_STR} ON)
-    toggle_preprocessor_switch(DLIB_NO_GUI_SUPPORT)
-    option(DLIB_ENABLE_STACK_TRACE ${DLIB_ENABLE_STACK_TRACE_STR} OFF)
-    toggle_preprocessor_switch(DLIB_ENABLE_STACK_TRACE)
-@@ -240,13 +240,13 @@ if (NOT TARGET dlib)
-       #option(DLIB_USE_FFTW ${DLIB_USE_FFTW_STR} OFF)
-       option(DLIB_USE_MKL_FFT ${DLIB_USE_MKL_FFT_STR} OFF)
-    else()
--      option(DLIB_JPEG_SUPPORT ${DLIB_JPEG_SUPPORT_STR} ON)
--      option(DLIB_LINK_WITH_SQLITE3 ${DLIB_LINK_WITH_SQLITE3_STR} ON)
--      option(DLIB_USE_BLAS ${DLIB_USE_BLAS_STR} ON)
-+      option(DLIB_JPEG_SUPPORT ${DLIB_JPEG_SUPPORT_STR} OFF)
-+      option(DLIB_LINK_WITH_SQLITE3 ${DLIB_LINK_WITH_SQLITE3_STR} OFF)
-+      option(DLIB_USE_BLAS ${DLIB_USE_BLAS_STR} OFF)
-       option(DLIB_USE_LAPACK ${DLIB_USE_LAPACK_STR} ON)
-       option(DLIB_USE_CUDA ${DLIB_USE_CUDA_STR} ON)
--      option(DLIB_PNG_SUPPORT ${DLIB_PNG_SUPPORT_STR} ON)
--      option(DLIB_GIF_SUPPORT ${DLIB_GIF_SUPPORT_STR} ON)
-+      option(DLIB_PNG_SUPPORT ${DLIB_PNG_SUPPORT_STR} OFF)
-+      option(DLIB_GIF_SUPPORT ${DLIB_GIF_SUPPORT_STR} OFF)
-       #option(DLIB_USE_FFTW ${DLIB_USE_FFTW_STR} ON)
-       option(DLIB_USE_MKL_FFT ${DLIB_USE_MKL_FFT_STR} ON)
-    endif()
 @@ -262,14 +262,11 @@ if (NOT TARGET dlib)
  
     set(source_files 

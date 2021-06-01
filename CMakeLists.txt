@@ -21,6 +21,10 @@ find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE True)
 set(DLIB_NO_GUI_SUPPORT ON)
+set(DLIB_PNG_SUPPORT OFF)
+set(DLIB_GIF_SUPPORT OFF)
+set(DLIB_JPEG_SUPPORT OFF)
+set(DLIB_LINK_WITH_SQLITE3 OFF)
 add_subdirectory(dlib)
 
 configure_file(
