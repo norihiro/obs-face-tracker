@@ -54,6 +54,8 @@ copy_local_dylib ./build/${PLUGIN_NAME}.so
 
 # Check if replacement worked
 for dylib in ./build/$PLUGIN_NAME.so lib/*.dylib ; do
+	test -f "$dylib" || continue
+	chmod +r $dylib
 	echo "=> Dependencies for $(basename $dylib)"
 	otool -L $dylib
 	echo "=> Search paths written in $(basename $dylib)"
@@ -75,7 +77,6 @@ mkdir -p $ziproot/bin
 cp ./build/$PLUGIN_NAME.so $ziproot/bin/
 cp -a data $ziproot/
 mkdir -p ./release
-chmod +x lib/*.dylib
 mv lib $ziproot/
 (cd package-zip && zip -r ../release/$zipfile $PLUGIN_NAME)
 
