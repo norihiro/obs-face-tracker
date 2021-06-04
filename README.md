@@ -15,6 +15,10 @@ Open filters for a source on OBS Studio, then add `Face Tracker` from the add bu
 
 See [Properties](doc/properties.md) for the description of each property.
 
+## Wiki
+- [Install procedure for macOS](https://github.com/norihiro/obs-face-tracker/wiki/Install-MacOS)
+- [FAQ](https://github.com/norihiro/obs-face-tracker/wiki/FAQ)
+
 ## Building
 
 This plugin requires [dlib](http://dlib.net/) to be built.
