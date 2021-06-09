@@ -75,6 +75,8 @@ ziproot=package-zip/$PLUGIN_NAME
 zipfile=${PLUGIN_NAME}-${GIT_HASH}-macos.zip
 mkdir -p $ziproot/bin
 cp ./build/$PLUGIN_NAME.so $ziproot/bin/
+cp LICENSE data/LICENSE-$PLUGIN_NAME
+cp dlib/LICENSE.txt data/LICENSE-dlib
 cp -a data $ziproot/
 mkdir -p ./release
 mv lib $ziproot/
