@@ -11,6 +11,9 @@
 #include <math.h>
 #include <graphics/matrix4.h>
 
+// #define debug_track(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
+#define debug_track(fmt, ...)
+
 struct rectf_s
 {
 	float x0;
@@ -32,6 +35,8 @@ struct f3
 	f3 operator * (float a) { return f3 (v[0]*a, v[1]*a, v[2]*a); }
 	f3 & operator += (const f3 &a) { return *this = f3 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2]); }
 };
+
+static inline bool isnan(const f3 &a) { return isnan(a.v[0]) || isnan(a.v[1]) || isnan(a.v[2]); }
 
 static inline int get_width (const rect_s &r) { return r.x1 - r.x0; }
 static inline int get_height(const rect_s &r) { return r.y1 - r.y0; }
@@ -484,9 +489,13 @@ static inline void calculate_error(struct face_tracker_filter *s)
 		r = ensure_range(r, s);
 		f3 w (trackers[i].crop_rect);
 		float score = trackers[i].rect.score * trackers[i].att;
-		e_tot += (r-w) * score;
-		sc_tot += score;
-		found = true;
+		f3 e = (r-w) * score;
+		debug_track("calculate_error: i=%d e={%f %f %f} score=%f", i, e.v[0], e.v[1], e.v[2], score);
+		if (score>0 && !isnan(e)) {
+			e_tot += e;
+			sc_tot += score;
+			found = true;
+		}
 	}
 
 	if (found)
@@ -547,12 +556,14 @@ static inline void attenuate_tracker(struct face_tracker_filter *s)
 		}
 	}
 
-	for (int i=0; i<trackers.size(); ) {
-		if (trackers[i].state == tracker_inst_s::tracker_state_available && trackers[i].att * trackers[i].rect.score < 1e-2f * score_max) {
-			retire_tracker(s, i);
-		}
-		else
-			i++;
+	for (int i=0; i<trackers.size(); i++) {
+		if (trackers[i].state != tracker_inst_s::tracker_state_available)
+			continue;
+		if (trackers[i].att * trackers[i].rect.score > 1e-2f * score_max)
+			continue;
+
+		retire_tracker(s, i);
+		i--;
 	}
 }
 
