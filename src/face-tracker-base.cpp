@@ -28,7 +28,7 @@ void *face_tracker_base::thread_routine(void *p)
 {
 	face_tracker_base *base = (face_tracker_base*)p;
 #ifndef _WIN32
-	setpriority(PRIO_PROCESS, 0, 19);
+	setpriority(PRIO_PROCESS, 0, 17);
 #else // _WIN32
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif // _WIN32
