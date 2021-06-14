@@ -8,7 +8,7 @@
 #include "face-tracker-dlib.h"
 #include <algorithm>
 #include <deque>
-#include <math.h>
+#include <cmath>
 #include <graphics/matrix4.h>
 
 // #define debug_track(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
