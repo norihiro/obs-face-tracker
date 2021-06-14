@@ -25,6 +25,7 @@ cd ..
 
 #export QT_PREFIX="$(find /usr/local/Cellar/qt5 -d 1 | tail -n 1)"
 
+export OPENBLAS_HOME=/usr/local/opt/openblas/
 echo "=> Building plugin for macOS."
 mkdir -p build && cd build
 cmake .. \
