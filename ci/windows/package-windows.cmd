@@ -3,7 +3,7 @@ call "%~dp0..\ci_includes.generated.cmd"
 mkdir package
 cd package
 
-git rev-parse --short HEAD > package-version.txt
+git describe --tags --long --always > package-version.txt
 set /p PackageVersion=<package-version.txt
 del package-version.txt
 
