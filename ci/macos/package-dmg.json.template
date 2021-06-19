@@ -1,0 +1,25 @@
+{
+    "title": "%PLUGIN_NAME% %VERSION%",
+    "format": "ULFO",
+    "window": {
+        "position": {
+            "x": 100,
+            "y": 100
+        },
+        "size": {
+            "width": 540,
+            "height": 380
+        }
+    },
+    "contents": [{
+        "x": 124,
+        "y": 180,
+        "type": "file",
+        "path": "%PLUGIN_ROOT%"
+    }, {
+        "x": 416,
+        "y": 180,
+        "type": "link",
+        "path": "/Library/Application Support/obs-studio/plugins"
+    }]
+}

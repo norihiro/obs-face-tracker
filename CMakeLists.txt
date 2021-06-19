@@ -33,10 +33,6 @@ configure_file(
     ../src/plugin-macros.generated.h
 )
 configure_file(
-    installer/installer-macOS.pkgproj.in
-    ../installer/installer-macOS.generated.pkgproj
-)
-configure_file(
     installer/installer-Windows.iss.in
     ../installer/installer-Windows.generated.iss
 )

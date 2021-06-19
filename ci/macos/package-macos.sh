@@ -13,16 +13,14 @@ if [ "${OSTYPE}" != "Darwin" ]; then
 fi
 
 echo "=> Preparing package build"
-GIT_HASH=$(git rev-parse --short HEAD)
-GIT_BRANCH_OR_TAG=$(git name-rev --name-only HEAD | awk -F/ '{print $NF}')
+GIT_TAG=$(git describe --tags --long --always)
+GIT_TAG_ONLY=$(git describe --tags --always)
 
-PKG_VERSION="$GIT_HASH-$GIT_BRANCH_OR_TAG"
-
-FILENAME_UNSIGNED="$PLUGIN_NAME-$PKG_VERSION-Unsigned.pkg"
-FILENAME="$PLUGIN_NAME-$PKG_VERSION.pkg"
+FILENAME_UNSIGNED="$PLUGIN_NAME-${GIT_TAG}-Unsigned.pkg"
+FILENAME="$PLUGIN_NAME-${GIT_TAG}.pkg"
 
 echo "=> Modifying $PLUGIN_NAME.so"
-mkdir lib
+mkdir -p lib
 
 function copy_local_dylib
 {
@@ -58,8 +56,6 @@ for dylib in ./build/$PLUGIN_NAME.so lib/*.dylib ; do
 	chmod +r $dylib
 	echo "=> Dependencies for $(basename $dylib)"
 	otool -L $dylib
-	echo "=> Search paths written in $(basename $dylib)"
-	otool -l $dylib
 	echo
 done
 
@@ -72,15 +68,26 @@ fi
 
 echo "=> ZIP package build"
 ziproot=package-zip/$PLUGIN_NAME
-zipfile=${PLUGIN_NAME}-${GIT_HASH}-macos.zip
+zipfile=${PLUGIN_NAME}-${GIT_TAG}-macos.zip
+rm -rf ${ziproot:?}/
 mkdir -p $ziproot/bin
 cp ./build/$PLUGIN_NAME.so $ziproot/bin/
 cp LICENSE data/LICENSE-$PLUGIN_NAME
 cp dlib/LICENSE.txt data/LICENSE-dlib
 cp -a data $ziproot/
 mkdir -p ./release
-mv lib $ziproot/
+rmdir lib || mv lib $ziproot/
 (cd package-zip && zip -r ../release/$zipfile $PLUGIN_NAME)
+
+echo "=> DMG package build"
+if pip3 install dmgbuild || pip install dmgbuild; then
+	sed \
+		-e "s;%PLUGIN_NAME%;$PLUGIN_NAME;g" \
+		-e "s;%VERSION%;${GIT_TAG_ONLY};g" \
+		-e "s;%PLUGIN_ROOT%;$ziproot;g" \
+		< ci/macos/package-dmg.json.template > package-dmg.json
+	dmgbuild "$PLUGIN_NAME ${GIT_TAG}" "release/${PLUGIN_NAME}-${GIT_TAG}-macos.dmg" -s ./package-dmg.json
+fi
 
 # echo "=> Actual package build"
 # packagesbuild ./installer/installer-macOS.generated.pkgproj
