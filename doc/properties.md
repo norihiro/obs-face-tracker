@@ -4,6 +4,26 @@
 When clicked, tracking state is reset to the initial condition; zero crop, reset internal states of the integrators.
 (This is not a property.)
 
+## Preset
+
+### Preset
+This combo-box sets the name of the preset to be loaded or saved.
+
+### Load preset
+To load the preset, select the preset from `Preset` combo-box and click `Load preset` button.
+
+### Save preset
+To save current propeties as a preset, type preset name in `Preset` combo-box and click `Save preset` button.
+
+### Delete preset
+To delete awn existing preset, select the preset from `Preset` combo-box and click `Delete preset` button.
+
+### Save and load tracking parameters
+If you want to save only tracking parameters (`Upsize recognized face` and `Tracking target location`), enable only this check-box.
+
+### Save and load control parameters
+If you want to save only contol parameters (`Tracking response`), enable only this check-box.
+
 ## Upsize recognized face
 
 ### Left, right, top, bottom
