@@ -443,7 +443,7 @@ static obs_properties_t *ftf_properties(void *data)
 		obs_properties_add_button(pp, "preset_load", obs_module_text("Load preset"), ftf_preset_load);
 		obs_properties_add_button(pp, "preset_save", obs_module_text("Save preset"), ftf_preset_save);
 		obs_properties_add_button(pp, "preset_delete", obs_module_text("Delete preset"), ftf_preset_delete);
-		obs_properties_add_bool(pp, "preset_mask_track", obs_module_text("Save and load racking parameters"));
+		obs_properties_add_bool(pp, "preset_mask_track", obs_module_text("Save and load tracking parameters"));
 		obs_properties_add_bool(pp, "preset_mask_control", obs_module_text("Save and load control parameters"));
 		obs_properties_add_group(props, "preset_grp", obs_module_text("Preset"), OBS_GROUP_NORMAL, pp);
 	}
