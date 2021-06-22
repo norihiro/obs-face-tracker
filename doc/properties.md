@@ -52,6 +52,15 @@ The unit is a percentage of the average of source width and height.
 If the error signal is within the dead band, error signal is forced to zero to avoid small move to be tracked.
 The nonlinear band makes smooth connection from the dead band to the linear range.
 
+## Output
+
+### Aspect
+This parameter sets output aspect ratio. The default is same as the source.
+You can choose or type any aspect ratio.
+If the aspect is set narrower than the source, the height will be taken from the source and the width will be calculated.
+If the aspect is set wider than the source, the width will be taken from the source and the height will be calculated.
+
+Known issue: The bottom or right pixels might show flicker. The workaround is to set `1` for the crop properties in transform dialog.
 
 ## Debug
 These properties enables how the face detection and tracking works.
