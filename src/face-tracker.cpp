@@ -745,25 +745,30 @@ static inline void draw_frame(struct face_tracker_filter *s)
 
 	uint32_t width = s->known_width;
 	uint32_t height = s->known_height;
+	const rectf_s &crop_cur = s->crop_cur;
+	const float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
+	const bool debug_notrack = s->debug_notrack && !s->is_active;
 
 	// TODO: linear_srgb, 27 only?
 
 	gs_matrix_push();
 	if (width>0 && height>0) {
-		const rectf_s &crop_cur = s->crop_cur;
-		float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
-		struct matrix4 tr;
-		matrix4_identity(&tr);
-		matrix4_translate3f(&tr, &tr, -(crop_cur.x0+crop_cur.x1)*0.5f, -(crop_cur.y0+crop_cur.y1)*0.5f, 0.0f);
-		matrix4_scale3f(&tr, &tr, scale, scale, 1.0f);
-		matrix4_translate3f(&tr, &tr, width/2, height/2, 0.0f);
-		if (!(s->debug_notrack && !s->is_active))
+		if (!debug_notrack) {
+			struct matrix4 tr;
+			matrix4_identity(&tr);
+			matrix4_scale3f(&tr, &tr, scale, scale, 1.0f);
 			gs_matrix_mul(&tr);
+		}
 
 		gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
 		gs_effect_set_texture(image, tex);
 		while (gs_effect_loop(effect, "Draw")) {
-			gs_draw_sprite(tex, 0, width, height);
+			if (debug_notrack)
+				gs_draw_sprite(tex, 0, width, height);
+			else
+				gs_draw_sprite_subregion(tex, 0,
+						crop_cur.x0, crop_cur.y0,
+						crop_cur.x1-crop_cur.x0, crop_cur.y1-crop_cur.y0 );
 		}
 	}
 
@@ -775,6 +780,12 @@ static inline void draw_frame(struct face_tracker_filter *s)
 				rect_s r = (*s->rects)[i];
 				if (r.x0>=r.x1 || r.y0>=r.y1)
 					continue;
+				if (!debug_notrack) {
+					r.x0 -= crop_cur.x0;
+					r.x1 -= crop_cur.x0;
+					r.y0 -= crop_cur.y0;
+					r.y1 -= crop_cur.y0;
+				}
 				int w = r.x1-r.x0;
 				int h = r.y1-r.y0;
 				gs_render_start(true);
@@ -806,6 +817,12 @@ static inline void draw_frame(struct face_tracker_filter *s)
 				rect_s r = t.rect;
 				if (r.x0>=r.x1 || r.y0>=r.y1)
 					continue;
+				if (!debug_notrack) {
+					r.x0 -= crop_cur.x0;
+					r.x1 -= crop_cur.x0;
+					r.y0 -= crop_cur.y0;
+					r.y1 -= crop_cur.y0;
+				}
 				int w = r.x1-r.x0;
 				int h = r.y1-r.y0;
 				gs_render_start(true);
@@ -819,7 +836,7 @@ static inline void draw_frame(struct face_tracker_filter *s)
 				gs_draw(GS_LINESTRIP, 0, 0);
 				gs_vertexbuffer_destroy(vb);
 			}
-			if (s->debug_notrack) {
+			if (debug_notrack) {
 				gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
 				const rectf_s &r = s->crop_cur;
 				gs_render_start(true);
