@@ -85,6 +85,8 @@ struct face_tracker_filter
 	gs_stagesurf_t* stagesurface;
 	uint32_t known_width;
 	uint32_t known_height;
+	uint32_t width_with_aspect;
+	uint32_t height_with_aspect;
 	int tick_cnt;
 	int next_tick_stage_to_detector;
 	bool target_valid;
@@ -116,6 +118,7 @@ struct face_tracker_filter
 	f3 filter_int_out;
 	f3 filter_int;
 	f3 filter_lpf;
+	int aspect_x, aspect_y;
 
 	bool debug_faces;
 	bool debug_notrack;
@@ -125,6 +128,16 @@ static const char *ftf_get_name(void *unused)
 {
 	UNUSED_PARAMETER(unused);
 	return obs_module_text("Face Tracker");
+}
+
+static inline void get_aspect_from_str(struct face_tracker_filter *s, const char *str)
+{
+	if (sscanf(str, "%d:%d", &s->aspect_x, &s->aspect_y)==2)
+		return;
+	if (sscanf(str, "%dx%d", &s->aspect_x, &s->aspect_y)==2)
+		return;
+	s->aspect_x = 0;
+	s->aspect_y = 0;
 }
 
 static void ftf_update(void *data, obs_data_t *settings)
@@ -153,6 +166,8 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->e_nonlinear.v[0] = (float)obs_data_get_double(settings, "e_nonlinear_x") * 1e-2;
 	s->e_nonlinear.v[1] = (float)obs_data_get_double(settings, "e_nonlinear_y") * 1e-2;
 	s->e_nonlinear.v[2] = (float)obs_data_get_double(settings, "e_nonlinear_z") * 1e-2;
+
+	get_aspect_from_str(s, obs_data_get_string(settings, "aspect"));
 
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
@@ -198,7 +213,7 @@ static bool ftf_reset_tracking(obs_properties_t *, obs_property_t *, void *data)
 
 	float w = s->known_width;
 	float h = s->known_height;
-	float z = sqrtf(w*h);
+	float z = sqrtf(s->width_with_aspect * s->height_with_aspect);
 	s->detect_err = f3(0, 0, 0);
 	s->filter_int_out = f3(w*0.5f, h*0.5f, z);
 	s->filter_int = f3(0, 0, 0);
@@ -250,6 +265,22 @@ static obs_properties_t *ftf_properties(void *unused)
 
 	{
 		obs_properties_t *pp = obs_properties_create();
+		obs_property_t *p = obs_properties_add_list(pp, "aspect", obs_module_text("Aspect"), OBS_COMBO_TYPE_EDITABLE, OBS_COMBO_FORMAT_STRING);
+		const char *aspects[] = {
+			"16:9",
+			"4:3",
+			"1:1",
+			"3:4",
+			NULL
+		};
+		obs_property_list_add_string(p, obs_module_text("same as the source"), "");
+		for (int i=0; aspects[i]; i++)
+			obs_property_list_add_string(p, aspects[i], aspects[i]);
+		obs_properties_add_group(props, "output", obs_module_text("Output"), OBS_GROUP_NORMAL, pp);
+	}
+
+	{
+		obs_properties_t *pp = obs_properties_create();
 		obs_properties_add_bool(pp, "debug_faces", "Show face detection results");
 		obs_properties_add_bool(pp, "debug_notrack", "Stop tracking faces");
 		obs_properties_add_group(props, "debug", obs_module_text("Debugging"), OBS_GROUP_NORMAL, pp);
@@ -285,15 +316,24 @@ template <typename T> static inline bool samesign(const T &a, const T &b)
 
 static inline float sqf(float x) { return x*x; }
 
+static inline rectf_s f3_to_rectf(const struct face_tracker_filter *s, const f3 &u)
+{
+	const float w = s->width_with_aspect;
+	const float h = s->height_with_aspect;
+	const float srwh = sqrtf(w * h);
+	const float s2h = h / srwh;
+	const float s2w = w / srwh;
+	rectf_s r;
+	r.x0 = u.v[0] - s2w * u.v[2] * 0.5f;
+	r.x1 = u.v[0] + s2w * u.v[2] * 0.5f;
+	r.y0 = u.v[1] - s2h * u.v[2] * 0.5f;
+	r.y1 = u.v[1] + s2h * u.v[2] * 0.5f;
+	return r;
+}
+
 static void tick_filter(struct face_tracker_filter *s, float second)
 {
-	const float width = s->known_width;
-	const float height = s->known_height;
-	const float srwh = sqrtf(width * height);
-	const float h = height / s->scale_max;
-	const float w = width / s->scale_max;
-	const float s2h = height / srwh;
-	const float s2w = width / srwh;
+	const float srwh = sqrtf((float)s->known_width * s->known_height);
 
 	f3 e = s->detect_err;
 	f3 e_int = e;
@@ -345,10 +385,7 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 		}
 	}
 
-	s->crop_cur.x0 = u.v[0] - s2w * u.v[2] * 0.5f;
-	s->crop_cur.x1 = u.v[0] + s2w * u.v[2] * 0.5f;
-	s->crop_cur.y0 = u.v[1] - s2h * u.v[2] * 0.5f;
-	s->crop_cur.y1 = u.v[1] + s2h * u.v[2] * 0.5f;
+	s->crop_cur = f3_to_rectf(s, u);
 }
 
 static void ftf_activate(void *data)
@@ -364,6 +401,22 @@ static void ftf_deactivate(void *data)
 }
 
 static inline void calculate_error(struct face_tracker_filter *s);
+
+static void calculate_aspect(struct face_tracker_filter *s)
+{
+	if (s->aspect_y<=0 || s->aspect_x<=0) {
+		s->width_with_aspect = s->known_width;
+		s->height_with_aspect = s->known_height;
+	}
+	else if (s->known_width * s->aspect_y >= s->known_height * s->aspect_x) {
+		s->height_with_aspect = s->known_height;
+		s->width_with_aspect = s->aspect_x * s->known_height / s->aspect_y;
+	}
+	else {
+		s->width_with_aspect = s->known_width;
+		s->height_with_aspect = s->known_width * s->aspect_y / s->aspect_x;
+	}
+}
 
 static void ftf_tick(void *data, float second)
 {
@@ -386,12 +439,11 @@ static void ftf_tick(void *data, float second)
 	if (s->known_width<=0 || s->known_height<=0)
 		goto err;
 
+	calculate_aspect(s);
+
 	if (s->crop_cur.x1<-1 || s->crop_cur.y1<-1) {
 		ftf_reset_tracking(NULL, NULL, s);
-		s->crop_cur.x0 = 0;
-		s->crop_cur.y0 = 0;
-		s->crop_cur.x1 = s->known_width;
-		s->crop_cur.y1 = s->known_height;
+		s->crop_cur = f3_to_rectf(s, s->filter_int_out);
 	}
 	else if (was_rendered) {
 		s->range_min.v[0] = get_width(s->crop_cur) * 0.5f;
@@ -399,7 +451,7 @@ static void ftf_tick(void *data, float second)
 		s->range_min.v[1] = get_height(s->crop_cur) * 0.5f;
 		s->range_max.v[1] = s->known_height - get_height(s->crop_cur) * 0.5f;
 		s->range_min.v[2] = sqrtf(s->known_width*s->known_height) / s->scale_max;
-		s->range_max.v[2] = sqrtf(s->known_width*s->known_height);
+		s->range_max.v[2] = sqrtf(s->width_with_aspect * s->height_with_aspect);
 		calculate_error(s);
 		tick_filter(s, second);
 	}
@@ -444,10 +496,6 @@ static inline void render_target(struct face_tracker_filter *s, obs_source_t *ta
 
 static inline f3 ensure_range(f3 u, const struct face_tracker_filter *s)
 {
-	const float srwh = sqrtf(s->known_width * s->known_height);
-	const float s2h = s->known_height / srwh;
-	const float s2w = s->known_width / srwh;
-
 	if (isnan(u.v[2]))
 		u.v[2] = s->range_min.v[2];
 	else if (u.v[2] < s->range_min.v[2])
@@ -455,28 +503,23 @@ static inline f3 ensure_range(f3 u, const struct face_tracker_filter *s)
 	else if (u.v[2] > s->range_max.v[2])
 		u.v[2] = s->range_max.v[2];
 
-	float x0 = u.v[0] - s2w * u.v[2] * 0.5f;
-	float x1 = u.v[0] + s2w * u.v[2] * 0.5f;
-	float y0 = u.v[1] - s2h * u.v[2] * 0.5f;
-	float y1 = u.v[1] + s2h * u.v[2] * 0.5f;
+	rectf_s r = f3_to_rectf(s, u);
 
-	if (x0 < 0)
-		u.v[0] += -x0;
-	else if (x1 > s->known_width)
-		u.v[0] -= x1 - s->known_width;
+	if (r.x0 < 0)
+		u.v[0] += -r.x0;
+	else if (r.x1 > s->known_width)
+		u.v[0] -= r.x1 - s->known_width;
 
-	if (y0 < 0)
-		u.v[1] += -y0;
-	else if (y1 > s->known_height)
-		u.v[1] -= y1 - s->known_height;
+	if (r.y0 < 0)
+		u.v[1] += -r.y0;
+	else if (r.y1 > s->known_height)
+		u.v[1] -= r.y1 - s->known_height;
 
 	return u;
 }
 
 static inline void calculate_error(struct face_tracker_filter *s)
 {
-	const int width = s->known_width;
-	const int height = s->known_height;
 	f3 e_tot(0.0f, 0.0f, 0.0f);
 	float sc_tot = 0.0f;
 	bool found = false;
@@ -743,8 +786,8 @@ static inline void draw_frame(struct face_tracker_filter *s)
 	if (!tex)
 		return;
 
-	uint32_t width = s->known_width;
-	uint32_t height = s->known_height;
+	uint32_t width = s->width_with_aspect;
+	uint32_t height = s->height_with_aspect;
 	const rectf_s &crop_cur = s->crop_cur;
 	const float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
 	const bool debug_notrack = s->debug_notrack && !s->is_active;
@@ -764,11 +807,11 @@ static inline void draw_frame(struct face_tracker_filter *s)
 		gs_effect_set_texture(image, tex);
 		while (gs_effect_loop(effect, "Draw")) {
 			if (debug_notrack)
-				gs_draw_sprite(tex, 0, width, height);
+				gs_draw_sprite(tex, 0, s->known_width, s->known_height);
 			else
 				gs_draw_sprite_subregion(tex, 0,
 						crop_cur.x0, crop_cur.y0,
-						crop_cur.x1-crop_cur.x0, crop_cur.y1-crop_cur.y0 );
+						std::ceil(crop_cur.x1-crop_cur.x0), std::ceil(crop_cur.y1-crop_cur.y0) );
 		}
 	}
 
@@ -891,6 +934,18 @@ static void ftf_render(void *data, gs_effect_t *)
 	draw_frame(s);
 }
 
+static uint32_t ftf_width(void *data)
+{
+	auto *s = (struct face_tracker_filter*)data;
+	return s->width_with_aspect;
+}
+
+static uint32_t ftf_height(void *data)
+{
+	auto *s = (struct face_tracker_filter*)data;
+	return s->height_with_aspect;
+}
+
 extern "C"
 void register_face_tracker_filter()
 {
@@ -908,5 +963,7 @@ void register_face_tracker_filter()
 	info.deactivate = ftf_deactivate,
 	info.video_tick = ftf_tick;
 	info.video_render = ftf_render;
+	info.get_width = ftf_width;
+	info.get_height = ftf_height;
 	obs_register_source(&info);
 }
