@@ -796,6 +796,37 @@ static inline void draw_sprite_crop(float width, float height, float x0, float y
 	gs_render_stop(GS_TRISTRIP);
 }
 
+static inline void draw_rect_upsize(rect_s r, float upsize_l=0.0f, float upsize_r=0.0f, float upsize_t=0.0f, float upsize_b=0.0f)
+{
+	if (r.x0>=r.x1 || r.y0>=r.y1)
+		return;
+	int w = r.x1-r.x0;
+	int h = r.y1-r.y0;
+	float dx0 = w * upsize_l;
+	float dx1 = w * upsize_r;
+	float dy0 = h * upsize_t;
+	float dy1 = h * upsize_b;
+
+	gs_render_start(false);
+
+	if (std::abs(dx0)>=0.5f || std::abs(dy1)>=0.5f || std::abs(dx1)>=0.5f || std::abs(dy0)>=0.5f) {
+		gs_vertex2f(r.x0, r.y0); gs_vertex2f(r.x0, r.y1);
+		gs_vertex2f(r.x0, r.y1); gs_vertex2f(r.x1, r.y1);
+		gs_vertex2f(r.x1, r.y1); gs_vertex2f(r.x1, r.y0);
+		gs_vertex2f(r.x1, r.y0); gs_vertex2f(r.x0, r.y0);
+	}
+	r.x0 -= dx0;
+	r.x1 += dx1;
+	r.y0 -= dy0;
+	r.y1 += dy1;
+	gs_vertex2f(r.x0, r.y0); gs_vertex2f(r.x0, r.y1);
+	gs_vertex2f(r.x0, r.y1); gs_vertex2f(r.x1, r.y1);
+	gs_vertex2f(r.x1, r.y1); gs_vertex2f(r.x1, r.y0);
+	gs_vertex2f(r.x1, r.y0); gs_vertex2f(r.x0, r.y0);
+
+	gs_render_stop(GS_LINES);
+}
+
 static inline void draw_frame(struct face_tracker_filter *s)
 {
 	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
@@ -840,57 +871,20 @@ static inline void draw_frame(struct face_tracker_filter *s)
 		effect = obs_get_base_effect(OBS_EFFECT_SOLID);
 		while (gs_effect_loop(effect, "Solid")) {
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
-			for (int i=0; i<s->rects->size(); i++) {
-				rect_s r = (*s->rects)[i];
-				if (r.x0>=r.x1 || r.y0>=r.y1)
-					continue;
-				int w = r.x1-r.x0;
-				int h = r.y1-r.y0;
-				gs_render_start(true);
-				gs_vertex2f(r.x0, r.y0);
-				gs_vertex2f(r.x0, r.y1);
-				gs_vertex2f(r.x1, r.y1);
-				gs_vertex2f(r.x1, r.y0);
-				gs_vertex2f(r.x0, r.y0);
-				r.x0 -= w * s->upsize_l;
-				r.x1 += w * s->upsize_r;
-				r.y0 -= h * s->upsize_t;
-				r.y1 += h * s->upsize_b;
-				gs_vertex2f(r.x0, r.y0);
-				gs_vertex2f(r.x0, r.y1);
-				gs_vertex2f(r.x1, r.y1);
-				gs_vertex2f(r.x1, r.y0);
-				gs_vertex2f(r.x0, r.y0);
-				gs_vertbuffer_t *vb = gs_render_save();
-				gs_load_vertexbuffer(vb);
-				gs_draw(GS_LINESTRIP, 0, 0);
-				gs_vertexbuffer_destroy(vb);
-			}
+			for (int i=0; i<s->rects->size(); i++)
+				draw_rect_upsize((*s->rects)[i], s->upsize_l, s->upsize_r, s->upsize_t, s->upsize_b);
+
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF00FF00);
 			for (int i=0; i<s->trackers->size(); i++) {
 				tracker_inst_s &t = (*s->trackers)[i];
 				if (t.state != tracker_inst_s::tracker_state_available)
 					continue;
-				rect_s r = t.rect;
-				if (r.x0>=r.x1 || r.y0>=r.y1)
-					continue;
-				int w = r.x1-r.x0;
-				int h = r.y1-r.y0;
-				gs_render_start(true);
-				gs_vertex2f(r.x0, r.y0);
-				gs_vertex2f(r.x0, r.y1);
-				gs_vertex2f(r.x1, r.y1);
-				gs_vertex2f(r.x1, r.y0);
-				gs_vertex2f(r.x0, r.y0);
-				gs_vertbuffer_t *vb = gs_render_save();
-				gs_load_vertexbuffer(vb);
-				gs_draw(GS_LINESTRIP, 0, 0);
-				gs_vertexbuffer_destroy(vb);
+				draw_rect_upsize(t.rect);
 			}
 			if (debug_notrack) {
 				gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
 				const rectf_s &r = s->crop_cur;
-				gs_render_start(true);
+				gs_render_start(false);
 				gs_vertex2f(r.x0, r.y0);
 				gs_vertex2f(r.x0, r.y1);
 				gs_vertex2f(r.x0, r.y1);
@@ -906,10 +900,7 @@ static inline void draw_frame(struct face_tracker_filter *s)
 				gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
 				gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
 				gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
-				gs_vertbuffer_t *vb = gs_render_save();
-				gs_load_vertexbuffer(vb);
-				gs_draw(GS_LINES, 0, 0);
-				gs_vertexbuffer_destroy(vb);
+				gs_render_stop(GS_LINES);
 			}
 		}
 
