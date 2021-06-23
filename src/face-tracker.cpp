@@ -1,4 +1,6 @@
 #include <obs-module.h>
+#include <graphics/vec2.h>
+#include <graphics/graphics.h>
 #include <util/platform.h>
 #include <util/threading.h>
 #include "plugin-macros.generated.h"
@@ -779,6 +781,21 @@ static inline void stage_to_trackers(struct face_tracker_filter *s)
 	}
 }
 
+static inline void draw_sprite_crop(float width, float height, float x0, float y0, float x1, float y1)
+{
+	gs_render_start(false);
+	gs_vertex2f(0.0f, 0.0f);
+	gs_vertex2f(width, 0.0f);
+	gs_vertex2f(0.0f, height);
+	gs_vertex2f(width, height);
+	struct vec2 tv;
+	vec2_set(&tv, x0, y0); gs_texcoord2v(&tv, 0);
+	vec2_set(&tv, x1, y0); gs_texcoord2v(&tv, 0);
+	vec2_set(&tv, x0, y1); gs_texcoord2v(&tv, 0);
+	vec2_set(&tv, x1, y1); gs_texcoord2v(&tv, 0);
+	gs_render_stop(GS_TRISTRIP);
+}
+
 static inline void draw_frame(struct face_tracker_filter *s)
 {
 	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
@@ -794,28 +811,32 @@ static inline void draw_frame(struct face_tracker_filter *s)
 
 	// TODO: linear_srgb, 27 only?
 
-	gs_matrix_push();
 	if (width>0 && height>0) {
-		if (!debug_notrack) {
-			struct matrix4 tr;
-			matrix4_identity(&tr);
-			matrix4_scale3f(&tr, &tr, scale, scale, 1.0f);
-			gs_matrix_mul(&tr);
-		}
-
 		gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
 		gs_effect_set_texture(image, tex);
+
 		while (gs_effect_loop(effect, "Draw")) {
 			if (debug_notrack)
 				gs_draw_sprite(tex, 0, s->known_width, s->known_height);
 			else
-				gs_draw_sprite_subregion(tex, 0,
-						crop_cur.x0, crop_cur.y0,
-						std::ceil(crop_cur.x1-crop_cur.x0), std::ceil(crop_cur.y1-crop_cur.y0) );
+				draw_sprite_crop(
+						width, height,
+						crop_cur.x0/s->known_width, crop_cur.y0/s->known_height,
+						crop_cur.x1/s->known_width, crop_cur.y1/s->known_height );
 		}
 	}
 
 	if (s->debug_faces && !s->is_active) {
+		if (!debug_notrack) {
+			gs_matrix_push();
+			struct matrix4 tr;
+			matrix4_identity(&tr);
+			matrix4_translate3f(&tr, &tr, -(crop_cur.x0+crop_cur.x1)*0.5f, -(crop_cur.y0+crop_cur.y1)*0.5f, 0.0f);
+			matrix4_scale3f(&tr, &tr, scale, scale, 1.0f);
+			matrix4_translate3f(&tr, &tr, width/2, height/2, 0.0f);
+			gs_matrix_mul(&tr);
+		}
+
 		effect = obs_get_base_effect(OBS_EFFECT_SOLID);
 		while (gs_effect_loop(effect, "Solid")) {
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
@@ -823,12 +844,6 @@ static inline void draw_frame(struct face_tracker_filter *s)
 				rect_s r = (*s->rects)[i];
 				if (r.x0>=r.x1 || r.y0>=r.y1)
 					continue;
-				if (!debug_notrack) {
-					r.x0 -= crop_cur.x0;
-					r.x1 -= crop_cur.x0;
-					r.y0 -= crop_cur.y0;
-					r.y1 -= crop_cur.y0;
-				}
 				int w = r.x1-r.x0;
 				int h = r.y1-r.y0;
 				gs_render_start(true);
@@ -841,7 +856,6 @@ static inline void draw_frame(struct face_tracker_filter *s)
 				r.x1 += w * s->upsize_r;
 				r.y0 -= h * s->upsize_t;
 				r.y1 += h * s->upsize_b;
-				//gs_render_start(false);
 				gs_vertex2f(r.x0, r.y0);
 				gs_vertex2f(r.x0, r.y1);
 				gs_vertex2f(r.x1, r.y1);
@@ -860,12 +874,6 @@ static inline void draw_frame(struct face_tracker_filter *s)
 				rect_s r = t.rect;
 				if (r.x0>=r.x1 || r.y0>=r.y1)
 					continue;
-				if (!debug_notrack) {
-					r.x0 -= crop_cur.x0;
-					r.x1 -= crop_cur.x0;
-					r.y0 -= crop_cur.y0;
-					r.y1 -= crop_cur.y0;
-				}
 				int w = r.x1-r.x0;
 				int h = r.y1-r.y0;
 				gs_render_start(true);
@@ -904,9 +912,10 @@ static inline void draw_frame(struct face_tracker_filter *s)
 				gs_vertexbuffer_destroy(vb);
 			}
 		}
-	}
 
-	gs_matrix_pop();
+		if (!debug_notrack)
+			gs_matrix_pop();
+	}
 }
 
 static void ftf_render(void *data, gs_effect_t *)
