@@ -106,7 +106,7 @@ struct face_tracker_filter
 
 	rectf_s crop_cur;
 	f3 detect_err;
-	f3 range_min, range_max;
+	f3 range_min, range_max, range_min_out;
 
 	float upsize_l, upsize_r, upsize_t, upsize_b;
 	float track_z, track_x, track_y;
@@ -596,11 +596,11 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 
 	for (int i=0; i<3; i++) {
 		if (isnan(u.v[i]))
-			u.v[i] = s->range_min.v[i];
-		else if (u.v[i] < s->range_min.v[i]) {
-			u.v[i] = s->range_min.v[i];
-			if (s->filter_int_out.v[i] < s->range_min.v[i])
-				s->filter_int_out.v[i] = s->range_min.v[i];
+			u.v[i] = s->range_min_out.v[i];
+		else if (u.v[i] < s->range_min_out.v[i]) {
+			u.v[i] = s->range_min_out.v[i];
+			if (s->filter_int_out.v[i] < s->range_min_out.v[i])
+				s->filter_int_out.v[i] = s->range_min_out.v[i];
 		}
 		else if (u.v[i] > s->range_max.v[i]) {
 			u.v[i] = s->range_max.v[i];
@@ -676,6 +676,8 @@ static void ftf_tick(void *data, float second)
 		s->range_max.v[1] = s->known_height - get_height(s->crop_cur) * 0.5f;
 		s->range_min.v[2] = sqrtf(s->known_width*s->known_height) / s->scale_max;
 		s->range_max.v[2] = sqrtf(s->width_with_aspect * s->height_with_aspect);
+		s->range_min_out = s->range_min;
+		s->range_min_out.v[2] = std::min(s->range_min.v[2], s->filter_int_out.v[2]);
 		calculate_error(s);
 		tick_filter(s, second);
 	}
