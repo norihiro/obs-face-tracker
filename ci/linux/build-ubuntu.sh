@@ -13,7 +13,7 @@ cd obs-ptz
 git checkout ${OBSPTZTag}
 cd -
 
-cp LICENSE data/LICENSE-plugin
+cp LICENSE data/LICENSE-$PLUGIN_NAME
 cp dlib/LICENSE.txt data/LICENSE-dlib
 
 sed -i 's;${CMAKE_INSTALL_FULL_LIBDIR};/usr/lib;' CMakeLists.txt
