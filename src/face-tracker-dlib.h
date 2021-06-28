@@ -14,6 +14,6 @@ class face_tracker_dlib : public face_tracker_base
 		virtual ~face_tracker_dlib();
 
 		void set_texture(texture_object *) override;
-		virtual void set_position(const rect_s &rect);
-		virtual bool get_face(struct rect_s &);
+		void set_position(const rect_s &rect) override;
+		bool get_face(struct rect_s &) override;
 };

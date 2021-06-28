@@ -49,6 +49,7 @@ configure_file(
 set(PLUGIN_SOURCES
 	src/module-main.c
 	src/face-tracker.cpp
+	src/face-tracker-preset.cpp
 	src/face-detector-base.cpp
 	src/face-detector-dlib.cpp
 	src/face-tracker-base.cpp
@@ -57,12 +58,15 @@ set(PLUGIN_SOURCES
 )
 
 set(PLUGIN_HEADERS
+	src/face-tracker.hpp
+	src/face-tracker-preset.h
 	src/plugin-macros.generated.h
 	src/face-detector-base.h
 	src/face-detector-dlib.h
 	src/face-tracker-base.h
 	src/face-tracker-dlib.h
 	src/texture-object.h
+	src/helper.hpp
 )
 
 # --- Platform-independent build settings ---

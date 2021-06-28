@@ -3,15 +3,7 @@
 #include <util/threading.h>
 #include <vector>
 #include "plugin-macros.generated.h"
-
-struct rect_s
-{
-	int x0;
-	int y0;
-	int x1;
-	int y1;
-	float score;
-};
+#include "helper.hpp"
 
 class face_detector_base
 {

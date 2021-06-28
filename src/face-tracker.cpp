@@ -10,9 +10,10 @@
 #include "face-tracker-dlib.h"
 #include "texture-object.h"
 #include <algorithm>
-#include <deque>
-#include <cmath>
 #include <graphics/matrix4.h>
+#include "helper.hpp"
+#include "face-tracker.hpp"
+#include "face-tracker-preset.h"
 
 // #define debug_track(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
 // #define debug_detect(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
@@ -20,118 +21,6 @@
 #define debug_detect(fmt, ...)
 
 static gs_effect_t *effect_ft = NULL;
-
-struct rectf_s
-{
-	float x0;
-	float y0;
-	float x1;
-	float y1;
-};
-
-struct f3
-{
-	float v[3];
-
-	f3 (const f3 &a) {*this=a;}
-	f3 (float a, float b, float c) { v[0]=a; v[1]=b; v[2]=c; }
-	f3 (const rect_s &a) { v[0]=(a.x0+a.x1)*0.5f; v[1]=(a.y0+a.y1)*0.5f; v[2]=sqrtf((a.x1-a.x0)*(a.y1-a.y0)); }
-	f3 (const rectf_s &a) { v[0]=(a.x0+a.x1)*0.5f; v[1]=(a.y0+a.y1)*0.5f; v[2]=sqrtf((a.x1-a.x0)*(a.y1-a.y0)); }
-	f3 operator + (const f3 &a) { return f3 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2]); }
-	f3 operator - (const f3 &a) { return f3 (v[0]-a.v[0], v[1]-a.v[1], v[2]-a.v[2]); }
-	f3 operator * (float a) { return f3 (v[0]*a, v[1]*a, v[2]*a); }
-	f3 & operator += (const f3 &a) { return *this = f3 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2]); }
-};
-
-static inline bool isnan(const f3 &a) { return isnan(a.v[0]) || isnan(a.v[1]) || isnan(a.v[2]); }
-
-static inline int get_width (const rect_s &r) { return r.x1 - r.x0; }
-static inline int get_height(const rect_s &r) { return r.y1 - r.y0; }
-static inline int get_width (const rectf_s &r) { return r.x1 - r.x0; }
-static inline int get_height(const rectf_s &r) { return r.y1 - r.y0; }
-
-static inline float common_length(float a0, float a1, float b0, float b1)
-{
-	// assumes a0 < a1, b0 < b1
-	// if (a1 <= b0) return 0.0f; // a0 < a1 < b0 < b1
-	if (a0 <= b0 && b0 <= a1 && a1 <= b1) return a1 - b0; // a0 < b0 < a1 < b1
-	if (a0 <= b0 && b1 <= a1) return b1 - b0; // a0 < b0 < b1 < a1
-	if (b0 <= a0 && a1 <= b1) return a1 - a0; // b0 < a0 < a1 < b1
-	if (b0 <= a0 && a0 <= b1 && a0 <= b1) return b1 - a0; // b0 < a0 < b1 < a1
-	// if (b1 <= a0) return 0.0f; // b0 < b1 < a0 < a1
-	return 0.0f;
-}
-
-static inline float common_area(const rect_s &a, const rect_s &b)
-{
-	return common_length(a.x0, a.x1, b.x0, b.x1) * common_length(a.y0, a.y1, b.y0, b.y1);
-}
-
-struct tracker_inst_s
-{
-	face_tracker_base *tracker;
-	rect_s rect;
-	rectf_s crop_tracker; // crop corresponding to current processing image
-	rectf_s crop_rect; // crop corresponding to rect
-	float att;
-	enum tracker_state_e {
-		tracker_state_init = 0,
-		tracker_state_reset_texture, // texture has been set, position is not set.
-		tracker_state_constructing, // texture and positions have been set, starting to construct correlation_tracker.
-		tracker_state_first_track, // correlation_tracker has been prepared, running 1st tracking
-		tracker_state_available, // 1st tracking was done, `rect` is available, can accept next frame.
-		tracker_state_ending,
-	} state;
-	int tick_cnt;
-};
-
-struct face_tracker_filter
-{
-	obs_source_t *context;
-	gs_texrender_t *texrender;
-	gs_texrender_t *texrender_scaled;
-	gs_stagesurf_t *stagesurface;
-	texture_object *cvtex;
-	uint32_t known_width;
-	uint32_t known_height;
-	uint32_t width_with_aspect;
-	uint32_t height_with_aspect;
-	int tick_cnt;
-	int next_tick_stage_to_detector;
-	bool target_valid;
-	bool rendered;
-	bool is_active;
-	bool detector_in_progress;
-
-	face_detector_base *detect;
-	std::vector<rect_s> *rects;
-	int detect_tick;
-
-	std::deque<struct tracker_inst_s> *trackers;
-	std::deque<struct tracker_inst_s> *trackers_idlepool;
-
-	rectf_s crop_cur;
-	f3 detect_err;
-	f3 range_min, range_max, range_min_out;
-
-	float upsize_l, upsize_r, upsize_t, upsize_b;
-	float track_z, track_x, track_y;
-	float scale_max;
-	volatile float scale;
-
-	float kp;
-	float ki;
-	float klpf;
-	float tlpf;
-	f3 e_deadband, e_nonlinear; // deadband and nonlinear amount for error input
-	f3 filter_int_out;
-	f3 filter_int;
-	f3 filter_lpf;
-	int aspect_x, aspect_y;
-
-	bool debug_faces;
-	bool debug_notrack;
-};
 
 static const char *ftf_get_name(void *unused)
 {
@@ -245,204 +134,6 @@ static bool ftf_reset_tracking(obs_properties_t *, obs_property_t *, void *data)
 	return true;
 }
 
-static void copy_data_double(obs_data_t *dst, obs_data_t *src, const char *name)
-{
-	blog(LOG_INFO, "copying %s as double", name);
-	double v = obs_data_get_double(src, name);
-	obs_data_set_double(dst, name, v);
-}
-
-#define preset_mask_track 1
-#define preset_mask_control 2
-static const struct {
-	const uint32_t flag;
-	const char *name;
-} preset_mask_flags[] = {
-	{preset_mask_track, "preset_mask_track"},
-	{preset_mask_control, "preset_mask_control"},
-	{0, NULL}
-};
-
-static uint32_t prop_to_preset_mask(obs_data_t *prop)
-{
-	uint32_t mask = 0;
-	for (auto *p = preset_mask_flags; p->flag; p++) {
-		if (obs_data_get_bool(prop, p->name))
-			mask |= p->flag;
-	}
-	return mask;
-}
-
-static const struct {
-	const char *name;
-	void(*func)(obs_data_t *, obs_data_t *, const char *);
-	uint32_t mask;
-} preset_property_list[] = {
-	{ "upsize_l",        copy_data_double, preset_mask_track },
-	{ "upsize_r",        copy_data_double, preset_mask_track },
-	{ "upsize_t",        copy_data_double, preset_mask_track },
-	{ "upsize_b",        copy_data_double, preset_mask_track },
-	{ "scale_max",       copy_data_double, preset_mask_track },
-	{ "track_z",         copy_data_double, preset_mask_track },
-	{ "track_x",         copy_data_double, preset_mask_track },
-	{ "track_y",         copy_data_double, preset_mask_track },
-	{ "Kp",              copy_data_double, preset_mask_control },
-	{ "Ki",              copy_data_double, preset_mask_control },
-	{ "Kd",              copy_data_double, preset_mask_control },
-	{ "Tdlpf",           copy_data_double, preset_mask_control },
-	{ "e_deadband_x",    copy_data_double, preset_mask_control },
-	{ "e_deadband_y",    copy_data_double, preset_mask_control },
-	{ "e_deadband_z",    copy_data_double, preset_mask_control },
-	{ "e_nonlineaeer_x", copy_data_double, preset_mask_control },
-	{ "e_nonlineaeer_y", copy_data_double, preset_mask_control },
-	{ "e_nonlineaeer_z", copy_data_double, preset_mask_control },
-	{ NULL, NULL }
-};
-
-static void copy_preset(obs_data_t *dst, obs_data_t *src, uint32_t mask)
-{
-	for (auto *p = preset_property_list; p->name && p->func; p++) {
-		if (!(p->mask & mask))
-			continue;
-		if (!obs_data_has_user_value(src, p->name) && !obs_data_has_default_value(src, p->name))
-			continue;
-		p->func(dst, src, p->name);
-	}
-}
-
-static bool ftf_preset_load(obs_properties_t *props, obs_property_t *, void *ctx_data)
-{
-	auto *s = (struct face_tracker_filter*)ctx_data;
-
-	obs_data_t *settings = NULL;
-	obs_data_t *presets = NULL;
-	obs_data_t *preset_data = NULL;
-	const char *preset_name;
-
-	settings = obs_source_get_settings(s->context);
-	if (!settings) goto err;
-	preset_name = obs_data_get_string(settings, "preset_name");
-	blog(LOG_INFO, "ftf_preset_load: loading preset %s", preset_name);
-	presets = obs_data_get_obj(settings, "presets");
-	if (!presets) goto err;
-
-	preset_data = obs_data_get_obj(presets, preset_name);
-	if (!preset_data) {
-		blog(LOG_ERROR, "ftf_preset_load: preset %s does not exist", preset_name);
-		goto err;
-	}
-	copy_preset(settings, preset_data, prop_to_preset_mask(settings));
-	obs_source_update(s->context, settings);
-
-err:
-	obs_data_release(preset_data);
-	obs_data_release(presets);
-	obs_data_release(settings);
-	return true;
-}
-
-static inline void list_insert_string(obs_property_t *p, const char *name)
-{
-	size_t count = obs_property_list_item_count(p);
-	for (size_t i=0; i<count; i++) {
-		const char *s = obs_property_list_item_name(p, i);
-		if (s && strcmp(s, name)==0)
-			return;
-		if (!s || strcmp(s, name)>0) {
-			obs_property_list_insert_string(p, i, name, name);
-			return;
-		}
-	}
-	obs_property_list_add_string(p, name, name);
-}
-
-static inline void list_delete_string(obs_property_t *p, const char *name)
-{
-	size_t count = obs_property_list_item_count(p);
-	for (size_t i=0; i<count; i++) {
-		const char *s = obs_property_list_item_name(p, i);
-		if (s && strcmp(s, name)==0) {
-			obs_property_list_item_remove(p, i);
-			return;
-		}
-	}
-}
-
-static bool ftf_preset_save(obs_properties_t *props, obs_property_t *, void *ctx_data)
-{
-	auto *s = (struct face_tracker_filter*)ctx_data;
-
-	obs_data_t *settings = NULL;
-	obs_data_t *presets = NULL;
-	obs_data_t *preset_data = NULL;
-	const char *preset_name;
-
-	settings = obs_source_get_settings(s->context);
-	if (!settings) {
-		blog(LOG_ERROR, "cannot get settings for %p", s->context);
-		goto err;
-	}
-	preset_name = obs_data_get_string(settings, "preset_name");
-	blog(LOG_INFO, "ftf_preset_save: saving preset %s", preset_name);
-	presets = obs_data_get_obj(settings, "presets");
-	if (!presets)
-		presets = obs_data_create();
-
-	preset_data = obs_data_create();
-	copy_preset(preset_data, settings, prop_to_preset_mask(settings));
-	obs_data_set_obj(presets, preset_name, preset_data);
-
-	obs_data_set_obj(settings, "presets", presets);
-
-	if (obs_property_t *p = obs_properties_get(props, "preset_name"))
-		list_insert_string(p, preset_name);
-
-err:
-	obs_data_release(preset_data);
-	obs_data_release(presets);
-	obs_data_release(settings);
-	return true;
-}
-
-static bool ftf_preset_delete(obs_properties_t *props, obs_property_t *, void *ctx_data)
-{
-	auto *s = (struct face_tracker_filter*)ctx_data;
-
-	obs_data_t *settings = NULL;
-	obs_data_t *presets = NULL;
-	const char *preset_name;
-
-	settings = obs_source_get_settings(s->context);
-	if (!settings) {
-		blog(LOG_ERROR, "cannot get settings for %p", s->context);
-		goto err;
-	}
-	preset_name = obs_data_get_string(settings, "preset_name");
-	blog(LOG_INFO, "ftf_preset_save: deleting preset %s", preset_name);
-	if (obs_property_t *p = obs_properties_get(props, "preset_name"))
-		list_delete_string(p, preset_name);
-	presets = obs_data_get_obj(settings, "presets");
-	if (!presets)
-		goto err;
-
-	obs_data_unset_user_value(presets, preset_name);
-
-	obs_data_set_obj(settings, "presets", presets);
-
-err:
-	obs_data_release(presets);
-	obs_data_release(settings);
-	return true;
-}
-
-static void enum_item_to_list(obs_property_t *p, obs_data_t *data)
-{
-	for (obs_data_item_t *item = obs_data_first(data); item; obs_data_item_next(&item)) {
-		const char *name = obs_data_item_get_name(item);
-		obs_property_list_add_string(p, name, name);
-	}
-}
-
 static obs_properties_t *ftf_properties(void *data)
 {
 	auto *s = (struct face_tracker_filter*)data;
@@ -454,11 +145,9 @@ static obs_properties_t *ftf_properties(void *data)
 	{
 		obs_properties_t *pp = obs_properties_create();
 		obs_property_t *p = obs_properties_add_list(pp, "preset_name", obs_module_text("Preset"), OBS_COMBO_TYPE_EDITABLE, OBS_COMBO_FORMAT_STRING);
-		if (obs_data_t *settings = obs_source_get_settings(s->context)) {
-			if (obs_data_t *presets = obs_data_get_obj(settings, "presets")) {
-				enum_item_to_list(p, presets);
-				obs_data_release(presets);
-			}
+		obs_data_t *settings = obs_source_get_settings(s->context);
+		if (settings) {
+			ftf_preset_item_to_list(p, settings);
 			obs_data_release(settings);
 		}
 		obs_properties_add_button(pp, "preset_load", obs_module_text("Load preset"), ftf_preset_load);
@@ -552,32 +241,6 @@ static void ftf_get_defaults(obs_data_t *settings)
 	obs_data_release(presets);
 }
 
-template <typename T> static inline bool samesign(const T &a, const T &b)
-{
-	if (a>0 && b>0)
-		return true;
-	if (a<0 && b<0)
-		return true;
-	return false;
-}
-
-static inline float sqf(float x) { return x*x; }
-
-static inline rectf_s f3_to_rectf(const struct face_tracker_filter *s, const f3 &u)
-{
-	const float w = s->width_with_aspect;
-	const float h = s->height_with_aspect;
-	const float srwh = sqrtf(w * h);
-	const float s2h = h / srwh;
-	const float s2w = w / srwh;
-	rectf_s r;
-	r.x0 = u.v[0] - s2w * u.v[2] * 0.5f;
-	r.x1 = u.v[0] + s2w * u.v[2] * 0.5f;
-	r.y0 = u.v[1] - s2h * u.v[2] * 0.5f;
-	r.y1 = u.v[1] + s2h * u.v[2] * 0.5f;
-	return r;
-}
-
 static void tick_filter(struct face_tracker_filter *s, float second)
 {
 	const float srwh = sqrtf((float)s->known_width * s->known_height);
@@ -632,7 +295,7 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 		}
 	}
 
-	s->crop_cur = f3_to_rectf(s, u);
+	s->crop_cur = f3_to_rectf(u, s->width_with_aspect, s->height_with_aspect);
 }
 
 static void ftf_activate(void *data)
@@ -690,7 +353,7 @@ static void ftf_tick(void *data, float second)
 
 	if (s->crop_cur.x1<-1 || s->crop_cur.y1<-1) {
 		ftf_reset_tracking(NULL, NULL, s);
-		s->crop_cur = f3_to_rectf(s, s->filter_int_out);
+		s->crop_cur = f3_to_rectf(s->filter_int_out, s->width_with_aspect, s->height_with_aspect);
 	}
 	else if (was_rendered) {
 		s->range_min.v[0] = get_width(s->crop_cur) * 0.5f;
@@ -752,7 +415,7 @@ static inline f3 ensure_range(f3 u, const struct face_tracker_filter *s)
 	else if (u.v[2] > s->range_max.v[2])
 		u.v[2] = s->range_max.v[2];
 
-	rectf_s r = f3_to_rectf(s, u);
+	rectf_s r = f3_to_rectf(u, s->width_with_aspect, s->height_with_aspect);
 
 	if (r.x0 < 0)
 		u.v[0] += -r.x0;
