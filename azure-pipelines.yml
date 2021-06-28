@@ -41,8 +41,6 @@ jobs:
       displayName: Restore cached OBS Studio dependencies
       inputs:
         key: 'obsdeps | "$(Agent.OS)"'
-        restoreKeys: |
-          obsdeps | "$(Agent.OS)"
         path: $(DepsBasePath)
 
     - script: ./ci/windows/download-obs-deps.cmd
@@ -52,8 +50,6 @@ jobs:
       displayName: Restore cached OBS Studio builds
       inputs:
         key: 'obs "$(OBSLatestTag)" | "$(Agent.OS)"'
-        restoreKeys: |
-          obs | "$(Agent.OS)"
         path: $(OBSPath)
 
     - script: ./ci/windows/prepare-obs-windows.cmd
