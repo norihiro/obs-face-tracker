@@ -19,6 +19,8 @@
 #define debug_track(fmt, ...)
 #define debug_detect(fmt, ...)
 
+static gs_effect_t *effect_ft = NULL;
+
 struct rectf_s
 {
 	float x0;
@@ -192,6 +194,16 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 	s->trackers = new std::deque<struct tracker_inst_s>;
 	s->trackers_idlepool = new std::deque<struct tracker_inst_s>;
 	s->scale = 2.0f;
+
+	obs_enter_graphics();
+	if (!effect_ft) {
+		char *f = obs_module_file("face-tracker.effect");
+		effect_ft = gs_effect_create_from_file(f, NULL);
+		if (!effect_ft)
+			blog(LOG_ERROR, "Cannot load '%s'", f);
+		bfree(f);
+	}
+	obs_leave_graphics();
 
 	obs_source_update(context, settings);
 	return s;
@@ -883,20 +895,18 @@ static inline void draw_sprite_crop(float width, float height, float x0, float y
 static inline void scale_texture(struct face_tracker_filter *s, float scale)
 {
 	if (!s->texrender_scaled)
-		s->texrender_scaled = gs_texrender_create(/*GS_R8*/GS_RGBA, GS_ZS_NONE);
+		s->texrender_scaled = gs_texrender_create(GS_R8, GS_ZS_NONE);
 	const uint32_t cx = s->known_width / scale, cy = s->known_height / scale;
 	gs_texrender_reset(s->texrender_scaled);
 	gs_blend_state_push();
 	gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
 	if (gs_texrender_begin(s->texrender_scaled, cx, cy)) {
-		// TODO: use custom effect to convert to monochrome
 		gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -100.0f, 100.0f);
-		gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
 		gs_texture_t *tex = gs_texrender_get_texture(s->texrender);
 		if (tex) {
-			gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
+			gs_eparam_t *image = gs_effect_get_param_by_name(effect_ft, "image");
 			gs_effect_set_texture(image, tex);
-			while (gs_effect_loop(effect, "Draw"))
+			while (gs_effect_loop(effect_ft, "DrawY"))
 				draw_sprite_crop(cx, cy, 0, 0, 1, 1);
 		}
 		gs_texrender_end(s->texrender_scaled);
@@ -919,7 +929,7 @@ static inline int stage_to_surface(struct face_tracker_filter *s, float scale)
 			width != gs_stagesurface_get_width(s->stagesurface) ||
 			height != gs_stagesurface_get_height(s->stagesurface) ) {
 		gs_stagesurface_destroy(s->stagesurface);
-		s->stagesurface = gs_stagesurface_create(width, height, GS_RGBA);
+		s->stagesurface = gs_stagesurface_create(width, height, GS_R8);
 	}
 
 	gs_stage_texture(s->stagesurface, tex);
@@ -939,7 +949,7 @@ static inline void surface_to_cvtex(struct face_tracker_filter *s, float scale)
 		s->cvtex = new texture_object();
 		s->cvtex->tick = s->tick_cnt;
 		s->cvtex->scale = scale;
-		s->cvtex->set_texture(video_data, video_linesize, width, height);
+		s->cvtex->set_texture_y(video_data, video_linesize, width, height);
 
 		gs_stagesurface_unmap(s->stagesurface);
 	}
