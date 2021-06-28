@@ -4,23 +4,58 @@
 #include <graphics/vec2.h>
 #include <graphics/graphics.h>
 #include "plugin-macros.generated.h"
-#include "face-detector-base.h"
-#include "face-detector-dlib.h"
-#include "face-tracker-base.h"
-#include "face-tracker-dlib.h"
 #include "texture-object.h"
 #include <algorithm>
 #include <graphics/matrix4.h>
 #include "helper.hpp"
 #include "face-tracker.hpp"
 #include "face-tracker-preset.h"
+#include "face-tracker-manager.hpp"
 
 // #define debug_track(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
-// #define debug_detect(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
 #define debug_track(fmt, ...)
-#define debug_detect(fmt, ...)
 
 static gs_effect_t *effect_ft = NULL;
+
+static inline void scale_texture(struct face_tracker_filter *s, float scale);
+static inline int stage_to_surface(struct face_tracker_filter *s, float scale);
+static inline class texture_object *surface_to_cvtex(struct face_tracker_filter *s, float scale);
+
+class ft_manager_for_ftf : public face_tracker_manager
+{
+	public:
+		struct face_tracker_filter *ctx;
+		class texture_object *cvtex_cache;
+
+	public:
+		ft_manager_for_ftf(struct face_tracker_filter *ctx_) {
+			ctx = ctx_;
+			cvtex_cache = NULL;
+		}
+
+		~ft_manager_for_ftf()
+		{
+			release_cvtex();
+		}
+
+		inline void release_cvtex()
+		{
+			if (cvtex_cache)
+				cvtex_cache->release();
+			cvtex_cache = NULL;
+		}
+
+		class texture_object *get_cvtex() override
+		{
+			if (cvtex_cache)
+				return cvtex_cache;
+			if (scale<1.0f) scale = 1.0f;
+			scale_texture(ctx, scale);
+			if (stage_to_surface(ctx, scale))
+				return NULL;
+			return surface_to_cvtex(ctx, scale);
+		};
+};
 
 static const char *ftf_get_name(void *unused)
 {
@@ -42,11 +77,7 @@ static void ftf_update(void *data, obs_data_t *settings)
 {
 	auto *s = (struct face_tracker_filter*)data;
 
-	s->upsize_l = obs_data_get_double(settings, "upsize_l");
-	s->upsize_r = obs_data_get_double(settings, "upsize_r");
-	s->upsize_t = obs_data_get_double(settings, "upsize_t");
-	s->upsize_b = obs_data_get_double(settings, "upsize_b");
-	s->scale = obs_data_get_double(settings, "scale");
+	s->ftm->update(settings);
 	s->track_z = obs_data_get_double(settings, "track_z");
 	s->track_x = obs_data_get_double(settings, "track_x");
 	s->track_y = obs_data_get_double(settings, "track_y");
@@ -75,14 +106,10 @@ static void ftf_update(void *data, obs_data_t *settings)
 static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 {
 	auto *s = (struct face_tracker_filter*)bzalloc(sizeof(struct face_tracker_filter));
-	s->rects = new std::vector<rect_s>;
-	s->crop_cur.x1 = s->crop_cur.y1 = -2;
+	s->ftm = new ft_manager_for_ftf(s);
+	s->ftm->crop_cur.x1 = s->ftm->crop_cur.y1 = -2;
 	s->context = context;
-	s->detect = new face_detector_dlib();
-	s->detect->start();
-	s->trackers = new std::deque<struct tracker_inst_s>;
-	s->trackers_idlepool = new std::deque<struct tracker_inst_s>;
-	s->scale = 2.0f;
+	s->ftm->scale = 2.0f;
 
 	obs_enter_graphics();
 	if (!effect_ft) {
@@ -111,11 +138,6 @@ static void ftf_destroy(void *data)
 	s->stagesurface = NULL;
 	obs_leave_graphics();
 
-	s->detect->stop();
-
-	delete s->rects;
-	delete s->trackers;
-	delete s->trackers_idlepool;
 	bfree(s);
 }
 
@@ -160,12 +182,8 @@ static obs_properties_t *ftf_properties(void *data)
 
 	{
 		obs_properties_t *pp = obs_properties_create();
-		obs_properties_add_float(pp, "upsize_l", obs_module_text("Left"), -0.4, 4.0, 0.2);
-		obs_properties_add_float(pp, "upsize_r", obs_module_text("Right"), -0.4, 4.0, 0.2);
-		obs_properties_add_float(pp, "upsize_t", obs_module_text("Top"), -0.4, 4.0, 0.2);
-		obs_properties_add_float(pp, "upsize_b", obs_module_text("Bottom"), -0.4, 4.0, 0.2);
-		obs_properties_add_float(pp, "scale", obs_module_text("Scale image"), 1.0, 16.0, 1.0);
-		obs_properties_add_group(props, "upsize", obs_module_text("Face detection options"), OBS_GROUP_NORMAL, pp);
+		face_tracker_manager::get_properties(pp);
+		obs_properties_add_group(props, "ftm", obs_module_text("Face detection options"), OBS_GROUP_NORMAL, pp);
 	}
 
 	{
@@ -222,11 +240,7 @@ static void ftf_get_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_bool(settings, "preset_mask_track", true);
 	obs_data_set_default_bool(settings, "preset_mask_control", true);
-	obs_data_set_default_double(settings, "upsize_l", 0.2);
-	obs_data_set_default_double(settings, "upsize_r", 0.2);
-	obs_data_set_default_double(settings, "upsize_t", 0.3);
-	obs_data_set_default_double(settings, "upsize_b", 0.1);
-	obs_data_set_default_double(settings, "scale", 2.0);
+	face_tracker_manager::get_defaults(settings);
 	obs_data_set_default_double(settings, "track_z",  0.70); //  1.00  0.50  0.35
 	obs_data_set_default_double(settings, "track_y", +0.00); // +0.00 +0.10 +0.30
 	obs_data_set_default_double(settings, "scale_max", 10.0);
@@ -295,7 +309,7 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 		}
 	}
 
-	s->crop_cur = f3_to_rectf(u, s->width_with_aspect, s->height_with_aspect);
+	s->ftm->crop_cur = f3_to_rectf(u, s->width_with_aspect, s->height_with_aspect);
 }
 
 static void ftf_activate(void *data)
@@ -332,10 +346,7 @@ static void ftf_tick(void *data, float second)
 {
 	auto *s = (struct face_tracker_filter*)data;
 	const bool was_rendered = s->rendered;
-	if (s->detect_tick==s->tick_cnt)
-		s->next_tick_stage_to_detector = s->tick_cnt + (int)(2.0f/second); // detect for each _ second(s).
-
-	s->tick_cnt += 1;
+	s->ftm->tick(second);
 
 	obs_source_t *target = obs_filter_get_target(s->context);
 	if (!target)
@@ -351,15 +362,15 @@ static void ftf_tick(void *data, float second)
 
 	calculate_aspect(s);
 
-	if (s->crop_cur.x1<-1 || s->crop_cur.y1<-1) {
+	if (s->ftm->crop_cur.x1<-1 || s->ftm->crop_cur.y1<-1) {
 		ftf_reset_tracking(NULL, NULL, s);
-		s->crop_cur = f3_to_rectf(s->filter_int_out, s->width_with_aspect, s->height_with_aspect);
+		s->ftm->crop_cur = f3_to_rectf(s->filter_int_out, s->width_with_aspect, s->height_with_aspect);
 	}
 	else if (was_rendered) {
-		s->range_min.v[0] = get_width(s->crop_cur) * 0.5f;
-		s->range_max.v[0] = s->known_width - get_width(s->crop_cur) * 0.5f;
-		s->range_min.v[1] = get_height(s->crop_cur) * 0.5f;
-		s->range_max.v[1] = s->known_height - get_height(s->crop_cur) * 0.5f;
+		s->range_min.v[0] = get_width(s->ftm->crop_cur) * 0.5f;
+		s->range_max.v[0] = s->known_width - get_width(s->ftm->crop_cur) * 0.5f;
+		s->range_min.v[1] = get_height(s->ftm->crop_cur) * 0.5f;
+		s->range_max.v[1] = s->known_height - get_height(s->ftm->crop_cur) * 0.5f;
 		s->range_min.v[2] = sqrtf(s->known_width*s->known_height) / s->scale_max;
 		s->range_max.v[2] = sqrtf(s->width_with_aspect * s->height_with_aspect);
 		s->range_min_out = s->range_min;
@@ -403,7 +414,7 @@ static inline void render_target(struct face_tracker_filter *s, obs_source_t *ta
 
 	gs_blend_state_pop();
 
-	if (s->cvtex) s->cvtex->release(); s->cvtex=NULL;
+	s->ftm->release_cvtex();
 }
 
 static inline f3 ensure_range(f3 u, const struct face_tracker_filter *s)
@@ -435,15 +446,15 @@ static inline void calculate_error(struct face_tracker_filter *s)
 	f3 e_tot(0.0f, 0.0f, 0.0f);
 	float sc_tot = 0.0f;
 	bool found = false;
-	std::deque<struct tracker_inst_s> &trackers = *s->trackers;
-	for (int i=0; i<trackers.size(); i++) if (trackers[i].state == tracker_inst_s::tracker_state_available) {
-		f3 r (trackers[i].rect);
-		r.v[0] -= get_width(trackers[i].crop_rect) * s->track_x;
-		r.v[1] += get_height(trackers[i].crop_rect) * s->track_y;
+	auto &tracker_rects = s->ftm->tracker_rects;
+	for (int i=0; i<tracker_rects.size(); i++) {
+		f3 r (tracker_rects[i].rect);
+		r.v[0] -= get_width(tracker_rects[i].crop_rect) * s->track_x;
+		r.v[1] += get_height(tracker_rects[i].crop_rect) * s->track_y;
 		r.v[2] /= s->track_z;
 		r = ensure_range(r, s);
-		f3 w (trackers[i].crop_rect);
-		float score = trackers[i].rect.score * trackers[i].att;
+		f3 w (tracker_rects[i].crop_rect);
+		float score = tracker_rects[i].rect.score;
 		f3 e = (r-w) * score;
 		debug_track("calculate_error: %d %f %f %f %f", i, e.v[0], e.v[1], e.v[2], score);
 		if (score>0.0f && !isnan(e)) {
@@ -457,100 +468,6 @@ static inline void calculate_error(struct face_tracker_filter *s)
 		s->detect_err = e_tot * (1.0f / sc_tot);
 	else
 		s->detect_err = f3(0, 0, 0);
-}
-
-static inline void retire_tracker(struct face_tracker_filter *s, int ix)
-{
-	std::deque<struct tracker_inst_s> &trackers = *s->trackers;
-	s->trackers_idlepool->push_back(trackers[ix]);
-	trackers[ix].tracker->request_suspend();
-	trackers.erase(trackers.begin()+ix);
-}
-
-static inline void attenuate_tracker(struct face_tracker_filter *s)
-{
-	std::deque<struct tracker_inst_s> &trackers = *s->trackers;
-	std::vector<rect_s> &rects = *s->rects;
-
-	for (int j=0; j<rects.size(); j++) {
-		rect_s r = rects[j];
-		float a0 = (r.x1 - r.x0) * (r.y1 - r.y0);
-		float a_overlap_sum = 0;
-		for (int i=trackers.size()-1; i>=0; i--) {
-			if (trackers[i].state != tracker_inst_s::tracker_state_available)
-				continue;
-			float a = common_area(r, trackers[i].rect);
-			a_overlap_sum += a;
-			if (a>a0*0.1f && a_overlap_sum > a0*0.5f)
-				retire_tracker(s, i);
-		}
-	}
-
-	for (int i=0; i<trackers.size(); i++) {
-		if (trackers[i].state != tracker_inst_s::tracker_state_available)
-			continue;
-		struct tracker_inst_s &t = trackers[i];
-
-		float a1 = (t.rect.x1 - t.rect.x0) * (t.rect.y1 - t.rect.y0);
-		float amax = a1*0.1f;
-		for (int j=0; j<rects.size(); j++) {
-			rect_s r = rects[j];
-			float a0 = (r.x1 - r.x0) * (r.y1 - r.y0);
-			float a = common_area(r, t.rect);
-			if (a > amax) amax = a;
-		}
-
-		t.att *= powf(amax / a1, 0.1f); // if no faces, remove the tracker
-	}
-
-	float score_max = 1e-17f;
-	for (int i=0; i<trackers.size(); i++) {
-		if (trackers[i].state == tracker_inst_s::tracker_state_available) {
-			float s = trackers[i].att * trackers[i].rect.score;
-			if (s > score_max) score_max = s;
-		}
-	}
-
-	for (int i=0; i<trackers.size(); i++) {
-		if (trackers[i].state != tracker_inst_s::tracker_state_available)
-			continue;
-		if (trackers[i].att * trackers[i].rect.score > 1e-2f * score_max)
-			continue;
-
-		retire_tracker(s, i);
-		i--;
-	}
-}
-
-static inline void copy_detector_to_tracker(struct face_tracker_filter *s)
-{
-	std::deque<struct tracker_inst_s> &trackers = *s->trackers;
-	int i_tracker;
-	for (i_tracker=0; i_tracker < trackers.size(); i_tracker++)
-		if (
-				trackers[i_tracker].tick_cnt == s->detect_tick &&
-				trackers[i_tracker].state==tracker_inst_s::tracker_state_e::tracker_state_reset_texture )
-			break;
-	if (i_tracker >= trackers.size())
-		return;
-
-	if (s->rects->size()<=0) {
-		trackers.erase(trackers.begin() + i_tracker);
-		return;
-	}
-
-	struct tracker_inst_s &t = trackers[i_tracker];
-
-	struct rect_s r = (*s->rects)[0];
-	int w = r.x1-r.x0;
-	int h = r.y1-r.y0;
-	r.x0 -= w * s->upsize_l;
-	r.x1 += w * s->upsize_r;
-	r.y0 -= h * s->upsize_t;
-	r.y1 += h * s->upsize_b;
-	t.tracker->set_position(r); // TODO: consider how to track two or more faces.
-	t.tracker->start();
-	t.state = tracker_inst_s::tracker_state_constructing;
 }
 
 static inline void draw_sprite_crop(float width, float height, float x0, float y0, float x1, float y1);
@@ -600,135 +517,24 @@ static inline int stage_to_surface(struct face_tracker_filter *s, float scale)
 	return 0;
 }
 
-static inline void surface_to_cvtex(struct face_tracker_filter *s, float scale)
+static inline class texture_object *surface_to_cvtex(struct face_tracker_filter *s, float scale)
 {
+	texture_object *cvtex = NULL;
 	uint8_t *video_data = NULL;
 	uint32_t video_linesize;
 	if (gs_stagesurface_map(s->stagesurface, &video_data, &video_linesize)) {
 		uint32_t width = gs_stagesurface_get_width(s->stagesurface);
 		uint32_t height = gs_stagesurface_get_height(s->stagesurface);
 
-		if (s->cvtex) s->cvtex->release();
-		s->cvtex = new texture_object();
-		s->cvtex->tick = s->tick_cnt;
-		s->cvtex->scale = scale;
-		s->cvtex->set_texture_y(video_data, video_linesize, width, height);
+		cvtex = new texture_object();
+		cvtex->scale = scale;
+		cvtex->tick = s->ftm->tick_cnt;
+		cvtex->set_texture_y(video_data, video_linesize, width, height);
 
 		gs_stagesurface_unmap(s->stagesurface);
 	}
-}
 
-inline texture_object *get_cvtex(struct face_tracker_filter *s)
-{
-	if (s->cvtex)
-		return s->cvtex;
-	float scale = s->scale;
-	if (scale<1.0f) scale = 1.0f;
-	scale_texture(s, scale);
-	if (stage_to_surface(s, scale))
-		return NULL;
-	surface_to_cvtex(s, scale);
-	return s->cvtex;
-}
-
-static inline void stage_to_detector(struct face_tracker_filter *s)
-{
-	if (s->detect->trylock())
-		return;
-
-	// get previous results
-	if (s->detector_in_progress) {
-		s->detect->get_faces(*s->rects);
-		std::vector<rect_s> &rects = *s->rects;
-		for (int i=0; i<rects.size(); i++)
-			debug_detect("stage_to_detector: rects %d %d %d %d %d %f", i,
-					rects[i].x0, rects[i].y0, rects[i].x1, rects[i].y1, rects[i].score );
-		attenuate_tracker(s);
-		copy_detector_to_tracker(s);
-		s->detector_in_progress = false;
-	}
-
-	if ((s->next_tick_stage_to_detector - s->tick_cnt) > 0) {
-		// blog(LOG_INFO, "stage_to_detector: waiting next_tick_stage_to_detector=%d tick_cnt=%d", s->next_tick_stage_to_detector, s->tick_cnt);
-		s->detect->unlock();
-		return;
-	}
-
-	if (get_cvtex(s)) {
-		s->detect->set_texture(s->cvtex);
-		s->detect->signal();
-		s->detector_in_progress = true;
-		s->detect_tick = s->tick_cnt;
-
-		struct tracker_inst_s t;
-		if (s->trackers_idlepool->size() > 0) {
-			t.tracker = (*s->trackers_idlepool)[0].tracker;
-			(*s->trackers_idlepool)[0].tracker = NULL;
-			s->trackers_idlepool->pop_front();
-		}
-		else
-			t.tracker = new face_tracker_dlib();
-		t.crop_tracker = s->crop_cur;
-		t.state = tracker_inst_s::tracker_state_e::tracker_state_reset_texture;
-		t.tick_cnt = s->tick_cnt;
-		t.tracker->set_texture(s->cvtex);
-		s->trackers->push_back(t);
-	}
-
-	s->detect->unlock();
-}
-
-static inline int stage_surface_to_tracker(struct face_tracker_filter *s, struct tracker_inst_s &t)
-{
-	if (get_cvtex(s)) {
-		t.tracker->set_texture(s->cvtex);
-		t.crop_tracker = s->crop_cur;
-		t.tracker->signal();
-	}
-	else
-		return 1;
-	return 0;
-}
-
-static inline void stage_to_trackers(struct face_tracker_filter *s)
-{
-	std::deque<struct tracker_inst_s> &trackers = *s->trackers;
-	for (int i=0; i<trackers.size(); i++) {
-		struct tracker_inst_s &t = trackers[i];
-		if (t.state == tracker_inst_s::tracker_state_constructing) {
-			if (!t.tracker->trylock()) {
-				if (!stage_surface_to_tracker(s, t)) {
-					t.crop_tracker = s->crop_cur;
-					t.state = tracker_inst_s::tracker_state_first_track;
-				}
-				t.tracker->unlock();
-				t.state = tracker_inst_s::tracker_state_first_track;
-			}
-		}
-		else if (t.state == tracker_inst_s::tracker_state_first_track) {
-			if (!t.tracker->trylock()) {
-				bool ret = t.tracker->get_face(t.rect);
-				t.crop_rect = t.crop_tracker;
-				debug_track("tracker_state_first_track %p %d %d %d %d %f", t.tracker, t.rect.x0, t.rect.y0, t.rect.x1, t.rect.y1, t.rect.score);
-				t.att = 1.0f;
-				stage_surface_to_tracker(s, t);
-				t.tracker->signal();
-				t.tracker->unlock();
-				if (ret)
-					t.state = tracker_inst_s::tracker_state_available;
-			}
-		}
-		else if (t.state == tracker_inst_s::tracker_state_available) {
-			if (!t.tracker->trylock()) {
-				t.tracker->get_face(t.rect);
-				t.crop_rect = t.crop_tracker;
-				debug_track("tracker_state_available %p %d %d %d %d %f", t.tracker, t.rect.x0, t.rect.y0, t.rect.x1, t.rect.y1, t.rect.score);
-				stage_surface_to_tracker(s, t);
-				t.tracker->signal();
-				t.tracker->unlock();
-			}
-		}
-	}
+	return cvtex;
 }
 
 static inline void draw_sprite_crop(float width, float height, float x0, float y0, float x1, float y1)
@@ -786,7 +592,7 @@ static inline void draw_frame(struct face_tracker_filter *s)
 
 	uint32_t width = s->width_with_aspect;
 	uint32_t height = s->height_with_aspect;
-	const rectf_s &crop_cur = s->crop_cur;
+	const rectf_s &crop_cur = s->ftm->crop_cur;
 	const float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
 	const bool debug_notrack = s->debug_notrack && !s->is_active;
 
@@ -821,19 +627,16 @@ static inline void draw_frame(struct face_tracker_filter *s)
 		effect = obs_get_base_effect(OBS_EFFECT_SOLID);
 		while (gs_effect_loop(effect, "Solid")) {
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
-			for (int i=0; i<s->rects->size(); i++)
-				draw_rect_upsize((*s->rects)[i], s->upsize_l, s->upsize_r, s->upsize_t, s->upsize_b);
+			for (int i=0; i<s->ftm->detect_rects.size(); i++)
+				draw_rect_upsize(s->ftm->detect_rects[i], s->ftm->upsize_l, s->ftm->upsize_r, s->ftm->upsize_t, s->ftm->upsize_b);
 
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF00FF00);
-			for (int i=0; i<s->trackers->size(); i++) {
-				tracker_inst_s &t = (*s->trackers)[i];
-				if (t.state != tracker_inst_s::tracker_state_available)
-					continue;
-				draw_rect_upsize(t.rect);
+			for (int i=0; i<s->ftm->tracker_rects.size(); i++) {
+				draw_rect_upsize(s->ftm->tracker_rects[i].rect);
 			}
 			if (debug_notrack) {
 				gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
-				const rectf_s &r = s->crop_cur;
+				const rectf_s &r = s->ftm->crop_cur;
 				gs_render_start(false);
 				gs_vertex2f(r.x0, r.y0);
 				gs_vertex2f(r.x0, r.y1);
@@ -876,8 +679,7 @@ static void ftf_render(void *data, gs_effect_t *)
 
 	if (!s->rendered) {
 		render_target(s, target, parent);
-		stage_to_detector(s);
-		stage_to_trackers(s);
+		s->ftm->post_render();
 		s->rendered = true;
 	}
 
