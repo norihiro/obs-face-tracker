@@ -24,12 +24,18 @@ If you want to save only tracking parameters (`Upsize recognized face` and `Trac
 ### Save and load control parameters
 If you want to save only contol parameters (`Tracking response`), enable only this check-box.
 
-## Upsize recognized face
+## Face detection options
 
 ### Left, right, top, bottom
 These properties upsize (or downsize) the recognized face by multiple of the width or height.
 
 The motivation is that the face recognition returns a rectangle that is smaller than the actual face.
+
+### Scale image
+The frame will be scaled before sending into face detection and tracking algorithm.
+Default is `2`.
+Larger value will reduce CPU usage but too large value will fail to detect faces.
+The face detection engine requires size of the faces at least 80x80.
 
 ## Tracking target location
 

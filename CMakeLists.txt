@@ -53,6 +53,7 @@ set(PLUGIN_SOURCES
 	src/face-detector-dlib.cpp
 	src/face-tracker-base.cpp
 	src/face-tracker-dlib.cpp
+	src/texture-object.cpp
 )
 
 set(PLUGIN_HEADERS
@@ -61,6 +62,7 @@ set(PLUGIN_HEADERS
 	src/face-detector-dlib.h
 	src/face-tracker-base.h
 	src/face-tracker-dlib.h
+	src/texture-object.h
 )
 
 # --- Platform-independent build settings ---
