@@ -13,7 +13,7 @@ class face_tracker_dlib : public face_tracker_base
 		face_tracker_dlib();
 		virtual ~face_tracker_dlib();
 
-		virtual void set_texture(uint8_t *data, uint32_t linesize, uint32_t width, uint32_t height);
+		void set_texture(texture_object *) override;
 		virtual void set_position(const rect_s &rect);
-		virtual void get_face(struct rect_s &);
+		virtual bool get_face(struct rect_s &);
 };

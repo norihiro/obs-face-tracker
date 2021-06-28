@@ -33,7 +33,7 @@ class face_detector_base
 		int unlock() { return pthread_mutex_unlock(&mutex); }
 		int signal() { return pthread_cond_signal(&cond); }
 
-		virtual void set_texture(uint8_t *data, uint32_t linesize, uint32_t width, uint32_t height) = 0;
+		virtual void set_texture(class texture_object *) = 0;
 		virtual void get_faces(std::vector<struct rect_s> &) = 0;
 
 		void start();
