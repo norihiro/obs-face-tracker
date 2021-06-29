@@ -555,37 +555,6 @@ static inline void draw_sprite_crop(float width, float height, float x0, float y
 	gs_render_stop(GS_TRISTRIP);
 }
 
-static inline void draw_rect_upsize(rect_s r, float upsize_l=0.0f, float upsize_r=0.0f, float upsize_t=0.0f, float upsize_b=0.0f)
-{
-	if (r.x0>=r.x1 || r.y0>=r.y1)
-		return;
-	int w = r.x1-r.x0;
-	int h = r.y1-r.y0;
-	float dx0 = w * upsize_l;
-	float dx1 = w * upsize_r;
-	float dy0 = h * upsize_t;
-	float dy1 = h * upsize_b;
-
-	gs_render_start(false);
-
-	if (std::abs(dx0)>=0.5f || std::abs(dy1)>=0.5f || std::abs(dx1)>=0.5f || std::abs(dy0)>=0.5f) {
-		gs_vertex2f(r.x0, r.y0); gs_vertex2f(r.x0, r.y1);
-		gs_vertex2f(r.x0, r.y1); gs_vertex2f(r.x1, r.y1);
-		gs_vertex2f(r.x1, r.y1); gs_vertex2f(r.x1, r.y0);
-		gs_vertex2f(r.x1, r.y0); gs_vertex2f(r.x0, r.y0);
-	}
-	r.x0 -= dx0;
-	r.x1 += dx1;
-	r.y0 -= dy0;
-	r.y1 += dy1;
-	gs_vertex2f(r.x0, r.y0); gs_vertex2f(r.x0, r.y1);
-	gs_vertex2f(r.x0, r.y1); gs_vertex2f(r.x1, r.y1);
-	gs_vertex2f(r.x1, r.y1); gs_vertex2f(r.x1, r.y0);
-	gs_vertex2f(r.x1, r.y0); gs_vertex2f(r.x0, r.y0);
-
-	gs_render_stop(GS_LINES);
-}
-
 static inline void draw_frame_texture(struct face_tracker_filter *s)
 {
 	uint32_t width = s->width_with_aspect;
