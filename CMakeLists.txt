@@ -51,6 +51,7 @@ set(PLUGIN_SOURCES
 	src/face-tracker.cpp
 	src/face-tracker-preset.cpp
 	src/face-tracker-manager.cpp
+	src/face-tracker-ptz.cpp
 	src/face-detector-base.cpp
 	src/face-detector-dlib.cpp
 	src/face-tracker-base.cpp
@@ -62,6 +63,7 @@ set(PLUGIN_HEADERS
 	src/face-tracker.hpp
 	src/face-tracker-preset.h
 	src/face-tracker-manager.hpp
+	src/face-tracker-ptz.hpp
 	src/plugin-macros.generated.h
 	src/face-detector-base.h
 	src/face-detector-dlib.h
