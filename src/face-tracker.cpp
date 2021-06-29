@@ -583,13 +583,8 @@ static inline void draw_rect_upsize(rect_s r, float upsize_l=0.0f, float upsize_
 	gs_render_stop(GS_LINES);
 }
 
-static inline void draw_frame(struct face_tracker_filter *s)
+static inline void draw_frame_texture(struct face_tracker_filter *s)
 {
-	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
-	gs_texture_t *tex = gs_texrender_get_texture(s->texrender);
-	if (!tex)
-		return;
-
 	uint32_t width = s->width_with_aspect;
 	uint32_t height = s->height_with_aspect;
 	const rectf_s &crop_cur = s->ftm->crop_cur;
@@ -598,68 +593,89 @@ static inline void draw_frame(struct face_tracker_filter *s)
 
 	// TODO: linear_srgb, 27 only?
 
-	if (width>0 && height>0) {
-		gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
-		gs_effect_set_texture(image, tex);
+	if (width<=0 || height<=0)
+		return;
 
-		while (gs_effect_loop(effect, "Draw")) {
-			if (debug_notrack)
-				gs_draw_sprite(tex, 0, s->known_width, s->known_height);
-			else
-				draw_sprite_crop(
-						width, height,
-						crop_cur.x0/s->known_width, crop_cur.y0/s->known_height,
-						crop_cur.x1/s->known_width, crop_cur.y1/s->known_height );
+	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
+	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
+	gs_texture_t *tex = gs_texrender_get_texture(s->texrender);
+	if (!tex)
+		return;
+	gs_effect_set_texture(image, tex);
+
+	while (gs_effect_loop(effect, "Draw")) {
+		if (debug_notrack)
+			gs_draw_sprite(tex, 0, s->known_width, s->known_height);
+		else
+			draw_sprite_crop(
+					width, height,
+					crop_cur.x0/s->known_width, crop_cur.y0/s->known_height,
+					crop_cur.x1/s->known_width, crop_cur.y1/s->known_height );
+	}
+}
+
+static inline void draw_frame_info(struct face_tracker_filter *s)
+{
+	const rectf_s &crop_cur = s->ftm->crop_cur;
+
+	const bool debug_notrack = s->debug_notrack && !s->is_active;
+	if (!debug_notrack) {
+		uint32_t width = s->width_with_aspect;
+		uint32_t height = s->height_with_aspect;
+		const float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
+
+		gs_matrix_push();
+		struct matrix4 tr;
+		matrix4_identity(&tr);
+		matrix4_translate3f(&tr, &tr, -(crop_cur.x0+crop_cur.x1)*0.5f, -(crop_cur.y0+crop_cur.y1)*0.5f, 0.0f);
+		matrix4_scale3f(&tr, &tr, scale, scale, 1.0f);
+		matrix4_translate3f(&tr, &tr, width/2, height/2, 0.0f);
+		gs_matrix_mul(&tr);
+	}
+
+	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_SOLID);
+	while (gs_effect_loop(effect, "Solid")) {
+		gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
+		for (int i=0; i<s->ftm->detect_rects.size(); i++)
+			draw_rect_upsize(s->ftm->detect_rects[i], s->ftm->upsize_l, s->ftm->upsize_r, s->ftm->upsize_t, s->ftm->upsize_b);
+
+		gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF00FF00);
+		for (int i=0; i<s->ftm->tracker_rects.size(); i++) {
+			draw_rect_upsize(s->ftm->tracker_rects[i].rect);
+		}
+		if (debug_notrack) {
+			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
+			const rectf_s &r = s->ftm->crop_cur;
+			gs_render_start(false);
+			gs_vertex2f(r.x0, r.y0);
+			gs_vertex2f(r.x0, r.y1);
+			gs_vertex2f(r.x0, r.y1);
+			gs_vertex2f(r.x1, r.y1);
+			gs_vertex2f(r.x1, r.y1);
+			gs_vertex2f(r.x1, r.y0);
+			gs_vertex2f(r.x1, r.y0);
+			gs_vertex2f(r.x0, r.y0);
+			const float srwhr2 = sqrtf((r.x1-r.x0) * (r.y1-r.y0)) * 0.5f;
+			const float rcx = (r.x0+r.x1)*0.5f + (r.x1-r.x0)*s->track_x;
+			const float rcy = (r.y0+r.y1)*0.5f - (r.y1-r.y0)*s->track_y;
+			gs_vertex2f(rcx-srwhr2*s->track_z, rcy);
+			gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
+			gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
+			gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
+			gs_render_stop(GS_LINES);
 		}
 	}
 
-	if (s->debug_faces && !s->is_active) {
-		if (!debug_notrack) {
-			gs_matrix_push();
-			struct matrix4 tr;
-			matrix4_identity(&tr);
-			matrix4_translate3f(&tr, &tr, -(crop_cur.x0+crop_cur.x1)*0.5f, -(crop_cur.y0+crop_cur.y1)*0.5f, 0.0f);
-			matrix4_scale3f(&tr, &tr, scale, scale, 1.0f);
-			matrix4_translate3f(&tr, &tr, width/2, height/2, 0.0f);
-			gs_matrix_mul(&tr);
-		}
+	if (!debug_notrack)
+		gs_matrix_pop();
+}
 
-		effect = obs_get_base_effect(OBS_EFFECT_SOLID);
-		while (gs_effect_loop(effect, "Solid")) {
-			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
-			for (int i=0; i<s->ftm->detect_rects.size(); i++)
-				draw_rect_upsize(s->ftm->detect_rects[i], s->ftm->upsize_l, s->ftm->upsize_r, s->ftm->upsize_t, s->ftm->upsize_b);
+static inline void draw_frame(struct face_tracker_filter *s)
+{
+	draw_frame_texture(s);
 
-			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF00FF00);
-			for (int i=0; i<s->ftm->tracker_rects.size(); i++) {
-				draw_rect_upsize(s->ftm->tracker_rects[i].rect);
-			}
-			if (debug_notrack) {
-				gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
-				const rectf_s &r = s->ftm->crop_cur;
-				gs_render_start(false);
-				gs_vertex2f(r.x0, r.y0);
-				gs_vertex2f(r.x0, r.y1);
-				gs_vertex2f(r.x0, r.y1);
-				gs_vertex2f(r.x1, r.y1);
-				gs_vertex2f(r.x1, r.y1);
-				gs_vertex2f(r.x1, r.y0);
-				gs_vertex2f(r.x1, r.y0);
-				gs_vertex2f(r.x0, r.y0);
-				const float srwhr2 = sqrtf((r.x1-r.x0) * (r.y1-r.y0)) * 0.5f;
-				const float rcx = (r.x0+r.x1)*0.5f + (r.x1-r.x0)*s->track_x;
-				const float rcy = (r.y0+r.y1)*0.5f - (r.y1-r.y0)*s->track_y;
-				gs_vertex2f(rcx-srwhr2*s->track_z, rcy);
-				gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
-				gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
-				gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
-				gs_render_stop(GS_LINES);
-			}
-		}
-
-		if (!debug_notrack)
-			gs_matrix_pop();
-	}
+	if (s->debug_faces && !s->is_active)
+		draw_frame_info(s);
 }
 
 static void ftf_render(void *data, gs_effect_t *)
