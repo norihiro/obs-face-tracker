@@ -10,10 +10,15 @@ Once a face is found, the face is tracked.
 Based on the location and the size of the face under tracking, the frame will be cropped.
 
 ## Usage
+### Effect Filter
 The face tracker is implemented as an effect filter.
 Open filters for a source on OBS Studio, then add `Face Tracker` from the add button on `Effect Filters`.
 
 See [Properties](doc/properties.md) for the description of each property.
+
+### PTZ Control
+Alpha version of PTZ control is provided as an video filter.
+Open filters for a source on OBS Studio, then add `Face Tracker PTZ` from the add button on `Audio/Video Filters`.
 
 ## Wiki
 - [Install procedure for macOS](https://github.com/norihiro/obs-face-tracker/wiki/Install-MacOS)
@@ -78,5 +83,7 @@ This plugin is licensed under GPLv2.
   Visit https://www.jimcom.us/shop/ and enter the coupon code **FACETRACK20** when you order.
 
 ## Acknowledgments
+- [Jimcom](https://www.jimcom.us/) - Development of PTZ camera control is supported by Jimcom USA.
+- [obz-ptz](https://github.com/glikely/obs-ptz) - PTZ camera interface is based on this code.
 - [dlib](http://dlib.net/) - [git hub repository](https://github.com/davisking/dlib)
 - [OBS Project](https://obsproject.com/)
