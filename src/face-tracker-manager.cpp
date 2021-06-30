@@ -13,6 +13,11 @@
 
 face_tracker_manager::face_tracker_manager()
 {
+	upsize_l = upsize_r = upsize_t = upsize_b = 0.0f;
+	scale = 0.0f;
+	crop_cur.x0 = crop_cur.x1 = crop_cur.y0 = crop_cur.y1 = 0.0f;
+	tick_cnt = detect_tick = next_tick_stage_to_detector = 0;
+	detector_in_progress = false;
 	detect = new face_detector_dlib();
 	detect->start();
 }
