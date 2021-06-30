@@ -19,6 +19,8 @@ endif()
 
 find_package(LibObs REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt5SerialPort REQUIRED)
+find_package(Qt5Network REQUIRED)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE True)
 set(DLIB_NO_GUI_SUPPORT ON)
@@ -57,6 +59,8 @@ set(PLUGIN_SOURCES
 	src/face-tracker-base.cpp
 	src/face-tracker-dlib.cpp
 	src/texture-object.cpp
+	obs-ptz/ptz-visca.cpp
+	obs-ptz/ptz-device.cpp
 )
 
 set(PLUGIN_HEADERS
@@ -71,6 +75,8 @@ set(PLUGIN_HEADERS
 	src/face-tracker-dlib.h
 	src/texture-object.h
 	src/helper.hpp
+	obs-ptz/ptz-visca.hpp
+	obs-ptz/ptz-device.hpp
 )
 
 # --- Platform-independent build settings ---
@@ -81,6 +87,9 @@ include_directories(
 	${Qt5Core_INCLUDES}
 	${Qt5Widgets_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/dlib
+	obs-ptz
+	${Qt5Widgets_INCLUDES}
+	${Qt5Network_INCLUDES}
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
@@ -88,6 +97,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	Qt5::Core
 	Qt5::Widgets
 	dlib
+	${Qt5SerialPort_LIBRARIES}
+	${Qt5Network_LIBRARIES}
 )
 
 # --- End of section ---

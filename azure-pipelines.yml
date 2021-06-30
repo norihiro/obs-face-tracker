@@ -4,6 +4,7 @@ variables:
   buildWin32: false
   buildWin64: true
   OBSLatestTag: 26.1.2
+  OBSPTZTag: 8904d42
 
 trigger:
   branches:
@@ -74,6 +75,7 @@ jobs:
         OBSPath: $(OBSPath)
         buildWin32: $(buildWin32)
         buildWin64: $(buildWin64)
+        OBSPTZTag: $(OBSPTZTag)
 
     - task: MSBuild@1
       displayName: 'Build Plugin 32-bit'
@@ -114,6 +116,8 @@ jobs:
 
     - script: ./ci/linux/build-ubuntu.sh
       displayName: 'Build Plugin'
+      env:
+        OBSPTZTag: $(OBSPTZTag)
 
     - script: ./ci/linux/package-ubuntu.sh
       displayName: 'Package Plugin'
@@ -137,6 +141,8 @@ jobs:
 
     - script: ./ci/macos/build-macos.sh
       displayName: 'Build Plugin'
+      env:
+        OBSPTZTag: $(OBSPTZTag)
 
     - script: ./ci/macos/package-macos.sh
       displayName: 'Package Plugin'
