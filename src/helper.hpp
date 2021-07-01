@@ -24,7 +24,7 @@ struct f3
 
 	f3 (const f3 &a) {*this=a;}
 	f3 (float a, float b, float c) { v[0]=a; v[1]=b; v[2]=c; }
-	f3 (const rect_s &a) { v[0]=(a.x0+a.x1)*0.5f; v[1]=(a.y0+a.y1)*0.5f; v[2]=sqrtf((a.x1-a.x0)*(a.y1-a.y0)); }
+	f3 (const rect_s &a) { v[0]=(float)(a.x0+a.x1)*0.5f; v[1]=(float)(a.y0+a.y1)*0.5f; v[2]=sqrtf((float)(a.x1-a.x0)*(float)(a.y1-a.y0)); }
 	f3 (const rectf_s &a) { v[0]=(a.x0+a.x1)*0.5f; v[1]=(a.y0+a.y1)*0.5f; v[2]=sqrtf((a.x1-a.x0)*(a.y1-a.y0)); }
 	f3 operator + (const f3 &a) { return f3 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2]); }
 	f3 operator - (const f3 &a) { return f3 (v[0]-a.v[0], v[1]-a.v[1], v[2]-a.v[2]); }
@@ -36,22 +36,22 @@ static inline bool isnan(const f3 &a) { return isnan(a.v[0]) || isnan(a.v[1]) ||
 
 static inline int get_width (const rect_s &r) { return r.x1 - r.x0; }
 static inline int get_height(const rect_s &r) { return r.y1 - r.y0; }
-static inline int get_width (const rectf_s &r) { return r.x1 - r.x0; }
-static inline int get_height(const rectf_s &r) { return r.y1 - r.y0; }
+static inline float get_width (const rectf_s &r) { return r.x1 - r.x0; }
+static inline float get_height(const rectf_s &r) { return r.y1 - r.y0; }
 
-static inline float common_length(float a0, float a1, float b0, float b1)
+static inline int common_length(int a0, int a1, int b0, int b1)
 {
 	// assumes a0 < a1, b0 < b1
-	// if (a1 <= b0) return 0.0f; // a0 < a1 < b0 < b1
+	// if (a1 <= b0) return 0; // a0 < a1 < b0 < b1
 	if (a0 <= b0 && b0 <= a1 && a1 <= b1) return a1 - b0; // a0 < b0 < a1 < b1
 	if (a0 <= b0 && b1 <= a1) return b1 - b0; // a0 < b0 < b1 < a1
 	if (b0 <= a0 && a1 <= b1) return a1 - a0; // b0 < a0 < a1 < b1
 	if (b0 <= a0 && a0 <= b1 && a0 <= b1) return b1 - a0; // b0 < a0 < b1 < a1
-	// if (b1 <= a0) return 0.0f; // b0 < b1 < a0 < a1
-	return 0.0f;
+	// if (b1 <= a0) return 0; // b0 < b1 < a0 < a1
+	return 0;
 }
 
-static inline float common_area(const rect_s &a, const rect_s &b)
+static inline int common_area(const rect_s &a, const rect_s &b)
 {
 	return common_length(a.x0, a.x1, b.x0, b.x1) * common_length(a.y0, a.y1, b.y0, b.y1);
 }

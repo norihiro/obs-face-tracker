@@ -8,7 +8,7 @@ class face_detector_dlib : public face_detector_base
 {
 	struct face_detector_dlib_private_s *p;
 
-	virtual void detect_main();
+	void detect_main() override;
 	public:
 		face_detector_dlib();
 		virtual ~face_detector_dlib();

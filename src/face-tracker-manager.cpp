@@ -39,14 +39,14 @@ inline void face_tracker_manager::attenuate_tracker()
 {
 	for (int j=0; j<detect_rects.size(); j++) {
 		rect_s r = detect_rects[j];
-		float a0 = (r.x1 - r.x0) * (r.y1 - r.y0);
-		float a_overlap_sum = 0;
+		int a0 = (r.x1 - r.x0) * (r.y1 - r.y0);
+		int a_overlap_sum = 0;
 		for (int i=trackers.size()-1; i>=0; i--) {
 			if (trackers[i].state != tracker_inst_s::tracker_state_available)
 				continue;
-			float a = common_area(r, trackers[i].rect);
+			int a = common_area(r, trackers[i].rect);
 			a_overlap_sum += a;
-			if (a>a0*0.1f && a_overlap_sum > a0*0.5f)
+			if (a*10>a0 && a_overlap_sum*2 > a0)
 				retire_tracker(i);
 		}
 	}
@@ -56,12 +56,11 @@ inline void face_tracker_manager::attenuate_tracker()
 			continue;
 		struct tracker_inst_s &t = trackers[i];
 
-		float a1 = (t.rect.x1 - t.rect.x0) * (t.rect.y1 - t.rect.y0);
-		float amax = a1*0.1f;
+		int a1 = (t.rect.x1 - t.rect.x0) * (t.rect.y1 - t.rect.y0);
+		float amax = (float)a1*0.1f;
 		for (int j=0; j<detect_rects.size(); j++) {
 			rect_s r = detect_rects[j];
-			float a0 = (r.x1 - r.x0) * (r.y1 - r.y0);
-			float a = common_area(r, t.rect);
+			float a = (float)common_area(r, t.rect);
 			if (a > amax) amax = a;
 		}
 

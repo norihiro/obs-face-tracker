@@ -24,10 +24,10 @@ texture_object::~texture_object()
 void texture_object::set_texture_y(uint8_t *data_, uint32_t linesize, uint32_t width, uint32_t height)
 {
 	data->dlib_img.set_size(height, width);
-	for (int i=0; i<height; i++) {
+	for (uint32_t i=0; i<height; i++) {
 		auto row = data->dlib_img[i];
 		uint8_t *line = data_+i*linesize;
-		for (int j=0; j<width; j++)
+		for (uint32_t j=0; j<width; j++)
 			row[j] = line[j];
 	}
 }

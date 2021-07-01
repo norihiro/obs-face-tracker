@@ -8,7 +8,7 @@ class face_tracker_dlib : public face_tracker_base
 {
 	struct face_tracker_dlib_private_s *p;
 
-	virtual void track_main();
+	void track_main() override;
 	public:
 		face_tracker_dlib();
 		virtual ~face_tracker_dlib();
