@@ -49,7 +49,7 @@ jobs:
     - task: Cache@2
       displayName: Restore cached OBS Studio builds
       inputs:
-        key: 'obs "$(OBSLatestTag)" | "$(Agent.OS)"'
+        key: 'obs "$(OBSLatestTag)" | obs-frontend-api-only | "$(Agent.OS)"'
         path: $(OBSPath)
 
     - script: ./ci/windows/prepare-obs-windows.cmd
@@ -64,20 +64,6 @@ jobs:
         OBSLatestTag: $(OBSLatestTag)
         buildWin32: $(buildWin32)
         buildWin64: $(buildWin64)
-
-    - task: MSBuild@1
-      displayName: 'Build OBS Studio 32-bit'
-      condition: eq(variables['buildWin32'], true)
-      inputs:
-        msbuildArguments: '/m /p:Configuration=$(build_config)'
-        solution: '$(OBSPath)\build32\obs-studio.sln'
-
-    - task: MSBuild@1
-      displayName: 'Build OBS Studio 64-bit'
-      condition: eq(variables['buildWin64'], true)
-      inputs:
-        msbuildArguments: '/m /p:Configuration=$(build_config)'
-        solution: '$(OBSPath)\build64\obs-studio.sln'
 
     - script: ./ci/windows/prepare-windows.cmd
       displayName: 'CMake Plugin'
