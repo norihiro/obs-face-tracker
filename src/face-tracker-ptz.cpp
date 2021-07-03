@@ -332,6 +332,70 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "ptz-viscaserial-address", 1);
 }
 
+static inline float raw2zoomfactor(int zoom)
+{
+	// TODO: configurable
+	return expf((float)zoom * (logf(20.0f) / 16384.f));
+}
+
+static inline int pan_flt2raw(float x)
+{
+	// TODO: configurable
+	// TODO: send zero with plus or minus sign, which makes small move.
+	if (x<0.0f) return -pan_flt2raw(-x);
+	if (x<0.50f) return  0;
+	if (x<1.25f) return  1;
+	if (x<1.85f) return  2;
+	if (x<2.30f) return  3;
+	if (x<2.50f) return  4;
+	if (x<2.70f) return  5;
+	if (x<2.90f) return  6;
+	if (x<3.10f) return  7;
+	if (x<3.30f) return  8;
+	if (x<3.60f) return  9;
+	if (x<4.15f) return 10;
+	if (x<5.25f) return 11;
+	if (x<7.50f) return 12;
+	if (x<12.0f) return 13;
+	if (x<17.0f) return 14;
+	if (x<22.0f) return 15;
+	if (x<28.5f) return 16;
+	if (x<35.0f) return 17;
+	if (x<41.5f) return 18;
+	if (x<51.5f) return 19;
+	if (x<66.5f) return 20;
+	if (x<81.5f) return 21;
+	if (x<96.5f) return 22;
+	if (x<112.5f) return 23;
+	else return 24;
+}
+
+static inline int tilt_flt2raw(float x)
+{
+	// TODO: configurable
+	// TODO: send zero with plus or minus sign, which makes small move.
+	if (x<0.0f) return -pan_flt2raw(-x);
+	if (x<0.50f) return  0;
+	if (x<1.25f) return  1;
+	if (x<1.85f) return  2;
+	if (x<2.30f) return  3;
+	if (x<4.15f) return  4;
+	if (x<5.35f) return  5;
+	if (x<7.00f) return  6;
+	if (x<9.00f) return  7;
+	if (x<11.0f) return  8;
+	if (x<13.5f) return  9;
+	if (x<16.5f) return 10;
+	if (x<20.5f) return 11;
+	if (x<26.5f) return 12;
+	if (x<34.5f) return 13;
+	if (x<43.5f) return 14;
+	if (x<53.5f) return 15;
+	if (x<64.0f) return 16;
+	if (x<74.5f) return 17;
+	else return 18;
+}
+
 static void tick_filter(struct face_tracker_ptz *s, float second)
 {
 	const float srwh = sqrtf((float)s->known_width * s->known_height);
@@ -370,12 +434,22 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
 	f3 uf = (e + s->filter_int) * second + (s->filter_lpf - filter_lpf_prev) * s->klpf;
 	const int u_max[3] = {0x18, 0x14, 0x7};
-	float kp[3] = {s->kp_x/srwh, s->kp_y/srwh, s->kp_z/srwh};
+	const float kp[3] = {
+		s->kp_x / srwh / raw2zoomfactor(s->ptz_query[2]),
+		s->kp_y / srwh / raw2zoomfactor(s->ptz_query[2]),
+		s->kp_z / srwh
+	};
 	for (int i=0; i<3; i++) {
-		s->u[i] = roundf(uf.v[i]);
-		if      (s->u[i] < -u_max[i]) s->u[i] = -u_max[i];
-		else if (s->u[i] > +u_max[i]) s->u[i] = +u_max[i];
-		// TODO: u[0] and u[1] should be divided by exp(zoom/16384 * log(20)
+		float x = uf.v[i] * kp[i];
+		int n;
+		switch(i) {
+			case 0:  n = pan_flt2raw(x); break;
+			case 1:  n = tilt_flt2raw(x); break;
+			default: n = (int)roundf(x); break;
+		}
+		if      (n < -u_max[i]) n = -u_max[i];
+		else if (n > +u_max[i]) n = +u_max[i];
+		s->u[i] = n;
 	}
 }
 
