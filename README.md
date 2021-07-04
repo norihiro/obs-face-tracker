@@ -72,6 +72,11 @@ This plugin is heavily under development. So far these issues are under investig
 ## License
 This plugin is licensed under GPLv2.
 
+## Sponsor
+- [Jimcom USA](https://www.jimcom.us/shop/) - a company of Live Streaming and Content Recording Professionals.
+  Jimcom is now providing a 20% discount and free shipping in the USA.
+  Visit https://www.jimcom.us/shop/ and enter the coupon code **FACETRACK20** when you order.
+
 ## Acknowledgments
 - [dlib](http://dlib.net/) - [git hub repository](https://github.com/davisking/dlib)
 - [OBS Project](https://obsproject.com/)
