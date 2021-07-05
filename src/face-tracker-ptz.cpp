@@ -166,6 +166,7 @@ static void ftptz_update(void *data, obs_data_t *settings)
 
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
+	s->debug_always_show = obs_data_get_bool(settings, "debug_always_show");
 
 	const char *ptz_type = obs_data_get_string(settings, "ptz-type");
 	if (!s->ftm->ptzdev || !s->ptz_type || strcmp(ptz_type, s->ptz_type)) {
@@ -290,6 +291,7 @@ static obs_properties_t *ftptz_properties(void *data)
 	{
 		obs_properties_t *pp = obs_properties_create();
 		obs_properties_add_bool(pp, "debug_faces", "Show face detection results");
+		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
 		obs_property_t *p = obs_properties_add_list(pp, "ptz-type", obs_module_text("PTZ Type"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 		obs_property_list_add_string(p, obs_module_text("None"), "sim");
 		obs_property_list_add_string(p, obs_module_text("VISCA over IP"), "visca-over-ip");
@@ -643,7 +645,7 @@ static void ftptz_video_render(void *data, gs_effect_t *)
 	auto *s = (struct face_tracker_ptz*)data;
 	obs_source_skip_video_filter(s->context);
 
-	if (s->debug_faces && !s->is_active)
+	if (s->debug_faces && (!s->is_active || s->debug_always_show))
 		draw_frame_info(s);
 }
 

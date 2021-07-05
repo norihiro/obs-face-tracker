@@ -32,6 +32,7 @@ struct face_tracker_ptz
 
 	bool debug_faces;
 	bool debug_notrack;
+	bool debug_always_show;
 
 	char *ptz_type;
 };
