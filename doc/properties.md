@@ -101,3 +101,7 @@ The Tracking results are displayed in green boxes.
 ### Stop tracking faces
 If enabled, whole image will be displayed and yellow box shows how cropped.
 This is useful to check how much margins are there around the cropped area.
+
+### Always show information
+If enabled, debugging properties listed above are effective even if the source is displayed on the program.
+This will be useful to make a demonstration of face-tracker itself.
