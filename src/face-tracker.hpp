@@ -38,4 +38,5 @@ struct face_tracker_filter
 
 	bool debug_faces;
 	bool debug_notrack;
+	bool debug_always_show;
 };

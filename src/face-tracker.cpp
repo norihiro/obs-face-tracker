@@ -101,6 +101,7 @@ static void ftf_update(void *data, obs_data_t *settings)
 
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
+	s->debug_always_show = obs_data_get_bool(settings, "debug_always_show");
 }
 
 static void *ftf_create(obs_data_t *settings, obs_source_t *context)
@@ -230,6 +231,7 @@ static obs_properties_t *ftf_properties(void *data)
 		obs_properties_t *pp = obs_properties_create();
 		obs_properties_add_bool(pp, "debug_faces", "Show face detection results");
 		obs_properties_add_bool(pp, "debug_notrack", "Stop tracking faces");
+		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
 		obs_properties_add_group(props, "debug", obs_module_text("Debugging"), OBS_GROUP_NORMAL, pp);
 	}
 
@@ -589,7 +591,7 @@ static inline void draw_frame_texture(struct face_tracker_filter *s)
 	uint32_t height = s->height_with_aspect;
 	const rectf_s &crop_cur = s->ftm->crop_cur;
 	const float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
-	const bool debug_notrack = s->debug_notrack && !s->is_active;
+	const bool debug_notrack = s->debug_notrack && (!s->is_active || s->debug_always_show);
 
 	// TODO: linear_srgb, 27 only?
 
@@ -618,7 +620,7 @@ static inline void draw_frame_info(struct face_tracker_filter *s)
 {
 	const rectf_s &crop_cur = s->ftm->crop_cur;
 
-	const bool debug_notrack = s->debug_notrack && !s->is_active;
+	const bool debug_notrack = s->debug_notrack && (!s->is_active || s->debug_always_show);
 	if (!debug_notrack) {
 		uint32_t width = s->width_with_aspect;
 		uint32_t height = s->height_with_aspect;
@@ -674,7 +676,7 @@ static inline void draw_frame(struct face_tracker_filter *s)
 {
 	draw_frame_texture(s);
 
-	if (s->debug_faces && !s->is_active)
+	if (s->debug_faces && (!s->is_active || s->debug_always_show))
 		draw_frame_info(s);
 }
 
