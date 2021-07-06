@@ -272,11 +272,11 @@ static obs_properties_t *ftptz_properties(void *data)
 	{
 		obs_properties_t *pp = obs_properties_create();
 		obs_property_t *p;
-		p = obs_properties_add_float(pp, "Kp_x_db", "Track Kp (Pan)",  -40.0, +20.0, 1.0);
+		p = obs_properties_add_float(pp, "Kp_x_db", "Track Kp (Pan)",  -40.0, +80.0, 1.0);
 		obs_property_float_set_suffix(p, " dB");
-		p = obs_properties_add_float(pp, "Kp_y_db", "Track Kp (Tilt)", -40.0, +20.0, 1.0);
+		p = obs_properties_add_float(pp, "Kp_y_db", "Track Kp (Tilt)", -40.0, +80.0, 1.0);
 		obs_property_float_set_suffix(p, " dB");
-		p = obs_properties_add_float(pp, "Kp_z_db", "Track Kp (Zoom)", -40.0, +20.0, 1.0);
+		p = obs_properties_add_float(pp, "Kp_z_db", "Track Kp (Zoom)", -40.0, +40.0, 1.0);
 		obs_property_float_set_suffix(p, " dB");
 		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
@@ -316,7 +316,7 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "preset_mask_track", true);
 	obs_data_set_default_bool(settings, "preset_mask_control", true);
 	face_tracker_manager::get_defaults(settings);
-	obs_data_set_default_double(settings, "track_z",  0.70); //  1.00  0.50  0.35
+	obs_data_set_default_double(settings, "track_z",  0.25); // Smaller is preferable for PTZ not to lose the face.
 	obs_data_set_default_double(settings, "track_y", +0.00); // +0.00 +0.10 +0.30
 	obs_data_set_default_double(settings, "scale_max", 10.0);
 
@@ -455,6 +455,7 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 		else if (n > +u_max[i]) n = +u_max[i];
 		s->u[i] = n;
 	}
+	debug_track("tick_filter: u: %d %d %d uf: %f %f %f", s->u[0], s->u[1], s->u[2], uf.v[0], uf.v[1], uf.v[2]);
 }
 
 static void ftf_activate(void *data)
@@ -471,10 +472,8 @@ static void ftf_deactivate(void *data)
 
 static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 {
-	debug_track("sending pantilt %d %d", s->u[0], s->u[1]);
 	s->ftm->ptzdev->pantilt(s->u[0], s->u[1]);
 
-	debug_track("sending zoom %d", s->u[2]);
 	if (s->u[2]>0)
 		s->ftm->ptzdev->zoom_wide(s->u[2]);
 	else if (s->u[2]<0)
