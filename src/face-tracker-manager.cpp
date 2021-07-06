@@ -215,9 +215,6 @@ inline void face_tracker_manager::stage_to_trackers()
 
 static inline void make_tracker_rects(face_tracker_manager *ftm)
 {
-	f3 e_tot(0.0f, 0.0f, 0.0f);
-	float sc_tot = 0.0f;
-	bool found = false;
 	ftm->tracker_rects.resize(0);
 	auto &trackers = ftm->trackers;
 	for (int i=0; i<trackers.size(); i++) {
