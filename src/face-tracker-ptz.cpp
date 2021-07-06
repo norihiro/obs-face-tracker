@@ -22,6 +22,7 @@ static gs_effect_t *effect_ft = NULL;
 enum ptz_cmd_state_e
 {
 	ptz_cmd_state_none = 0,
+	ptz_cmd_state_reset,
 	ptz_cmd_state_pantiltq,
 	ptz_cmd_state_zoomq,
 };
@@ -224,6 +225,7 @@ static bool ftptz_reset_tracking(obs_properties_t *, obs_property_t *, void *dat
 	s->detect_err = f3(0, 0, 0);
 	s->filter_int = f3(0, 0, 0);
 	s->filter_lpf = f3(0, 0, 0);
+	s->ptz_request_reset = true;
 
 	return true;
 }
@@ -509,6 +511,9 @@ static inline void recvsend_ptz_cmd(struct face_tracker_ptz *s)
 			};
 			cmd_next = ptz_cmd_state_pantiltq;
 			break;
+		default:
+			cmd_next = ptz_cmd_state_none;
+			break;
 	}
 
 	// skip unnecessary command
@@ -523,7 +528,14 @@ static inline void recvsend_ptz_cmd(struct face_tracker_ptz *s)
 			cmd_next = ptz_cmd_state_none;
 	}
 
+	if (s->ptz_request_reset)
+		cmd_next = ptz_cmd_state_reset;
+
 	switch (cmd_next) {
+		case ptz_cmd_state_reset:
+			s->ftm->ptzdev->pantilt_home();
+			s->ptz_request_reset = false;
+			break;
 		case ptz_cmd_state_pantiltq:
 			s->ftm->ptzdev->pantilt_inquiry();
 			s->ftm->ptz_last_cmd = ptz_cmd_state_pantiltq;

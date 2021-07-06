@@ -29,6 +29,7 @@ struct face_tracker_ptz
 	int u_prev[3];
 	int u_prev1[3];
 	int ptz_query[3];
+	bool ptz_request_reset;
 
 	bool debug_faces;
 	bool debug_notrack;
