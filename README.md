@@ -20,6 +20,8 @@ See [Properties](doc/properties.md) for the description of each property.
 Alpha version of PTZ control is provided as an video filter.
 Open filters for a source on OBS Studio, then add `Face Tracker PTZ` from the add button on `Audio/Video Filters`.
 
+See [Properties](doc/properties-ptz.md) for the description of each property.
+
 ## Wiki
 - [Install procedure for macOS](https://github.com/norihiro/obs-face-tracker/wiki/Install-MacOS)
 - [FAQ](https://github.com/norihiro/obs-face-tracker/wiki/FAQ)
