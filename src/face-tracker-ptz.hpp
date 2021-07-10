@@ -36,4 +36,5 @@ struct face_tracker_ptz
 	bool debug_always_show;
 
 	char *ptz_type;
+	int ptz_max_x, ptz_max_y, ptz_max_z;
 };

@@ -17,6 +17,10 @@
 // #define debug_track(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
 #define debug_track(fmt, ...)
 
+#define PTZ_MAX_X 0x18
+#define PTZ_MAX_Y 0x14
+#define PTZ_MAX_Z 0x07
+
 static gs_effect_t *effect_ft = NULL;
 
 enum ptz_cmd_state_e
@@ -173,6 +177,10 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
 	s->debug_always_show = obs_data_get_bool(settings, "debug_always_show");
 
+	s->ptz_max_x = obs_data_get_int(settings, "ptz_max_x");
+	s->ptz_max_y = obs_data_get_int(settings, "ptz_max_y");
+	s->ptz_max_z = obs_data_get_int(settings, "ptz_max_z");
+
 	const char *ptz_type = obs_data_get_string(settings, "ptz-type");
 	if (!s->ftm->ptzdev || !s->ptz_type || strcmp(ptz_type, s->ptz_type)) {
 		if (s->ftm->ptzdev)
@@ -310,6 +318,9 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_properties_add_text(pp, "ptz-viscaserial-port", obs_module_text("Serial port"), OBS_TEXT_DEFAULT);
 		obs_properties_add_int(pp, "ptz-viscaserial-address", obs_module_text("Address"), 0, 7, 1);
 #endif // WITH_PTZ_SERIAL
+		obs_properties_add_int_slider(pp, "ptz_max_x", "Max control (pan)",  0, PTZ_MAX_X, 1);
+		obs_properties_add_int_slider(pp, "ptz_max_y", "Max control (tilt)", 0, PTZ_MAX_Y, 1);
+		obs_properties_add_int_slider(pp, "ptz_max_z", "Max control (zoom)", 0, PTZ_MAX_Z, 1);
 		obs_properties_add_bool(pp, "invert_x", obs_module_text("Invert control (Pan)"));
 		obs_properties_add_bool(pp, "invert_y", obs_module_text("Invert control (Tilt)"));
 		obs_properties_add_bool(pp, "invert_z", obs_module_text("Invert control (Zoom)"));
@@ -344,6 +355,9 @@ static void ftptz_get_defaults(obs_data_t *settings)
 #ifdef WITH_PTZ_SERIAL
 	obs_data_set_default_int(settings, "ptz-viscaserial-address", 1);
 #endif // WITH_PTZ_SERIAL
+	obs_data_set_default_int(settings, "ptz_max_x", PTZ_MAX_X);
+	obs_data_set_default_int(settings, "ptz_max_y", PTZ_MAX_Y);
+	obs_data_set_default_int(settings, "ptz_max_z", PTZ_MAX_Z);
 }
 
 static inline float raw2zoomfactor(int zoom)
@@ -447,7 +461,7 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 	s->filter_int += e_int * (second * s->ki);
 	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
 	f3 uf = (e + s->filter_int) * second + (s->filter_lpf - filter_lpf_prev) * s->klpf;
-	const int u_max[3] = {0x18, 0x14, 0x7};
+	const int u_max[3] = {s->ptz_max_x, s->ptz_max_y, s->ptz_max_z};
 	const float kp[3] = {
 		s->kp_x / srwh / raw2zoomfactor(s->ptz_query[2]),
 		s->kp_y / srwh / raw2zoomfactor(s->ptz_query[2]),
