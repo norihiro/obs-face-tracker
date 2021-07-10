@@ -153,6 +153,7 @@ static bool ftf_reset_tracking(obs_properties_t *, obs_property_t *, void *data)
 	s->filter_int_out = f3(w*0.5f, h*0.5f, z);
 	s->filter_int = f3(0, 0, 0);
 	s->filter_lpf = f3(0, 0, 0);
+	s->ftm->reset_requested = true;
 
 	return true;
 }

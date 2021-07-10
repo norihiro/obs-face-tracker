@@ -32,6 +32,7 @@ class face_tracker_manager
 	public: // properties
 		float upsize_l, upsize_r, upsize_t, upsize_b;
 		volatile float scale;
+		volatile bool reset_requested;
 
 	public: // realtime status
 		rectf_s crop_cur;

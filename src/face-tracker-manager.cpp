@@ -232,6 +232,12 @@ static inline void make_tracker_rects(face_tracker_manager *ftm)
 
 void face_tracker_manager::tick(float second)
 {
+	if (reset_requested) {
+		for (int i=trackers.size()-1; i>=0; i--)
+			trackers[i].att = 0.0f;
+		reset_requested = false;
+	}
+
 	if (detect_tick==tick_cnt)
 		next_tick_stage_to_detector = tick_cnt + (int)(2.0f/second); // detect for each _ second(s).
 
