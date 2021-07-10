@@ -120,19 +120,23 @@ static obs_data_t *get_ptz_settings(obs_data_t *settings)
 		{NULL, NULL, NULL}
 	};
 
+#ifdef WITH_PTZ_SERIAL
 	const struct ptz_copy_setting_item_s list_viscaserial[] = {
 		{"address", "ptz-viscaserial-address", copy_int},
 		{"port", "ptz-viscaserial-port", copy_string},
 		{NULL, NULL, NULL}
 	};
+#endif // WITH_PTZ_SERIAL
 
 	ptz_copy_settings(data, settings, list_generic);
 
 	const char *type = obs_data_get_string(data, "type");
 	if (!strcmp(type, "visca-over-ip"))
 		ptz_copy_settings(data, settings, list_viscaip);
+#ifdef WITH_PTZ_SERIAL
 	else if (!strcmp(type, "visca"))
 		ptz_copy_settings(data, settings, list_viscaserial);
+#endif //WITH_PTZ_SERIAL
 
 	return data;
 }
@@ -297,11 +301,15 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_property_t *p = obs_properties_add_list(pp, "ptz-type", obs_module_text("PTZ Type"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 		obs_property_list_add_string(p, obs_module_text("None"), "sim");
 		obs_property_list_add_string(p, obs_module_text("VISCA over IP"), "visca-over-ip");
+#ifdef WITH_PTZ_SERIAL
 		obs_property_list_add_string(p, obs_module_text("VISCA over serial port"), "visca");
+#endif // WITH_PTZ_SERIAL
 		obs_properties_add_text(pp, "ptz-viscaip-address", obs_module_text("IP address"), OBS_TEXT_DEFAULT);
 		obs_properties_add_int(pp, "ptz-viscaip-port", obs_module_text("UDP port"), 1, 65535, 1);
+#ifdef WITH_PTZ_SERIAL
 		obs_properties_add_text(pp, "ptz-viscaserial-port", obs_module_text("Serial port"), OBS_TEXT_DEFAULT);
 		obs_properties_add_int(pp, "ptz-viscaserial-address", obs_module_text("Address"), 0, 7, 1);
+#endif // WITH_PTZ_SERIAL
 		obs_properties_add_bool(pp, "invert_x", obs_module_text("Invert control (Pan)"));
 		obs_properties_add_bool(pp, "invert_y", obs_module_text("Invert control (Tilt)"));
 		obs_properties_add_bool(pp, "invert_z", obs_module_text("Invert control (Zoom)"));
@@ -333,7 +341,9 @@ static void ftptz_get_defaults(obs_data_t *settings)
 
 	obs_data_set_default_string(settings, "ptz-type", "visca-over-ip");
 	obs_data_set_default_int(settings, "ptz-viscaip-port", 1259);
+#ifdef WITH_PTZ_SERIAL
 	obs_data_set_default_int(settings, "ptz-viscaserial-address", 1);
+#endif // WITH_PTZ_SERIAL
 }
 
 static inline float raw2zoomfactor(int zoom)

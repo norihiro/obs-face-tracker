@@ -6,6 +6,8 @@ set(PLUGIN_AUTHOR "Norihiro Kamae")
 set(MACOS_BUNDLEID "net.nagater.obs-face-tracker")
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
+option(WITH_PTZ_SERIAL "Enable to connect PTZ camera through serial-port" OFF)
+
 set(CMAKE_PREFIX_PATH "${QTDIR}")
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -19,8 +21,12 @@ endif()
 
 find_package(LibObs REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
-find_package(Qt5SerialPort REQUIRED)
 find_package(Qt5Network REQUIRED)
+set(plugin_additional_libs ${Qt5Network_LIBRARIES})
+if(WITH_PTZ_SERIAL)
+find_package(Qt5SerialPort REQUIRED)
+set(plugin_additional_libs ${Qt5SerialPort_LIBRARIES})
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE True)
 set(DLIB_NO_GUI_SUPPORT ON)
@@ -97,8 +103,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	Qt5::Core
 	Qt5::Widgets
 	dlib
-	${Qt5SerialPort_LIBRARIES}
-	${Qt5Network_LIBRARIES}
+	${plugin_additional_libs}
 )
 
 # --- End of section ---
