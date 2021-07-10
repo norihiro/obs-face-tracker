@@ -237,6 +237,7 @@ static bool ftptz_reset_tracking(obs_properties_t *, obs_property_t *, void *dat
 	s->detect_err = f3(0, 0, 0);
 	s->filter_int = f3(0, 0, 0);
 	s->filter_lpf = f3(0, 0, 0);
+	s->ftm->reset_requested = true;
 	s->ptz_request_reset = true;
 
 	return true;
