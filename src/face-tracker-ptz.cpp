@@ -277,7 +277,6 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_properties_add_float(pp, "track_z", obs_module_text("Zoom"), 0.1, 2.0, 0.1);
 		obs_properties_add_float(pp, "track_x", obs_module_text("X"), -1.0, +1.0, 0.05);
 		obs_properties_add_float(pp, "track_y", obs_module_text("Y"), -1.0, +1.0, 0.05);
-		obs_properties_add_float(pp, "scale_max", obs_module_text("Scale max"), 1.0, 20.0, 1.0);
 		obs_properties_add_group(props, "track", obs_module_text("Tracking target location"), OBS_GROUP_NORMAL, pp);
 	}
 
@@ -337,7 +336,6 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	face_tracker_manager::get_defaults(settings);
 	obs_data_set_default_double(settings, "track_z",  0.25); // Smaller is preferable for PTZ not to lose the face.
 	obs_data_set_default_double(settings, "track_y", +0.00); // +0.00 +0.10 +0.30
-	obs_data_set_default_double(settings, "scale_max", 10.0);
 
 	obs_data_set_default_double(settings, "Kp_x_db", 0.0);
 	obs_data_set_default_double(settings, "Kp_y_db", 0.0);
