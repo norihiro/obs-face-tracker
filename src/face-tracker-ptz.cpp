@@ -338,9 +338,9 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "track_z",  0.25); // Smaller is preferable for PTZ not to lose the face.
 	obs_data_set_default_double(settings, "track_y", +0.00); // +0.00 +0.10 +0.30
 
-	obs_data_set_default_double(settings, "Kp_x_db", 0.0);
-	obs_data_set_default_double(settings, "Kp_y_db", 0.0);
-	obs_data_set_default_double(settings, "Kp_z_db", 0.0);
+	obs_data_set_default_double(settings, "Kp_x_db", 50.0);
+	obs_data_set_default_double(settings, "Kp_y_db", 50.0);
+	obs_data_set_default_double(settings, "Kp_z_db", 40.0);
 	obs_data_set_default_double(settings, "Ki", 0.3);
 	obs_data_set_default_double(settings, "Td", 0.42);
 	obs_data_set_default_double(settings, "Tdlpf", 2.0);
