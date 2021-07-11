@@ -243,6 +243,28 @@ static bool ftptz_reset_tracking(obs_properties_t *, obs_property_t *, void *dat
 	return true;
 }
 
+static void set_properties_visible(obs_properties_t *props, const char **names, bool visible)
+{
+	for (; *names; names++) {
+		obs_property_t *prop = obs_properties_get(props, *names);
+		if (prop) obs_property_set_visible(prop, visible);
+	}
+}
+
+static bool ptz_type_modified(obs_properties_t *props, obs_property_t *p, obs_data_t *settings)
+{
+	const char *ptz_type = obs_data_get_string(settings, "ptz-type");
+
+	const char *props_viscaip[] = {
+		"ptz-viscaip-address",
+		"ptz-viscaip-port",
+		NULL
+	};
+	set_properties_visible(props, props_viscaip, !strcmp(ptz_type, "visca-over-ip"));
+
+	return true;
+}
+
 static obs_properties_t *ftptz_properties(void *data)
 {
 	auto *s = (struct face_tracker_ptz*)data;
@@ -312,6 +334,7 @@ static obs_properties_t *ftptz_properties(void *data)
 #ifdef WITH_PTZ_SERIAL
 		obs_property_list_add_string(p, obs_module_text("VISCA over serial port"), "visca");
 #endif // WITH_PTZ_SERIAL
+		obs_property_set_modified_callback(p, ptz_type_modified);
 		obs_properties_add_text(pp, "ptz-viscaip-address", obs_module_text("IP address"), OBS_TEXT_DEFAULT);
 		obs_properties_add_int(pp, "ptz-viscaip-port", obs_module_text("UDP port"), 1, 65535, 1);
 #ifdef WITH_PTZ_SERIAL
