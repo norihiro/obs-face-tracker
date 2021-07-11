@@ -79,3 +79,34 @@ static inline rectf_s f3_to_rectf(const f3 &u, float w, float h)
 	r.y1 = u.v[1] + s2h * u.v[2] * 0.5f;
 	return r;
 }
+
+static inline void draw_rect_upsize(rect_s r, float upsize_l=0.0f, float upsize_r=0.0f, float upsize_t=0.0f, float upsize_b=0.0f)
+{
+	if (r.x0>=r.x1 || r.y0>=r.y1)
+		return;
+	int w = r.x1-r.x0;
+	int h = r.y1-r.y0;
+	float dx0 = w * upsize_l;
+	float dx1 = w * upsize_r;
+	float dy0 = h * upsize_t;
+	float dy1 = h * upsize_b;
+
+	gs_render_start(false);
+
+	if (std::abs(dx0)>=0.5f || std::abs(dy1)>=0.5f || std::abs(dx1)>=0.5f || std::abs(dy0)>=0.5f) {
+		gs_vertex2f((float)r.x0, (float)r.y0); gs_vertex2f((float)r.x0, (float)r.y1);
+		gs_vertex2f((float)r.x0, (float)r.y1); gs_vertex2f((float)r.x1, (float)r.y1);
+		gs_vertex2f((float)r.x1, (float)r.y1); gs_vertex2f((float)r.x1, (float)r.y0);
+		gs_vertex2f((float)r.x1, (float)r.y0); gs_vertex2f((float)r.x0, (float)r.y0);
+	}
+	r.x0 -= (int)dx0;
+	r.x1 += (int)dx1;
+	r.y0 -= (int)dy0;
+	r.y1 += (int)dy1;
+	gs_vertex2f((float)r.x0, (float)r.y0); gs_vertex2f((float)r.x0, (float)r.y1);
+	gs_vertex2f((float)r.x0, (float)r.y1); gs_vertex2f((float)r.x1, (float)r.y1);
+	gs_vertex2f((float)r.x1, (float)r.y1); gs_vertex2f((float)r.x1, (float)r.y0);
+	gs_vertex2f((float)r.x1, (float)r.y0); gs_vertex2f((float)r.x0, (float)r.y0);
+
+	gs_render_stop(GS_LINES);
+}

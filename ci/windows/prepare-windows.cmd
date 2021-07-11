@@ -10,6 +10,13 @@ if not exist dlib (
 	cd ..
 )
 
+if not exist obs-ptz (
+	git clone https://github.com/norihiro/obs-ptz.git
+	cd obs-ptz
+	git checkout %OBSPTZTag%
+	cd ..
+)
+
 if "%buildWin32%" == "false" goto skippedWin32
 mkdir build32
 cd build32

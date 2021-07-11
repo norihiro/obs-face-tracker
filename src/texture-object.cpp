@@ -5,6 +5,10 @@
 #include "plugin-macros.generated.h"
 #include "texture-object.h"
 
+static uint32_t formats_found = 0;
+#define TEST_FORMAT(f) (0<=(f) && (f)<32 && !(formats_found&(1<<(uint32_t)(f))))
+#define SET_FORMAT(f) (0<=(f) && (f)<32 && (formats_found|=(1<<(uint32_t)(f))))
+
 struct texture_object_private_s
 {
 	dlib::array2d<unsigned char> dlib_img;
@@ -30,6 +34,97 @@ void texture_object::set_texture_y(uint8_t *data_, uint32_t linesize, uint32_t w
 		for (uint32_t j=0; j<width; j++)
 			row[j] = line[j];
 	}
+}
+
+static void obsframe2dlib_bgrx(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale)
+{
+	const int nr = img.nr();
+	const int nc = img.nc();
+	for (int i=0; i<nr; i++) {
+		auto row = img[i];
+		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
+		for (int j=0, js=0; j<nc; j++, js+=4*scale) {
+			int r = line[js+2];
+			int g = line[js+1];
+			int b = line[js+0];
+			row[j] = (+306*r +601*g +117*b)/1024; // BT.601
+		}
+	}
+}
+
+static void obsframe2dlib_rgbx(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale)
+{
+	const int nr = img.nr();
+	const int nc = img.nc();
+	for (int i=0; i<nr; i++) {
+		auto row = img[i];
+		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
+		for (int j=0, js=0; j<nc; j++, js+=4*scale) {
+			int r = line[js+0];
+			int g = line[js+1];
+			int b = line[js+2];
+			row[j] = (+306*r +601*g +117*b)/1024; // BT.601
+		}
+	}
+}
+
+static void obsframe2dlib_uyvy(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale)
+{
+	const int nr = img.nr();
+	const int nc = img.nc();
+	for (int i=0; i<nr; i++) {
+		auto row = img[i];
+		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
+		for (int j=0, js=0; j<nc; j++, js+=2*scale) {
+			row[j] = line[js+1];
+		}
+	}
+}
+
+static void obsframe2dlib_y(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale)
+{
+	const int nr = img.nr();
+	const int nc = img.nc();
+	for (int i=0; i<nr; i++) {
+		auto row = img[i];
+		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
+		for (int j=0, js=0; j<nc; j++, js+=scale) {
+			row[j] = line[js];
+		}
+	}
+}
+
+void texture_object::set_texture_obsframe_scale(const struct obs_source_frame *frame, int scale)
+{
+	if (TEST_FORMAT(frame->format))
+		blog(LOG_INFO, "received frame format=%d", frame->format);
+	data->dlib_img.set_size(frame->height/scale, frame->width/scale);
+	switch(frame->format) {
+		case VIDEO_FORMAT_BGRX:
+		case VIDEO_FORMAT_BGRA:
+			obsframe2dlib_bgrx(data->dlib_img, frame, scale);
+			break;
+		case VIDEO_FORMAT_RGBA:
+			obsframe2dlib_rgbx(data->dlib_img, frame, scale);
+			break;
+		case VIDEO_FORMAT_UYVY:
+			obsframe2dlib_uyvy(data->dlib_img, frame, scale);
+			break;
+		case VIDEO_FORMAT_I420:
+		case VIDEO_FORMAT_I422:
+		case VIDEO_FORMAT_I444:
+		case VIDEO_FORMAT_I40A:
+		case VIDEO_FORMAT_I42A:
+		case VIDEO_FORMAT_YUVA:
+		case VIDEO_FORMAT_Y800:
+		case VIDEO_FORMAT_NV12:
+			obsframe2dlib_y(data->dlib_img, frame, scale);
+			break;
+		default:
+			if (TEST_FORMAT(frame->format))
+				blog(LOG_ERROR, "unsupported frame format %d", frame->format);
+	}
+	SET_FORMAT(frame->format);
 }
 
 const dlib::array2d<unsigned char> &texture_object::get_dlib_img()
