@@ -16,6 +16,10 @@ echo "=> Preparing package build"
 GIT_TAG=$(git describe --tags --long --always)
 GIT_TAG_ONLY=$(git describe --tags --always)
 
+if test "$GIT_TAG" == "$GIT_TAG_ONLY"; then
+	RELEASE_MODE='false-by-git-tag'
+fi
+
 echo "=> Modifying $PLUGIN_NAME.so"
 mkdir -p lib
 
