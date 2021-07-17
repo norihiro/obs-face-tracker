@@ -144,6 +144,13 @@ jobs:
       env:
         OBSPTZTag: $(OBSPTZTag)
 
+    - task: InstallAppleCertificate@2
+      displayName: 'Install release signing certificates'
+      condition: eq(variables['isReleaseMode'], true)
+      inputs:
+        certSecureFile: 'Certificates.p12'
+        certPwd: $(secrets.macOS.certificatesImportPassword)
+
     - script: ./ci/macos/package-macos.sh
       displayName: 'Package Plugin'
       env:
