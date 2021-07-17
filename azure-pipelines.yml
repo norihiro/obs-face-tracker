@@ -1,5 +1,4 @@
 variables:
-  macosSignAndNotarize: false
   isReleaseMode: ${{ and(eq(variables['isReleaseMode'], true), startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}
   buildWin32: false
   buildWin64: true
