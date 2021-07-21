@@ -1,10 +1,15 @@
 variables:
-  macosSignAndNotarize: false
-  isReleaseMode: ${{ and(eq(variables['isReleaseMode'], true), startsWith(variables['Build.SourceBranch'], 'refs/tags/')) }}
-  buildWin32: false
-  buildWin64: true
-  OBSLatestTag: 26.1.2
-  OBSPTZTag: 987bd22
+  - group: variables-macOS
+  - name: isReleaseMode
+    value: true
+  - name: buildWin32
+    value: false
+  - name: buildWin64
+    value: true
+  - name: OBSLatestTag
+    value: 26.1.2
+  - name: OBSPTZTag
+    value: 987bd22
 
 trigger:
   branches:
@@ -144,10 +149,21 @@ jobs:
       env:
         OBSPTZTag: $(OBSPTZTag)
 
+    - task: InstallAppleCertificate@2
+      displayName: 'Install release signing certificates'
+      inputs:
+        certSecureFile: 'Certificates.p12'
+        certPwd: $(secrets.macOS.certificatesImportPassword)
+
     - script: ./ci/macos/package-macos.sh
       displayName: 'Package Plugin'
       env:
-        RELEASE_MODE: $(isReleaseMode)
+        RELEASE_MODE: True
+        CODE_SIGNING_IDENTITY: $(secrets.macOS.codeSigningIdentity)
+        INSTALLER_SIGNING_IDENTITY: $(secrets.macOS.installerSigningIdentity)
+        AC_USERNAME: $(secrets.macOS.notarization.username)
+        AC_PASSWORD: $(secrets.macOS.notarization.password)
+        AC_PROVIDER_SHORTNAME: $(secrets.macOS.notarization.providerShortName)
 
     - task: PublishBuildArtifacts@1
       inputs:
