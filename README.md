@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This plugin provide a filter for face detection and face tracking for mainly a speaking person.
+This plugin provide video filters for face detection and face tracking for mainly a speaking person.
 
 This plugin employs [dlib](http://dlib.net/) on face detection and object tracking.
 The frame of the source is periodically taken to face detection algorithm.
@@ -10,8 +10,8 @@ Once a face is found, the face is tracked.
 Based on the location and the size of the face under tracking, the frame will be cropped.
 
 ## Usage
-### Effect Filter
-The face tracker is implemented as an effect filter.
+### Software Zoom Filter
+The face tracker is implemented as an effect filter so that any video source can have the face tracker.
 Open filters for a source on OBS Studio, then add `Face Tracker` from the add button on `Effect Filters`.
 
 See [Properties](doc/properties.md) for the description of each property.
@@ -81,11 +81,11 @@ This plugin is licensed under GPLv2.
 
 ## Sponsor
 - [Jimcom USA](https://www.jimcom.us/shop/) - a company of Live Streaming and Content Recording Professionals.
+  Development of PTZ camera control is supported by Jimcom.
   Jimcom is now providing a 20% discount and free shipping in the USA.
   Visit https://www.jimcom.us/shop/ and enter the coupon code **FACETRACK20** when you order.
 
 ## Acknowledgments
-- [Jimcom](https://www.jimcom.us/) - Development of PTZ camera control is supported by Jimcom USA.
 - [obz-ptz](https://github.com/glikely/obs-ptz) - PTZ camera interface is based on this code.
 - [dlib](http://dlib.net/) - [git hub repository](https://github.com/davisking/dlib)
 - [OBS Project](https://obsproject.com/)
