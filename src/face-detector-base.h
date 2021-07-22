@@ -12,6 +12,7 @@ class face_detector_base
 	pthread_cond_t cond;
 	bool running;
 	volatile bool request_stop;
+	void *leak_test;
 
 	static void* thread_routine(void *);
 	virtual void detect_main() = 0;

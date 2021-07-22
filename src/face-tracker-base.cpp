@@ -1,6 +1,7 @@
 #include <obs-module.h>
 #include <util/platform.h>
 #include <util/threading.h>
+#include <util/bmem.h>
 #include "plugin-macros.generated.h"
 #include "face-tracker-base.h"
 #ifndef _WIN32
@@ -16,10 +17,12 @@ face_tracker_base::face_tracker_base()
 	pthread_cond_init(&cond, NULL);
 	stop_requested = 0;
 	running = 0;
+	leak_test = bmalloc(1);
 }
 
 face_tracker_base::~face_tracker_base()
 {
+	bfree(leak_test);
 	pthread_cond_destroy(&cond);
 	pthread_mutex_destroy(&mutex);
 }
