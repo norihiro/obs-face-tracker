@@ -139,6 +139,8 @@ static void ftf_destroy(void *data)
 	s->stagesurface = NULL;
 	obs_leave_graphics();
 
+	delete s->ftm;
+
 	bfree(s);
 }
 
