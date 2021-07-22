@@ -25,12 +25,10 @@ class ft_manager_for_ftf : public face_tracker_manager
 {
 	public:
 		struct face_tracker_filter *ctx;
-		class texture_object *cvtex_cache;
 
 	public:
 		ft_manager_for_ftf(struct face_tracker_filter *ctx_) {
 			ctx = ctx_;
-			cvtex_cache = NULL;
 		}
 
 		~ft_manager_for_ftf()
@@ -40,15 +38,10 @@ class ft_manager_for_ftf : public face_tracker_manager
 
 		inline void release_cvtex()
 		{
-			if (cvtex_cache)
-				cvtex_cache->release();
-			cvtex_cache = NULL;
 		}
 
 		class texture_object *get_cvtex() override
 		{
-			if (cvtex_cache)
-				return cvtex_cache;
 			if (scale<1.0f) scale = 1.0f;
 			scale_texture(ctx, scale);
 			if (stage_to_surface(ctx, scale))
