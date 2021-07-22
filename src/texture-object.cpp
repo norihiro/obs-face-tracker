@@ -1,6 +1,7 @@
 #include <obs-module.h>
 #include <util/platform.h>
 #include <util/threading.h>
+#include <util/bmem.h>
 #include <dlib/array2d/array2d_kernel.h>
 #include "plugin-macros.generated.h"
 #include "texture-object.h"
@@ -12,16 +13,19 @@ static uint32_t formats_found = 0;
 struct texture_object_private_s
 {
 	dlib::array2d<unsigned char> dlib_img;
+	void *leak_test;
 };
 
 texture_object::texture_object()
 {
 	ref = 1;
 	data = new texture_object_private_s;
+	data->leak_test = bmalloc(1);
 }
 
 texture_object::~texture_object()
 {
+	bfree(data->leak_test);
 	delete data;
 }
 

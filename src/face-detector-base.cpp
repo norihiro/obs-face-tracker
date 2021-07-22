@@ -1,6 +1,7 @@
 #include <obs-module.h>
 #include <util/platform.h>
 #include <util/threading.h>
+#include <util/bmem.h>
 #include "plugin-macros.generated.h"
 #include "face-detector-base.h"
 #ifndef _WIN32
@@ -16,10 +17,12 @@ face_detector_base::face_detector_base()
 	pthread_cond_init(&cond, NULL);
 	request_stop = 0;
 	running = 0;
+	leak_test = bmalloc(1);
 }
 
 face_detector_base::~face_detector_base()
 {
+	bfree(leak_test);
 	pthread_cond_destroy(&cond);
 	pthread_mutex_destroy(&mutex);
 }

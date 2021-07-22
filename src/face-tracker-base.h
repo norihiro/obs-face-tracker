@@ -14,6 +14,7 @@ class face_tracker_base
 	volatile bool stop_requested;
 	volatile bool stopped;
 	volatile bool suspend_requested;
+	void *leak_test;
 
 	static void* thread_routine(void *);
 	virtual void track_main() = 0;

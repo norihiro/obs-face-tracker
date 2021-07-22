@@ -10,6 +10,7 @@
 // #define debug_detect(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
 #define debug_track(fmt, ...)
 #define debug_detect(fmt, ...)
+#define debug_track_thread(fmt, ...) // blog(LOG_INFO, fmt, __VA_ARGS__)
 
 face_tracker_manager::face_tracker_manager()
 {
@@ -24,12 +25,27 @@ face_tracker_manager::face_tracker_manager()
 
 face_tracker_manager::~face_tracker_manager()
 {
+	for (auto &t : trackers_idlepool) {
+		if (t.tracker) {
+			t.tracker->stop();
+			delete t.tracker;
+			t.tracker = NULL;
+		}
+	}
+	for (auto &t : trackers) {
+		if (t.tracker) {
+			t.tracker->stop();
+			delete t.tracker;
+			t.tracker = NULL;
+		}
+	}
 	detect->stop();
 	delete detect;
 }
 
 inline void face_tracker_manager::retire_tracker(int ix)
 {
+	debug_track_thread("%p retire_tracker(%d %p)", this, ix, trackers[ix].tracker);
 	trackers_idlepool.push_back(trackers[ix]);
 	trackers[ix].tracker->request_suspend();
 	trackers.erase(trackers.begin()+ix);
@@ -98,7 +114,7 @@ inline void face_tracker_manager::copy_detector_to_tracker()
 		return;
 
 	if (detect_rects.size()<=0) {
-		trackers.erase(trackers.begin() + i_tracker);
+		retire_tracker(i_tracker);
 		return;
 	}
 
@@ -149,13 +165,20 @@ inline void face_tracker_manager::stage_to_detector()
 			trackers_idlepool[0].tracker = NULL;
 			trackers_idlepool.pop_front();
 		}
-		else
+		else {
+			debug_track_thread("%p No available idle tracker, creating new tracker thread. There are %d existing thread.", this, trackers.size());
 			t.tracker = new face_tracker_dlib();
+			for (int i=0; i<trackers.size(); i++) {
+				debug_track_thread("%p existing tracker[%d]: state=%d", this, i, (int)trackers[i].state);
+			}
+		}
 		t.crop_tracker = crop_cur;
 		t.state = tracker_inst_s::tracker_state_e::tracker_state_reset_texture;
 		t.tick_cnt = tick_cnt;
 		t.tracker->set_texture(cvtex);
 		trackers.push_back(t);
+
+		cvtex->release();
 	}
 
 	detect->unlock();
@@ -167,6 +190,7 @@ inline int face_tracker_manager::stage_surface_to_tracker(struct tracker_inst_s 
 		t.tracker->set_texture(cvtex);
 		t.crop_tracker = crop_cur;
 		t.tracker->signal();
+		cvtex->release();
 	}
 	else
 		return 1;
