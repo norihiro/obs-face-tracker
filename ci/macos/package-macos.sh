@@ -47,6 +47,8 @@ install_name_tool \
 		@executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui \
 	-change /tmp/obsdeps/lib/QtCore.framework/Versions/5/QtCore \
 		@executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore \
+	-change /tmp/obsdeps/lib/QtNetwork.framework/Versions/5/QtNetwork \
+		@executable_path/../Frameworks/QtNetwork.framework/Versions/5/QtNetwork \
 	./build/$PLUGIN_NAME.so
 
 copy_local_dylib ./build/${PLUGIN_NAME}.so
