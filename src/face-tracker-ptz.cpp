@@ -75,6 +75,8 @@ class ft_manager_for_ftptz : public face_tracker_manager
 
 		class texture_object *get_cvtex() override
 		{
+			if (cvtex_cache)
+				cvtex_cache->addref();
 			return cvtex_cache;
 		};
 };
