@@ -177,6 +177,8 @@ inline void face_tracker_manager::stage_to_detector()
 		t.tick_cnt = tick_cnt;
 		t.tracker->set_texture(cvtex);
 		trackers.push_back(t);
+
+		cvtex->release();
 	}
 
 	detect->unlock();
@@ -188,6 +190,7 @@ inline int face_tracker_manager::stage_surface_to_tracker(struct tracker_inst_s 
 		t.tracker->set_texture(cvtex);
 		t.crop_tracker = crop_cur;
 		t.tracker->signal();
+		cvtex->release();
 	}
 	else
 		return 1;
