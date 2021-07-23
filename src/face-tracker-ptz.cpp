@@ -21,8 +21,6 @@
 #define PTZ_MAX_Y 0x14
 #define PTZ_MAX_Z 0x07
 
-static gs_effect_t *effect_ft = NULL;
-
 enum ptz_cmd_state_e
 {
 	ptz_cmd_state_none = 0,
@@ -208,16 +206,6 @@ static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 	s->ftm->crop_cur.x1 = s->ftm->crop_cur.y1 = -2;
 	s->context = context;
 	s->ftm->scale = 2.0f;
-
-	obs_enter_graphics();
-	if (!effect_ft) {
-		char *f = obs_module_file("face-tracker.effect");
-		effect_ft = gs_effect_create_from_file(f, NULL);
-		if (!effect_ft)
-			blog(LOG_ERROR, "Cannot load '%s'", f);
-		bfree(f);
-	}
-	obs_leave_graphics();
 
 	obs_source_update(context, settings);
 	return s;

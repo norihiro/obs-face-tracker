@@ -481,7 +481,7 @@ static inline void scale_texture(struct face_tracker_filter *s, float scale)
 	if (gs_texrender_begin(s->texrender_scaled, cx, cy)) {
 		gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -100.0f, 100.0f);
 		gs_texture_t *tex = gs_texrender_get_texture(s->texrender);
-		if (tex) {
+		if (tex && effect_ft) {
 			gs_eparam_t *image = gs_effect_get_param_by_name(effect_ft, "image");
 			gs_effect_set_texture(image, tex);
 			while (gs_effect_loop(effect_ft, "DrawY"))
