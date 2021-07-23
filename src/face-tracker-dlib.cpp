@@ -36,6 +36,7 @@ face_tracker_dlib::face_tracker_dlib()
 face_tracker_dlib::~face_tracker_dlib()
 {
 	if (p->tracker) delete p->tracker;
+	if (p->tex) p->tex->release();
 	delete p;
 }
 

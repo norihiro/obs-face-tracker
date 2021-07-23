@@ -27,6 +27,7 @@ face_detector_dlib::face_detector_dlib()
 face_detector_dlib::~face_detector_dlib()
 {
 	if (p->detector) delete p->detector;
+	if (p->tex) p->tex->release();
 	delete p;
 }
 
