@@ -110,7 +110,7 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 		char *f = obs_module_file("face-tracker.effect");
 		effect_ft = gs_effect_create_from_file(f, NULL);
 		if (!effect_ft)
-			blog(LOG_ERROR, "Cannot load '%s'", f);
+			blog(LOG_ERROR, "Cannot load '%s' (face-tracker.effect)", f);
 		bfree(f);
 	}
 	obs_leave_graphics();
