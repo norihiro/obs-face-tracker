@@ -12,15 +12,22 @@ Based on the location and the size of the face under tracking, the frame will be
 ## Usage
 ### Software Zoom Filter
 The face tracker is implemented as an effect filter so that any video source can have the face tracker.
-Open filters for a source on OBS Studio, then add `Face Tracker` from the add button on `Effect Filters`.
+1. Open filters for a source on OBS Studio.
+2. Click the add button on `Effect Filters`.
+3. Add `Face Tracker`.
 
 See [Properties](doc/properties.md) for the description of each property.
 
 ### PTZ Control
-Alpha version of PTZ control is provided as an video filter.
-Open filters for a source on OBS Studio, then add `Face Tracker PTZ` from the add button on `Audio/Video Filters`.
+Experimental version of PTZ control is provided as an video filter.
+1. Open filters for a source on OBS Studio,
+2. Click the add button on `Audio/Video Filters`.
+3. Add `Face Tracker PTZ`.
 
 See [Properties](doc/properties-ptz.md) for the description of each property.
+
+See [Limitations](https://github.com/norihiro/obs-face-tracker/wiki/PTZ-Limitation)
+for current limitations of PTZ control feature.
 
 ## Wiki
 - [Install procedure for macOS](https://github.com/norihiro/obs-face-tracker/wiki/Install-MacOS)
@@ -31,7 +38,7 @@ See [Properties](doc/properties-ptz.md) for the description of each property.
 This plugin requires [dlib](http://dlib.net/) to be built.
 The `dlib` should be extracted under `obs-face-tracker` so that it will be linked statically.
 
-For Linux and MacOS,
+For Linux and macOS,
 expand `obs-face-tracker` outside `obs-studio` and expand `dlib` under `obs-face-tracker`.
 Then, apply patch file to `dlib` so that dlib won't try to link `openblasp` but `openblas`.
 ```
@@ -80,12 +87,12 @@ This plugin is heavily under development. So far these issues are under investig
 This plugin is licensed under GPLv2.
 
 ## Sponsor
-- [Jimcom USA](https://www.jimcom.us/shop/) - a company of Live Streaming and Content Recording Professionals.
+- [Jimcom USA](https://www.jimcom.us/?ref=2) - a company of Live Streaming and Content Recording Professionals.
   Development of PTZ camera control is supported by Jimcom.
-  Jimcom is now providing a 20% discount and free shipping in the USA.
-  Visit https://www.jimcom.us/shop/ and enter the coupon code **FACETRACK20** when you order.
+  Jimcom is now providing a 20% discount for their broadcast-quality network-connected PTZ cameras and free shipping in the USA.
+  Visit [Jimcom USA](https://www.jimcom.us/?ref=2) and enter the coupon code **FACETRACK20** when you order.
 
 ## Acknowledgments
-- [obz-ptz](https://github.com/glikely/obs-ptz) - PTZ camera interface is based on this code.
 - [dlib](http://dlib.net/) - [git hub repository](https://github.com/davisking/dlib)
+- [obz-ptz](https://github.com/glikely/obs-ptz) - PTZ camera interface is based on this code.
 - [OBS Project](https://obsproject.com/)
