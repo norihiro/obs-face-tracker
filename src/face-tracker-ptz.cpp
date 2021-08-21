@@ -13,9 +13,13 @@
 #include "face-tracker-preset.h"
 #include "face-tracker-manager.hpp"
 #include "ptz-device.hpp"
+#ifdef WITH_PTZ_TCP
+#include "libvisca-thread.hpp"
+#endif
 
 // #define debug_track(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
 #define debug_track(fmt, ...)
+#define debug_libvisca(...) blog(LOG_INFO, __VA_ARGS__)
 
 #define PTZ_MAX_X 0x18
 #define PTZ_MAX_Y 0x14
@@ -37,12 +41,18 @@ class ft_manager_for_ftptz : public face_tracker_manager
 		class PTZDevice *ptzdev;
 		enum ptz_cmd_state_e ptz_last_cmd;
 		int ptz_last_cmd_tick;
+#ifdef WITH_PTZ_TCP
+		class libvisca_thread *lvdev;
+#endif
 
 	public:
 		ft_manager_for_ftptz(struct face_tracker_ptz *ctx_) {
 			ctx = ctx_;
 			cvtex_cache = NULL;
 			ptzdev = NULL;
+#ifdef WITH_PTZ_TCP
+			lvdev = NULL;
+#endif
 			ptz_last_cmd = ptz_cmd_state_none;
 			ptz_last_cmd_tick = 0;
 		}
@@ -55,6 +65,11 @@ class ft_manager_for_ftptz : public face_tracker_manager
 				if ((tick_cnt-ptz_last_cmd_tick) > 12)
 					ptzdev->timeout();
 			}
+#ifdef WITH_PTZ_TCP
+			if (lvdev) {
+				return true;
+			}
+#endif
 			return false;
 		}
 
@@ -63,6 +78,10 @@ class ft_manager_for_ftptz : public face_tracker_manager
 			release_cvtex();
 			if (ptzdev)
 				delete ptzdev;
+#ifdef WITH_PTZ_TCP
+			if (lvdev)
+				lvdev->release();
+#endif
 		}
 
 		inline void release_cvtex()
@@ -136,7 +155,7 @@ static obs_data_t *get_ptz_settings(obs_data_t *settings)
 	ptz_copy_settings(data, settings, list_generic);
 
 	const char *type = obs_data_get_string(data, "type");
-	if (!strcmp(type, "visca-over-ip"))
+	if (!strcmp(type, "visca-over-ip") || !strcmp(type, "visca-over-tcp"))
 		ptz_copy_settings(data, settings, list_viscaip);
 #ifdef WITH_PTZ_SERIAL
 	else if (!strcmp(type, "visca"))
@@ -145,6 +164,40 @@ static obs_data_t *get_ptz_settings(obs_data_t *settings)
 
 	return data;
 }
+
+static void make_ptz_device(struct face_tracker_ptz *s, const char *ptz_type, obs_data_t *data)
+{
+#ifdef WITH_PTZ_TCP
+	if (s->ftm->lvdev) {
+		s->ftm->lvdev->release();
+		s->ftm->lvdev = NULL;
+	}
+#endif
+
+	if (s->ftm->ptzdev)
+		delete s->ftm->ptzdev;
+	blog(LOG_INFO, "creating new PTZDevice type=%s", ptz_type);
+	s->ftm->ptzdev = PTZDevice::make_device(data);
+}
+
+#ifdef WITH_PTZ_TCP
+static void make_device_libvisca_tcp(struct face_tracker_ptz *s, const char *ptz_type, obs_data_t *data)
+{
+	if (s->ftm->ptzdev) {
+		delete s->ftm->ptzdev;
+		s->ftm->ptzdev = NULL;
+	}
+
+	if (!s->ftm->lvdev) {
+		if (!obs_data_get_string(data, "address"))
+			return;
+		if (obs_data_get_int(data, "port") <= 0)
+			return;
+		s->ftm->lvdev = new libvisca_thread();
+		s->ftm->lvdev->set_config(data);
+	}
+}
+#endif // WITH_PTZ_TCP
 
 static void ftptz_update(void *data, obs_data_t *settings)
 {
@@ -183,19 +236,29 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	s->ptz_max_z = obs_data_get_int(settings, "ptz_max_z");
 
 	const char *ptz_type = obs_data_get_string(settings, "ptz-type");
-	if (!s->ftm->ptzdev || !s->ptz_type || strcmp(ptz_type, s->ptz_type)) {
-		if (s->ftm->ptzdev)
-			delete s->ftm->ptzdev;
+	if (!s->ptz_type || strcmp(ptz_type, s->ptz_type)) {
 		obs_data_t *data = get_ptz_settings(settings);
-		blog(LOG_INFO, "creating new PTZDevice type=%s", ptz_type);
-		s->ftm->ptzdev = PTZDevice::make_device(data);
-		obs_data_release(data);
+		bool visca_over_tcp = !strcmp(ptz_type, "visca-over-tcp");
+#ifdef WITH_PTZ_TCP
+		if (visca_over_tcp) {
+			make_device_libvisca_tcp(s, ptz_type, data);
+		}
+#endif // WITH_PTZ_TCP
+		if (!visca_over_tcp) {
+			make_ptz_device(s, ptz_type, data);
+		}
 		bfree(s->ptz_type);
 		s->ptz_type = bstrdup(ptz_type);
+		obs_data_release(data);
 	}
 	else {
 		obs_data_t *data = get_ptz_settings(settings);
-		s->ftm->ptzdev->set_config(data);
+		if (s->ftm->ptzdev)
+			s->ftm->ptzdev->set_config(data);
+#ifdef WITH_PTZ_TCP
+		if (s->ftm->lvdev)
+			s->ftm->lvdev->set_config(data);
+#endif
 		obs_data_release(data);
 	}
 }
@@ -251,7 +314,12 @@ static bool ptz_type_modified(obs_properties_t *props, obs_property_t *p, obs_da
 		"ptz-viscaip-port",
 		NULL
 	};
-	set_properties_visible(props, props_viscaip, !strcmp(ptz_type, "visca-over-ip"));
+	bool en = !strcmp(ptz_type, "visca-over-ip");
+#ifdef WITH_PTZ_TCP
+	if (!strcmp(ptz_type, "visca-over-tcp"))
+		en = true;
+#endif // WITH_PTZ_TCP
+	set_properties_visible(props, props_viscaip, en);
 
 	return true;
 }
@@ -321,7 +389,10 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
 		obs_property_t *p = obs_properties_add_list(pp, "ptz-type", obs_module_text("PTZ Type"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 		obs_property_list_add_string(p, obs_module_text("None"), "sim");
-		obs_property_list_add_string(p, obs_module_text("VISCA over IP"), "visca-over-ip");
+		obs_property_list_add_string(p, obs_module_text("VISCA over UDP"), "visca-over-ip");
+#ifdef WITH_PTZ_TCP
+		obs_property_list_add_string(p, obs_module_text("VISCA over TCP"), "visca-over-tcp");
+#endif // WITH_PTZ_TCP
 #ifdef WITH_PTZ_SERIAL
 		obs_property_list_add_string(p, obs_module_text("VISCA over serial port"), "visca");
 #endif // WITH_PTZ_SERIAL
@@ -475,9 +546,10 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
 	f3 uf = (e + s->filter_int) * second + (s->filter_lpf - filter_lpf_prev) * s->klpf;
 	const int u_max[3] = {s->ptz_max_x, s->ptz_max_y, s->ptz_max_z};
+	const float kp_zoom = raw2zoomfactor(s->ptz_query[2]);
 	const float kp[3] = {
-		s->kp_x / srwh / raw2zoomfactor(s->ptz_query[2]),
-		s->kp_y / srwh / raw2zoomfactor(s->ptz_query[2]),
+		s->kp_x / srwh / kp_zoom,
+		s->kp_y / srwh / kp_zoom,
 		s->kp_z / srwh
 	};
 	for (int i=0; i<3; i++) {
@@ -527,6 +599,12 @@ static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 				s->ftm->ptzdev->zoom_stop();
 		}
 	}
+#ifdef WITH_PTZ_TCP
+	if (s->ftm->lvdev) {
+		s->ftm->lvdev->set_pantilt_speed(s->u[0], s->u[1]);
+		s->ftm->lvdev->set_zoom_speed(s->u[2]);
+	}
+#endif // WITH_PTZ_TCP
 
 	s->u_prev1[0] = s->u_prev[0];
 	s->u_prev1[1] = s->u_prev[1];
@@ -627,6 +705,12 @@ static void ftptz_tick(void *data, float second)
 	if (s->ftm && s->ftm->ptzdev && s->ftm->can_send_ptz_cmd()) {
 		recvsend_ptz_cmd(s);
 	}
+
+#ifdef WITH_PTZ_TCP
+	if (s->ftm && s->ftm->lvdev) {
+		s->ptz_query[2] = s->ftm->lvdev->get_zoom();
+	}
+#endif // WITH_PTZ_TCP
 }
 
 static inline void render_target(struct face_tracker_ptz *s, obs_source_t *target, obs_source_t *parent)

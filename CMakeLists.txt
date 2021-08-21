@@ -7,6 +7,7 @@ set(MACOS_BUNDLEID "net.nagater.obs-face-tracker")
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
 option(WITH_PTZ_SERIAL "Enable to connect PTZ camera through serial-port" OFF)
+option(WITH_PTZ_TCP "Enable to connect PTZ camera through TCP socket" ON)
 
 set(CMAKE_PREFIX_PATH "${QTDIR}")
 set(CMAKE_AUTOMOC ON)
@@ -23,9 +24,16 @@ find_package(LibObs REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 find_package(Qt5Network REQUIRED)
 set(plugin_additional_libs ${Qt5Network_LIBRARIES})
+set(plugin_additional_incs obs-ptz)
 if(WITH_PTZ_SERIAL)
 find_package(Qt5SerialPort REQUIRED)
 set(plugin_additional_libs ${Qt5SerialPort_LIBRARIES})
+endif()
+
+if (WITH_PTZ_TCP)
+	add_subdirectory(libvisca/visca)
+	set(plugin_additional_libs ${plugin_additional_libs} visca)
+	set(plugin_additional_incs ${plugin_additional_incs} libvisca/visca)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE True)
@@ -85,6 +93,11 @@ set(PLUGIN_HEADERS
 	obs-ptz/ptz-device.hpp
 )
 
+if (WITH_PTZ_TCP)
+	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/libvisca-thread.cpp)
+	set(PLUGIN_HEADERS ${PLUGIN_HEADERS} src/libvisca-thread.hpp)
+endif()
+
 # --- Platform-independent build settings ---
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES} ${PLUGIN_HEADERS})
 
@@ -93,9 +106,9 @@ include_directories(
 	${Qt5Core_INCLUDES}
 	${Qt5Widgets_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/dlib
-	obs-ptz
 	${Qt5Widgets_INCLUDES}
 	${Qt5Network_INCLUDES}
+	${plugin_additional_incs}
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
