@@ -1,0 +1,3 @@
+[submodule "libvisca"]
+	path = libvisca
+	url = https://github.com/norihiro/libvisca-ip.git
