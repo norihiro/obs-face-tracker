@@ -61,7 +61,8 @@ class ft_manager_for_ftptz : public face_tracker_manager
 		~ft_manager_for_ftptz()
 		{
 			release_cvtex();
-			delete ptzdev;
+			if (ptzdev)
+				delete ptzdev;
 		}
 
 		inline void release_cvtex()
