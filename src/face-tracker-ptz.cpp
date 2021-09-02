@@ -415,7 +415,7 @@ static inline int tilt_flt2raw(float x)
 {
 	// TODO: configurable
 	// TODO: send zero with plus or minus sign, which makes small move.
-	if (x<0.0f) return -pan_flt2raw(-x);
+	if (x<0.0f) return -tilt_flt2raw(-x);
 	if (x<0.50f) return  0;
 	if (x<1.25f) return  1;
 	if (x<1.85f) return  2;
