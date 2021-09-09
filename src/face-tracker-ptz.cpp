@@ -514,16 +514,18 @@ template <typename T> static inline bool diff3(T a, T b, T c)
 
 static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 {
-	if (diff3(s->u[0], s->u_prev[0], s->u_prev1[0]) || diff3(s->u[1], s->u_prev[1], s->u_prev1[1]))
-		s->ftm->ptzdev->pantilt(s->u[0], s->u[1]);
+	if (s->ftm->ptzdev) {
+		if (diff3(s->u[0], s->u_prev[0], s->u_prev1[0]) || diff3(s->u[1], s->u_prev[1], s->u_prev1[1]))
+			s->ftm->ptzdev->pantilt(s->u[0], s->u[1]);
 
-	if (diff3(s->u[2], s->u_prev[2], s->u_prev1[2])) {
-		if (s->u[2]>0)
-			s->ftm->ptzdev->zoom_wide(s->u[2]);
-		else if (s->u[2]<0)
-			s->ftm->ptzdev->zoom_tele(-s->u[2]);
-		else
-			s->ftm->ptzdev->zoom_stop();
+		if (diff3(s->u[2], s->u_prev[2], s->u_prev1[2])) {
+			if (s->u[2]>0)
+				s->ftm->ptzdev->zoom_wide(s->u[2]);
+			else if (s->u[2]<0)
+				s->ftm->ptzdev->zoom_tele(-s->u[2]);
+			else
+				s->ftm->ptzdev->zoom_stop();
+		}
 	}
 
 	s->u_prev1[0] = s->u_prev[0];
