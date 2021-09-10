@@ -31,6 +31,8 @@ set(plugin_additional_libs ${Qt5SerialPort_LIBRARIES})
 endif()
 
 if (WITH_PTZ_TCP)
+	set(CMAKE_POSITION_INDEPENDENT_CODE true)
+	add_definitions("-DVISCA_API= ")
 	add_subdirectory(libvisca/visca)
 	set(plugin_additional_libs ${plugin_additional_libs} visca)
 	set(plugin_additional_incs ${plugin_additional_incs} libvisca/visca)
