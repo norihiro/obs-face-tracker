@@ -215,6 +215,7 @@ static obs_properties_t *ftf_properties(void *data)
 			"4:3",
 			"1:1",
 			"3:4",
+			"9:16",
 			NULL
 		};
 		obs_property_list_add_string(p, obs_module_text("same as the source"), "");
