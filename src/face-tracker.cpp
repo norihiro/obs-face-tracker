@@ -104,6 +104,8 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 	s->ftm->crop_cur.x1 = s->ftm->crop_cur.y1 = -2;
 	s->context = context;
 	s->ftm->scale = 2.0f;
+	s->hotkey_pause = OBS_INVALID_HOTKEY_PAIR_ID;
+	s->hotkey_reset = OBS_INVALID_HOTKEY_ID;
 
 	obs_enter_graphics();
 	if (!effect_ft) {
@@ -122,6 +124,11 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 static void ftf_destroy(void *data)
 {
 	auto *s = (struct face_tracker_filter*)data;
+
+	if (s->hotkey_pause != OBS_INVALID_HOTKEY_PAIR_ID)
+		obs_hotkey_pair_unregister(s->hotkey_pause);
+	if (s->hotkey_reset != OBS_INVALID_HOTKEY_ID)
+		obs_hotkey_unregister(s->hotkey_reset);
 
 	obs_enter_graphics();
 	gs_texrender_destroy(s->texrender);
@@ -341,6 +348,40 @@ static void calculate_aspect(struct face_tracker_filter *s)
 	}
 }
 
+static bool hotkey_cb_pause(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	auto *s = (struct face_tracker_filter*)data;
+	if (!pressed)
+		return false;
+	if (s->is_paused)
+		return false;
+	s->is_paused = true;
+	return true;
+}
+
+static bool hotkey_cb_pause_resume(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	auto *s = (struct face_tracker_filter*)data;
+	if (!pressed)
+		return false;
+	if (!s->is_paused)
+		return false;
+	s->is_paused = false;
+	return true;
+}
+
+static void hotkey_cb_reset(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	if (pressed)
+		ftf_reset_tracking(NULL, NULL, data);
+}
+
 static void ftf_tick(void *data, float second)
 {
 	auto *s = (struct face_tracker_filter*)data;
@@ -350,6 +391,23 @@ static void ftf_tick(void *data, float second)
 	obs_source_t *target = obs_filter_get_target(s->context);
 	if (!target)
 		goto err;
+
+	if (s->hotkey_pause == OBS_INVALID_HOTKEY_PAIR_ID) {
+		obs_source_t *parent = obs_filter_get_parent(s->context);
+		s->hotkey_pause = obs_hotkey_pair_register_source(parent,
+				"face-tracker.pause",
+				obs_module_text("Pause"),
+				"face-tracker.pause_resume",
+				obs_module_text("Resume"),
+				hotkey_cb_pause, hotkey_cb_pause_resume, s, s);
+	}
+	if (s->hotkey_reset == OBS_INVALID_HOTKEY_ID) {
+		obs_source_t *parent = obs_filter_get_parent(s->context);
+		s->hotkey_reset = obs_hotkey_register_source(parent,
+				"face-tracker.reset",
+				obs_module_text("Reset tracking"),
+				hotkey_cb_reset, s);
+	}
 
 	s->rendered = false;
 
@@ -365,7 +423,7 @@ static void ftf_tick(void *data, float second)
 		ftf_reset_tracking(NULL, NULL, s);
 		s->ftm->crop_cur = f3_to_rectf(s->filter_int_out, s->width_with_aspect, s->height_with_aspect);
 	}
-	else if (was_rendered) {
+	else if (was_rendered && !s->is_paused) {
 		s->range_min.v[0] = get_width(s->ftm->crop_cur) * 0.5f;
 		s->range_max.v[0] = s->known_width - get_width(s->ftm->crop_cur) * 0.5f;
 		s->range_min.v[1] = get_height(s->ftm->crop_cur) * 0.5f;
@@ -663,7 +721,8 @@ static void ftf_render(void *data, gs_effect_t *)
 
 	if (!s->rendered) {
 		render_target(s, target, parent);
-		s->ftm->post_render();
+		if (!s->is_paused)
+			s->ftm->post_render();
 		s->rendered = true;
 	}
 

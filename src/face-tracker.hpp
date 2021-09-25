@@ -39,4 +39,8 @@ struct face_tracker_filter
 	bool debug_faces;
 	bool debug_notrack;
 	bool debug_always_show;
+
+	bool is_paused;
+	obs_hotkey_pair_id hotkey_pause;
+	obs_hotkey_id hotkey_reset;
 };
