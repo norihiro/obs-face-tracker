@@ -51,6 +51,7 @@ cd "$d0"
 
 git clone https://github.com/norihiro/obs-face-tracker.git
 cd obs-face-tracker
+git submodule update --init
 git clone https://github.com/davisking/dlib.git
 cd dlib
 patch -p1 < ../ci/common/dlib-cmake-no-openblasp.patch
