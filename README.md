@@ -55,6 +55,10 @@ git clone https://github.com/davisking/dlib.git
 cd dlib
 patch -p1 < ../ci/common/dlib-cmake-no-openblasp.patch
 cd ..
+git clone https://github.com/norihiro/obs-ptz.git
+cd obs-ptz
+git checkout mod-for-ft
+cd ..
 mkdir build && cd build
 cmake -DLIBOBS_INCLUDE_DIR=$d0/obs-studio/libobs -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 make
