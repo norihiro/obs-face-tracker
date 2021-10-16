@@ -96,10 +96,17 @@ This property group configure how to connect to the PTZ camera.
 
 ### PTZ Type
 Specify the protocol to connect to the camera.
-Currently `None` (just output to the log file) and `VISCA over IP` is provided.
-Another option `VISCA over serial port` will be enabled if you build from the source with option `WITH_PTZ_SERIAL=ON`.
+| Type | Description |
+| ---- | ----------- |
+| `None` | Do not connect to camera. Control message will be logged. |
+| `VISCA over TCP` | Send using TCP connection to the camera. |
+| `VISCA over UDP` | Send to UDP port. **Deprecated**, use `through PTZ Controls` instead. |
+| `VISCA over serial port` | Send through serial interface. **Deprecated**, use "through PTZ Controls" instead. |
 
-### IP address, UDP port
+The option `through PTZ Controls` requires the other plugin [PTZ Controls](https://github.com/glikely/obs-ptz).
+The option `VISCA over serial port` will be enabled if you build from the source with option `WITH_PTZ_SERIAL=ON`.
+
+### IP address, port
 The address and port of the camera you are connect to.
 You can specify IP address or host name if your system can resolve it.
 

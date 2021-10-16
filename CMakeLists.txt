@@ -75,6 +75,7 @@ set(PLUGIN_SOURCES
 	src/face-tracker-base.cpp
 	src/face-tracker-dlib.cpp
 	src/texture-object.cpp
+	src/ptz-backend.cpp
 	obs-ptz/ptz-visca.cpp
 	obs-ptz/ptz-device.cpp
 )
@@ -91,6 +92,7 @@ set(PLUGIN_HEADERS
 	src/face-tracker-dlib.h
 	src/texture-object.h
 	src/helper.hpp
+	src/ptz-backend.hpp
 	obs-ptz/ptz-visca.hpp
 	obs-ptz/ptz-device.hpp
 )

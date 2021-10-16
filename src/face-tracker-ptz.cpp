@@ -13,6 +13,7 @@
 #include "face-tracker-preset.h"
 #include "face-tracker-manager.hpp"
 #include "ptz-device.hpp"
+#include "ptz-backend.hpp"
 #ifdef WITH_PTZ_TCP
 #include "libvisca-thread.hpp"
 #endif
@@ -41,18 +42,14 @@ class ft_manager_for_ftptz : public face_tracker_manager
 		class PTZDevice *ptzdev;
 		enum ptz_cmd_state_e ptz_last_cmd;
 		int ptz_last_cmd_tick;
-#ifdef WITH_PTZ_TCP
-		class libvisca_thread *lvdev;
-#endif
+		class ptz_backend *dev;
 
 	public:
 		ft_manager_for_ftptz(struct face_tracker_ptz *ctx_) {
 			ctx = ctx_;
 			cvtex_cache = NULL;
 			ptzdev = NULL;
-#ifdef WITH_PTZ_TCP
-			lvdev = NULL;
-#endif
+			dev = NULL;
 			ptz_last_cmd = ptz_cmd_state_none;
 			ptz_last_cmd_tick = 0;
 		}
@@ -65,11 +62,9 @@ class ft_manager_for_ftptz : public face_tracker_manager
 				if ((tick_cnt-ptz_last_cmd_tick) > 12)
 					ptzdev->timeout();
 			}
-#ifdef WITH_PTZ_TCP
-			if (lvdev) {
-				return true;
+			if (dev) {
+				return dev->can_send();
 			}
-#endif
 			return false;
 		}
 
@@ -78,10 +73,8 @@ class ft_manager_for_ftptz : public face_tracker_manager
 			release_cvtex();
 			if (ptzdev)
 				delete ptzdev;
-#ifdef WITH_PTZ_TCP
-			if (lvdev)
-				lvdev->release();
-#endif
+			if (dev)
+				dev->release();
 		}
 
 		inline void release_cvtex()
@@ -167,12 +160,10 @@ static obs_data_t *get_ptz_settings(obs_data_t *settings)
 
 static void make_ptz_device(struct face_tracker_ptz *s, const char *ptz_type, obs_data_t *data)
 {
-#ifdef WITH_PTZ_TCP
-	if (s->ftm->lvdev) {
-		s->ftm->lvdev->release();
-		s->ftm->lvdev = NULL;
+	if (s->ftm->dev) {
+		s->ftm->dev->release();
+		s->ftm->dev = NULL;
 	}
-#endif
 
 	if (s->ftm->ptzdev)
 		delete s->ftm->ptzdev;
@@ -188,13 +179,13 @@ static void make_device_libvisca_tcp(struct face_tracker_ptz *s, const char *ptz
 		s->ftm->ptzdev = NULL;
 	}
 
-	if (!s->ftm->lvdev) {
+	if (!s->ftm->dev) {
 		if (!obs_data_get_string(data, "address"))
 			return;
 		if (obs_data_get_int(data, "port") <= 0)
 			return;
-		s->ftm->lvdev = new libvisca_thread();
-		s->ftm->lvdev->set_config(data);
+		s->ftm->dev = new libvisca_thread();
+		s->ftm->dev->set_config(data);
 	}
 }
 #endif // WITH_PTZ_TCP
@@ -255,10 +246,8 @@ static void ftptz_update(void *data, obs_data_t *settings)
 		obs_data_t *data = get_ptz_settings(settings);
 		if (s->ftm->ptzdev)
 			s->ftm->ptzdev->set_config(data);
-#ifdef WITH_PTZ_TCP
-		if (s->ftm->lvdev)
-			s->ftm->lvdev->set_config(data);
-#endif
+		if (s->ftm->dev)
+			s->ftm->dev->set_config(data);
 		obs_data_release(data);
 	}
 }
@@ -398,7 +387,7 @@ static obs_properties_t *ftptz_properties(void *data)
 #endif // WITH_PTZ_SERIAL
 		obs_property_set_modified_callback(p, ptz_type_modified);
 		obs_properties_add_text(pp, "ptz-viscaip-address", obs_module_text("IP address"), OBS_TEXT_DEFAULT);
-		obs_properties_add_int(pp, "ptz-viscaip-port", obs_module_text("UDP port"), 1, 65535, 1);
+		obs_properties_add_int(pp, "ptz-viscaip-port", obs_module_text("Port"), 1, 65535, 1);
 #ifdef WITH_PTZ_SERIAL
 		obs_properties_add_text(pp, "ptz-viscaserial-port", obs_module_text("Serial port"), OBS_TEXT_DEFAULT);
 		obs_properties_add_int(pp, "ptz-viscaserial-address", obs_module_text("Address"), 0, 7, 1);
@@ -599,12 +588,11 @@ static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 				s->ftm->ptzdev->zoom_stop();
 		}
 	}
-#ifdef WITH_PTZ_TCP
-	if (s->ftm->lvdev) {
-		s->ftm->lvdev->set_pantilt_speed(s->u[0], s->u[1]);
-		s->ftm->lvdev->set_zoom_speed(s->u[2]);
+
+	if (s->ftm->dev) {
+		s->ftm->dev->set_pantilt_speed(s->u[0], s->u[1]);
+		s->ftm->dev->set_zoom_speed(s->u[2]);
 	}
-#endif // WITH_PTZ_TCP
 
 	s->u_prev1[0] = s->u_prev[0];
 	s->u_prev1[1] = s->u_prev[1];
@@ -706,11 +694,10 @@ static void ftptz_tick(void *data, float second)
 		recvsend_ptz_cmd(s);
 	}
 
-#ifdef WITH_PTZ_TCP
-	if (s->ftm && s->ftm->lvdev) {
-		s->ptz_query[2] = s->ftm->lvdev->get_zoom();
+	if (s->ftm && s->ftm->dev) {
+		s->ftm->dev->tick();
+		s->ptz_query[2] = s->ftm->dev->get_zoom();
 	}
-#endif // WITH_PTZ_TCP
 }
 
 static inline void render_target(struct face_tracker_ptz *s, obs_source_t *target, obs_source_t *parent)

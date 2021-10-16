@@ -16,7 +16,6 @@ libvisca_thread::libvisca_thread()
 	debug("libvisca_thread::libvisca_thread");
 	iface = NULL;
 	camera = NULL;
-	ref = 1;
 	data = NULL;
 	pan_rsvd = 0;
 	tilt_rsvd = 0;
@@ -39,12 +38,6 @@ libvisca_thread::~libvisca_thread()
 	if (data)
 		obs_data_release(data);
 	pthread_mutex_destroy(&mutex);
-}
-
-void libvisca_thread::release()
-{
-	if (os_atomic_dec_long(&ref) == 0)
-		delete this;
 }
 
 void libvisca_thread::thread_connect()
@@ -134,7 +127,7 @@ void libvisca_thread::thread_loop()
 {
 	int pan_prev=INT_MIN, tilt_prev=INT_MIN, zoom_prev=INT_MIN;
 
-	while (os_atomic_load_long(&ref) > 1) {
+	while (get_ref() > 1) {
 		if (data_changed) {
 			thread_connect();
 			pan_prev=INT_MIN;
@@ -191,7 +184,6 @@ void libvisca_thread::set_config(struct obs_data *data_)
 	else
 		data_changed = true;
 	data = data_;
-
 
 	pthread_mutex_unlock(&mutex);
 }
