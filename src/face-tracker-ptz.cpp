@@ -14,6 +14,7 @@
 #include "face-tracker-manager.hpp"
 #include "ptz-device.hpp"
 #include "ptz-backend.hpp"
+#include "obsptz-backend.hpp"
 #ifdef WITH_PTZ_TCP
 #include "libvisca-thread.hpp"
 #endif
@@ -127,7 +128,11 @@ static obs_data_t *get_ptz_settings(obs_data_t *settings)
 
 	const struct ptz_copy_setting_item_s list_generic[] = {
 		{"type", "ptz-type", copy_string},
-		{"name", "ptz-name", copy_string},
+		{NULL, NULL, NULL}
+	};
+
+	const struct ptz_copy_setting_item_s list_obsptz[] = {
+		{"device_id", "ptz-obsptz-device_id", copy_int},
 		{NULL, NULL, NULL}
 	};
 
@@ -150,6 +155,8 @@ static obs_data_t *get_ptz_settings(obs_data_t *settings)
 	const char *type = obs_data_get_string(data, "type");
 	if (!strcmp(type, "visca-over-ip") || !strcmp(type, "visca-over-tcp"))
 		ptz_copy_settings(data, settings, list_viscaip);
+	else if (!strcmp(type, "obsptz"))
+		ptz_copy_settings(data, settings, list_obsptz);
 #ifdef WITH_PTZ_SERIAL
 	else if (!strcmp(type, "visca"))
 		ptz_copy_settings(data, settings, list_viscaserial);
@@ -171,6 +178,22 @@ static void make_ptz_device(struct face_tracker_ptz *s, const char *ptz_type, ob
 	s->ftm->ptzdev = PTZDevice::make_device(data);
 }
 
+static void make_deice_obsptz(struct face_tracker_ptz *s, const char *ptz_type, obs_data_t *data)
+{
+	if (s->ftm->ptzdev) {
+		delete s->ftm->ptzdev;
+		s->ftm->ptzdev = NULL;
+	}
+
+	if (s->ftm->dev) {
+		s->ftm->dev->release();
+		s->ftm->dev = NULL;
+	}
+
+	s->ftm->dev = new obsptz_backend();
+	s->ftm->dev->set_config(data);
+}
+
 #ifdef WITH_PTZ_TCP
 static void make_device_libvisca_tcp(struct face_tracker_ptz *s, const char *ptz_type, obs_data_t *data)
 {
@@ -179,14 +202,17 @@ static void make_device_libvisca_tcp(struct face_tracker_ptz *s, const char *ptz
 		s->ftm->ptzdev = NULL;
 	}
 
-	if (!s->ftm->dev) {
-		if (!obs_data_get_string(data, "address"))
-			return;
-		if (obs_data_get_int(data, "port") <= 0)
-			return;
-		s->ftm->dev = new libvisca_thread();
-		s->ftm->dev->set_config(data);
+	if (s->ftm->dev) {
+		s->ftm->dev->release();
+		s->ftm->dev = NULL;
 	}
+
+	if (!obs_data_get_string(data, "address"))
+		return;
+	if (obs_data_get_int(data, "port") <= 0)
+		return;
+	s->ftm->dev = new libvisca_thread();
+	s->ftm->dev->set_config(data);
 }
 #endif // WITH_PTZ_TCP
 
@@ -229,13 +255,18 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	const char *ptz_type = obs_data_get_string(settings, "ptz-type");
 	if (!s->ptz_type || strcmp(ptz_type, s->ptz_type)) {
 		obs_data_t *data = get_ptz_settings(settings);
+
 		bool visca_over_tcp = !strcmp(ptz_type, "visca-over-tcp");
+
+		if (!strcmp(ptz_type, "obsptz")) {
+			make_deice_obsptz(s, ptz_type, data);
+		}
 #ifdef WITH_PTZ_TCP
-		if (visca_over_tcp) {
+		else if (visca_over_tcp) {
 			make_device_libvisca_tcp(s, ptz_type, data);
 		}
 #endif // WITH_PTZ_TCP
-		if (!visca_over_tcp) {
+		else if (!visca_over_tcp) {
 			make_ptz_device(s, ptz_type, data);
 		}
 		bfree(s->ptz_type);
@@ -297,6 +328,12 @@ static void set_properties_visible(obs_properties_t *props, const char **names, 
 static bool ptz_type_modified(obs_properties_t *props, obs_property_t *p, obs_data_t *settings)
 {
 	const char *ptz_type = obs_data_get_string(settings, "ptz-type");
+
+	const char *props_obsptz[] = {
+		"ptz-obsptz-device_id",
+		NULL
+	};
+	set_properties_visible(props, props_obsptz, !strcmp(ptz_type, "obsptz"));
 
 	const char *props_viscaip[] = {
 		"ptz-viscaip-address",
@@ -378,6 +415,7 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
 		obs_property_t *p = obs_properties_add_list(pp, "ptz-type", obs_module_text("PTZ Type"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 		obs_property_list_add_string(p, obs_module_text("None"), "sim");
+		obs_property_list_add_string(p, obs_module_text("through PTZ Controls"), "obsptz");
 		obs_property_list_add_string(p, obs_module_text("VISCA over UDP"), "visca-over-ip");
 #ifdef WITH_PTZ_TCP
 		obs_property_list_add_string(p, obs_module_text("VISCA over TCP"), "visca-over-tcp");
@@ -386,6 +424,7 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_property_list_add_string(p, obs_module_text("VISCA over serial port"), "visca");
 #endif // WITH_PTZ_SERIAL
 		obs_property_set_modified_callback(p, ptz_type_modified);
+		obs_properties_add_int(pp, "ptz-obsptz-device_id", obs_module_text("Device ID"), 0, 99, 1);
 		obs_properties_add_text(pp, "ptz-viscaip-address", obs_module_text("IP address"), OBS_TEXT_DEFAULT);
 		obs_properties_add_int(pp, "ptz-viscaip-port", obs_module_text("Port"), 1, 65535, 1);
 #ifdef WITH_PTZ_SERIAL
@@ -589,7 +628,7 @@ static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 		}
 	}
 
-	if (s->ftm->dev) {
+	if (s->ftm->dev && s->ftm->can_send_ptz_cmd()) {
 		s->ftm->dev->set_pantilt_speed(s->u[0], s->u[1]);
 		s->ftm->dev->set_zoom_speed(s->u[2]);
 	}

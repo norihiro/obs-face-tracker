@@ -99,6 +99,7 @@ Specify the protocol to connect to the camera.
 | Type | Description |
 | ---- | ----------- |
 | `None` | Do not connect to camera. Control message will be logged. |
+| `through PTZ Controls` | Send through the PTZ Controls plugin. |
 | `VISCA over TCP` | Send using TCP connection to the camera. |
 | `VISCA over UDP` | Send to UDP port. **Deprecated**, use `through PTZ Controls` instead. |
 | `VISCA over serial port` | Send through serial interface. **Deprecated**, use "through PTZ Controls" instead. |
