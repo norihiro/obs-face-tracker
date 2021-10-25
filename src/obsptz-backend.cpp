@@ -40,7 +40,7 @@ void obsptz_backend::set_pantilt_speed(int pan, int tilt)
 	calldata_t cd = {0};
 	calldata_set_int(&cd, "device_id", device_id);
 	calldata_set_float(&cd, "pan", pan / 24.0f);
-	calldata_set_float(&cd, "tilt", tilt / 20.0f);
+	calldata_set_float(&cd, "tilt", -tilt / 20.0f);
 	proc_handler_call(ph, "ptz_pantilt", &cd);
 	calldata_free(&cd);
 	uint64_t ns = os_gettime_ns();
