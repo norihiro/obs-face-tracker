@@ -72,6 +72,10 @@ Larger value will make faster tracking when the subject start to move.
 This is an inverse of the cut-off frequency for the low-pass filter (LPF), which affects the derivative term of PID control element. The dimention is time and the unit is s.
 The LPF will reduce noise of face detection and small move of the subject.
 
+### Attenuation (Z)
+This is another proportional constant that affects only the zoom factor.
+Smaller value will result in slower response of the zoom.
+
 ### Dead band nonlinear band (X, Y, Z)
 These parameters make dead bands and nonlinear bands for the error signal that goes to PID control element.
 The unit is a percentage of the average of source width and height.

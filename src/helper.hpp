@@ -30,6 +30,8 @@ struct f3
 	f3 operator - (const f3 &a) { return f3 (v[0]-a.v[0], v[1]-a.v[1], v[2]-a.v[2]); }
 	f3 operator * (float a) { return f3 (v[0]*a, v[1]*a, v[2]*a); }
 	f3 & operator += (const f3 &a) { return *this = f3 (v[0]+a.v[0], v[1]+a.v[1], v[2]+a.v[2]); }
+
+	f3 hp (const f3 &a) const { return f3 (v[0]*a.v[0], v[1]*a.v[1], v[2]*a.v[2]); }
 };
 
 static inline bool isnan(const f3 &a) { return isnan(a.v[0]) || isnan(a.v[1]) || isnan(a.v[2]); }
