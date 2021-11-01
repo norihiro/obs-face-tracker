@@ -3,6 +3,10 @@
 #include <util/threading.h>
 #include <graphics/vec2.h>
 #include <graphics/graphics.h>
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#endif // _WIN32
+#include <cmath>
 #include "plugin-macros.generated.h"
 #include "texture-object.h"
 #include <algorithm>
@@ -79,9 +83,11 @@ static void ftf_update(void *data, obs_data_t *settings)
 	double kp = obs_data_get_double(settings, "Kp");
 	float ki = (float)obs_data_get_double(settings, "Ki");
 	double td = obs_data_get_double(settings, "Td");
-	s->kp = (float)kp;
+	double att2 = exp(obs_data_get_double(settings, "att2_dB") * (M_LN10/20));
+	s->kp.v[0] = s->kp.v[1] = (float)kp;
+	s->kp.v[2] = (float)(att2 * kp);
 	s->ki = ki;
-	s->klpf = (float)(td * kp);
+	s->klpf = s->kp * td;
 	s->tlpf = (float)obs_data_get_double(settings, "Tdlpf");
 	s->e_deadband.v[0] = (float)obs_data_get_double(settings, "e_deadband_x") * 1e-2;
 	s->e_deadband.v[1] = (float)obs_data_get_double(settings, "e_deadband_y") * 1e-2;
@@ -205,6 +211,7 @@ static obs_properties_t *ftf_properties(void *data)
 		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 10.0, 0.1);
+		obs_properties_add_float(pp, "att2_dB", "Attenuation (Z)", -60.0, 10.0, 1.0);
 		obs_properties_add_float(pp, "e_deadband_x", "Dead band (X)", 0.0, 50, 0.1);
 		obs_properties_add_float(pp, "e_deadband_y", "Dead band (Y)", 0.0, 50, 0.1);
 		obs_properties_add_float(pp, "e_deadband_z", "Dead band (Z)", 0.0, 50, 0.1);
@@ -255,6 +262,7 @@ static void ftf_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "Ki", 0.3);
 	obs_data_set_default_double(settings, "Td", 0.42);
 	obs_data_set_default_double(settings, "Tdlpf", 2.0);
+	obs_data_set_default_double(settings, "att2_dB", -10);
 
 	obs_data_t *presets = obs_data_create();
 	obs_data_set_default_obj(settings, "presets", presets);
@@ -294,11 +302,11 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 		e.v[i] = x;
 	}
 
-	s->filter_int_out += (e + s->filter_int) * (second * s->kp);
+	s->filter_int_out += (e + s->filter_int).hp(s->kp * second);
 	s->filter_int += e_int * (second * s->ki);
 	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
 
-	f3 u = s->filter_int_out + s->filter_lpf * s->klpf;
+	f3 u = s->filter_int_out + s->filter_lpf.hp(s->klpf);
 
 	for (int i=0; i<3; i++) {
 		if (isnan(u.v[i]))

@@ -26,9 +26,9 @@ struct face_tracker_filter
 	float track_z, track_x, track_y;
 	float scale_max;
 
-	float kp;
+	f3 kp;
 	float ki;
-	float klpf;
+	f3 klpf;
 	float tlpf;
 	f3 e_deadband, e_nonlinear; // deadband and nonlinear amount for error input
 	f3 filter_int_out;
