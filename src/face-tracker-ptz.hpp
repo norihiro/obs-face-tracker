@@ -21,7 +21,7 @@ struct face_tracker_ptz
 	float kp_x, kp_y, kp_z;
 	float ki;
 	float klpf;
-	float tlpf;
+	f3 tlpf;
 	f3 e_deadband, e_nonlinear; // deadband and nonlinear amount for error input
 	f3 filter_int;
 	f3 filter_lpf;

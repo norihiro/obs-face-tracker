@@ -236,7 +236,8 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	s->kp_z = powf(10.0f, (float)obs_data_get_double(settings, "Kp_z_db")/20.0f) * inv_z;
 	s->ki = ki;
 	s->klpf = (float)td;
-	s->tlpf = (float)obs_data_get_double(settings, "Tdlpf");
+	s->tlpf.v[0] = s->tlpf.v[1] = (float)obs_data_get_double(settings, "Tdlpf");
+	s->tlpf.v[2] = (float)obs_data_get_double(settings, "Tdlpf_z");
 	s->e_deadband.v[0] = (float)obs_data_get_double(settings, "e_deadband_x") * 1e-2;
 	s->e_deadband.v[1] = (float)obs_data_get_double(settings, "e_deadband_y") * 1e-2;
 	s->e_deadband.v[2] = (float)obs_data_get_double(settings, "e_deadband_z") * 1e-2;
@@ -399,7 +400,8 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_property_float_set_suffix(p, " dB");
 		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
-		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 10.0, 0.1);
+		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td (X, Y)", 0.0, 10.0, 0.1);
+		obs_properties_add_float(pp, "Tdlpf_z", "Track LPF for Td (Z)", 0.0, 10.0, 0.1);
 		obs_properties_add_float(pp, "e_deadband_x", "Dead band (X)", 0.0, 50, 0.1);
 		obs_properties_add_float(pp, "e_deadband_y", "Dead band (Y)", 0.0, 50, 0.1);
 		obs_properties_add_float(pp, "e_deadband_z", "Dead band (Z)", 0.0, 50, 0.1);
@@ -457,6 +459,7 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "Ki", 0.3);
 	obs_data_set_default_double(settings, "Td", 0.42);
 	obs_data_set_default_double(settings, "Tdlpf", 2.0);
+	obs_data_set_default_double(settings, "Tdlpf_z", 6.0);
 
 	obs_data_t *presets = obs_data_create();
 	obs_data_set_default_obj(settings, "presets", presets);
@@ -571,7 +574,8 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 
 	f3 filter_lpf_prev = s->filter_lpf;
 	s->filter_int += e_int * (second * s->ki);
-	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
+	for (int i=0; i<3; i++)
+		s->filter_lpf.v[i] = (s->filter_lpf.v[i] * s->tlpf.v[i] + e.v[i] * second) / (s->tlpf.v[i] + second);
 	f3 uf = (e + s->filter_int) * second + (s->filter_lpf - filter_lpf_prev) * s->klpf;
 	const int u_max[3] = {s->ptz_max_x, s->ptz_max_y, s->ptz_max_z};
 	const float kp_zoom = raw2zoomfactor(s->ptz_query[2]);

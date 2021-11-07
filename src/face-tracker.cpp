@@ -88,7 +88,8 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->kp.v[2] = (float)(att2 * kp);
 	s->ki = ki;
 	s->klpf = s->kp * td;
-	s->tlpf = (float)obs_data_get_double(settings, "Tdlpf");
+	s->tlpf.v[0] = s->tlpf.v[1] = (float)obs_data_get_double(settings, "Tdlpf");
+	s->tlpf.v[2] = (float)obs_data_get_double(settings, "Tdlpf_z");
 	s->e_deadband.v[0] = (float)obs_data_get_double(settings, "e_deadband_x") * 1e-2;
 	s->e_deadband.v[1] = (float)obs_data_get_double(settings, "e_deadband_y") * 1e-2;
 	s->e_deadband.v[2] = (float)obs_data_get_double(settings, "e_deadband_z") * 1e-2;
@@ -210,7 +211,8 @@ static obs_properties_t *ftf_properties(void *data)
 		obs_properties_add_float(pp, "Kp", "Track Kp", 0.01, 10.0, 0.1);
 		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
-		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td", 0.0, 10.0, 0.1);
+		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td (X, Y)", 0.0, 10.0, 0.1);
+		obs_properties_add_float(pp, "Tdlpf_z", "Track LPF for Td (Z)", 0.0, 10.0, 0.1);
 		obs_properties_add_float(pp, "att2_dB", "Attenuation (Z)", -60.0, 10.0, 1.0);
 		obs_properties_add_float(pp, "e_deadband_x", "Dead band (X)", 0.0, 50, 0.1);
 		obs_properties_add_float(pp, "e_deadband_y", "Dead band (Y)", 0.0, 50, 0.1);
@@ -262,6 +264,7 @@ static void ftf_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "Ki", 0.3);
 	obs_data_set_default_double(settings, "Td", 0.42);
 	obs_data_set_default_double(settings, "Tdlpf", 2.0);
+	obs_data_set_default_double(settings, "Tdlpf_z", 6.0);
 	obs_data_set_default_double(settings, "att2_dB", -10);
 
 	obs_data_t *presets = obs_data_create();
@@ -304,7 +307,8 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 
 	s->filter_int_out += (e + s->filter_int).hp(s->kp * second);
 	s->filter_int += e_int * (second * s->ki);
-	s->filter_lpf = (s->filter_lpf * s->tlpf + e * second) * (1.f/(s->tlpf + second));
+	for (int i=0; i<3; i++)
+		s->filter_lpf.v[i] = (s->filter_lpf.v[i] * s->tlpf.v[i] + e.v[i] * second) / (s->tlpf.v[i] + second);
 
 	f3 u = s->filter_int_out + s->filter_lpf.hp(s->klpf);
 

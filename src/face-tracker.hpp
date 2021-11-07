@@ -29,7 +29,7 @@ struct face_tracker_filter
 	f3 kp;
 	float ki;
 	f3 klpf;
-	float tlpf;
+	f3 tlpf;
 	f3 e_deadband, e_nonlinear; // deadband and nonlinear amount for error input
 	f3 filter_int_out;
 	f3 filter_int;
