@@ -7,8 +7,8 @@
 #include "texture-object.h"
 
 static uint32_t formats_found = 0;
-#define TEST_FORMAT(f) (0<=(f) && (f)<32 && !(formats_found&(1<<(uint32_t)(f))))
-#define SET_FORMAT(f) (0<=(f) && (f)<32 && (formats_found|=(1<<(uint32_t)(f))))
+#define TEST_FORMAT(f) (0<=(uint32_t)(f) && (uint32_t)(f)<32 && !(formats_found&(1<<(uint32_t)(f))))
+#define SET_FORMAT(f) (0<=(uint32_t)(f) && (uint32_t)(f)<32 && (formats_found|=(1<<(uint32_t)(f))))
 
 struct texture_object_private_s
 {

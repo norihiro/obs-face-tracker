@@ -16,7 +16,7 @@ obsptz_backend::~obsptz_backend()
 
 void obsptz_backend::set_config(struct obs_data *data)
 {
-	device_id = obs_data_get_int(data, "device_id");
+	device_id = (int)obs_data_get_int(data, "device_id");
 }
 
 bool obsptz_backend::can_send()
