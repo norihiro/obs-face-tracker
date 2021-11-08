@@ -3,6 +3,7 @@
 #include <util/threading.h>
 #include <graphics/vec2.h>
 #include <graphics/graphics.h>
+#undef M_PI
 #ifdef _WIN32
 #define _USE_MATH_DEFINES
 #endif // _WIN32

@@ -675,11 +675,11 @@ static inline void recvsend_ptz_cmd(struct face_tracker_ptz *s)
 	if (cmd_next==ptz_cmd_state_pantiltq) {
 		if (
 				s->u_prev[0]==0 && s->u_prev1[0]==0 &&
-				s->u_prev[1]==0 || s->u_prev1[1]==0 )
+				s->u_prev[1]==0 && s->u_prev1[1]==0 )
 			cmd_next = ptz_cmd_state_zoomq;
 	}
 	if (cmd_next==ptz_cmd_state_zoomq) {
-		if (s->u_prev[2]==0 || s->u_prev1[2]==0)
+		if (s->u_prev[2]==0 && s->u_prev1[2]==0)
 			cmd_next = ptz_cmd_state_none;
 	}
 
