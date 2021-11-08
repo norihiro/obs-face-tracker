@@ -643,7 +643,6 @@ static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 	s->u_prev[0] = s->u[0];
 	s->u_prev[1] = s->u[1];
 	s->u_prev[2] = s->u[2];
-
 }
 
 static inline void recvsend_ptz_cmd(struct face_tracker_ptz *s)
