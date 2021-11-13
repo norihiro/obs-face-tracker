@@ -633,8 +633,7 @@ static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 	}
 
 	if (s->ftm->dev && s->ftm->can_send_ptz_cmd()) {
-		s->ftm->dev->set_pantilt_speed(s->u[0], s->u[1]);
-		s->ftm->dev->set_zoom_speed(s->u[2]);
+		s->ftm->dev->set_pantiltzoom_speed(s->u[0], s->u[1], s->u[2]);
 	}
 
 	s->u_prev1[0] = s->u_prev[0];

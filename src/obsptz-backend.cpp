@@ -32,24 +32,47 @@ void obsptz_backend::tick()
 {
 }
 
-void obsptz_backend::set_pantilt_speed(int pan, int tilt)
+proc_handler_t *obsptz_backend::get_ptz_ph()
 {
+	if (ptz_ph)
+		return ptz_ph;
+
 	proc_handler_t *ph = obs_get_proc_handler();
 	if (!ph)
+		return NULL;
+
+	calldata_t cd = {0};
+	proc_handler_call(ph, "ptz_get_proc_handler", &cd);
+	calldata_get_ptr(&cd, "return", &ptz_ph);
+	calldata_free(&cd);
+
+	return ptz_ph;
+}
+
+void obsptz_backend::set_pantiltzoom_speed(int pan, int tilt, int zoom)
+{
+	if (pan==prev_pan && tilt==prev_tilt && zoom==prev_zoom)
 		return;
+
 	calldata_t cd = {0};
 	calldata_set_int(&cd, "device_id", device_id);
 	calldata_set_float(&cd, "pan", pan / 24.0f);
 	calldata_set_float(&cd, "tilt", -tilt / 20.0f);
-	proc_handler_call(ph, "ptz_pantilt", &cd);
+	calldata_set_float(&cd, "zoom", -zoom / 7.0f);
+	proc_handler_t *ph = get_ptz_ph();
+	if (ph)
+		proc_handler_call(ph, "ptz_move_continuous", &cd);
+	else {
+		// compatibility
+		ph = obs_get_proc_handler();
+		proc_handler_call(ph, "ptz_pantilt", &cd);
+	}
 	calldata_free(&cd);
 	uint64_t ns = os_gettime_ns();
 	available_ns = std::max(available_ns, ns) + (60*1000*1000);
-}
-
-void obsptz_backend::set_zoom_speed(int zoom)
-{
-	// TODO: implement
+	prev_pan = pan;
+	prev_tilt = tilt;
+	prev_zoom = zoom;
 }
 
 int obsptz_backend::get_zoom()

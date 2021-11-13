@@ -25,10 +25,10 @@ public:
 
 	void set_config(struct obs_data *data) override; // and attempt to connect
 
-	void set_pantilt_speed(int pan, int tilt) override {
+	void set_pantiltzoom_speed(int pan, int tilt, int zoom) override {
 		os_atomic_set_long(&pan_rsvd, pan);
 		os_atomic_set_long(&tilt_rsvd, tilt);
+		os_atomic_set_long(&zoom_rsvd, zoom);
 	}
-	void set_zoom_speed(int zoom) override { os_atomic_set_long(&zoom_rsvd, zoom); }
 	int get_zoom() override { return os_atomic_load_long(&zoom_got); }
 };

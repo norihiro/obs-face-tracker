@@ -17,7 +17,6 @@ public:
 
 	virtual bool can_send() { return true; }
 	virtual void tick() {}
-	virtual void set_pantilt_speed(int pan, int tilt) = 0;
-	virtual void set_zoom_speed(int zoom) = 0;
+	virtual void set_pantiltzoom_speed(int pan, int tilt, int zoom) = 0;
 	virtual int get_zoom() = 0;
 };
