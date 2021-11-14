@@ -72,15 +72,15 @@ static void obsframe2dlib_rgbx(dlib::array2d<unsigned char> &img, const struct o
 	}
 }
 
-static void obsframe2dlib_uyvy(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale)
+static void obsframe2dlib_packed_y2(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale, int offset)
 {
 	const int nr = img.nr();
 	const int nc = img.nc();
 	for (int i=0; i<nr; i++) {
 		auto row = img[i];
-		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
+		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i + offset;
 		for (int j=0, js=0; j<nc; j++, js+=2*scale) {
-			row[j] = line[js+1];
+			row[j] = line[js];
 		}
 	}
 }
@@ -111,8 +111,12 @@ void texture_object::set_texture_obsframe_scale(const struct obs_source_frame *f
 		case VIDEO_FORMAT_RGBA:
 			obsframe2dlib_rgbx(data->dlib_img, frame, scale);
 			break;
+		case VIDEO_FORMAT_YVYU:
+		case VIDEO_FORMAT_YUY2:
+			obsframe2dlib_packed_y2(data->dlib_img, frame, scale, 0);
+			break;
 		case VIDEO_FORMAT_UYVY:
-			obsframe2dlib_uyvy(data->dlib_img, frame, scale);
+			obsframe2dlib_packed_y2(data->dlib_img, frame, scale, 1);
 			break;
 		case VIDEO_FORMAT_I420:
 		case VIDEO_FORMAT_I422:
