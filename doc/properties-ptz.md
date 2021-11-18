@@ -36,6 +36,7 @@ The frame will be scaled before sending into face detection and tracking algorit
 Default is `2`.
 Larger value will reduce CPU usage but too large value will fail to detect faces.
 The face detection engine requires size of the faces at least 80x80.
+If you have low resolution image, it is highly recommended to set to `1`.
 
 ## Tracking target location
 
