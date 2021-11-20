@@ -17,6 +17,7 @@ public:
 	void set_config(struct obs_data *data) override;
 	bool can_send() override;
 	void tick() override;
-	void set_pantiltzoom_speed(int pan, int tilt, int zoom) override;
+	void set_pantilt_speed(int pan, int tilt) override;
+	void set_zoom_speed(int zoom) override;
 	int get_zoom() override;
 };

@@ -31,6 +31,8 @@ enum ptz_cmd_state_e
 {
 	ptz_cmd_state_none = 0,
 	ptz_cmd_state_reset,
+	ptz_cmd_state_pantilt,
+	ptz_cmd_state_zoom,
 	ptz_cmd_state_pantiltq,
 	ptz_cmd_state_zoomq,
 };
@@ -630,18 +632,30 @@ static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 			else
 				s->ftm->ptzdev->zoom_stop();
 		}
+		s->u_prev1[0] = s->u_prev[0];
+		s->u_prev1[1] = s->u_prev[1];
+		s->u_prev1[2] = s->u_prev[2];
+		s->u_prev[0] = s->u[0];
+		s->u_prev[1] = s->u[1];
+		s->u_prev[2] = s->u[2];
 	}
 
-	if (s->ftm->dev && s->ftm->can_send_ptz_cmd()) {
-		s->ftm->dev->set_pantiltzoom_speed(s->u[0], s->u[1], s->u[2]);
+	for (int i=0; i<2 && s->ftm->dev && s->ftm->can_send_ptz_cmd(); i++) {
+		if (s->ftm->ptz_last_cmd != ptz_cmd_state_pantilt) {
+			s->ftm->dev->set_pantilt_speed(s->u[0], s->u[1]);
+			s->ftm->ptz_last_cmd = ptz_cmd_state_pantilt;
+			s->u_prev1[0] = s->u_prev[0];
+			s->u_prev1[1] = s->u_prev[1];
+			s->u_prev[0] = s->u[0];
+			s->u_prev[1] = s->u[1];
+		}
+		else {
+			s->ftm->dev->set_zoom_speed(s->u[2]);
+			s->ftm->ptz_last_cmd = ptz_cmd_state_zoom;
+			s->u_prev1[2] = s->u_prev[2];
+			s->u_prev[2] = s->u[2];
+		}
 	}
-
-	s->u_prev1[0] = s->u_prev[0];
-	s->u_prev1[1] = s->u_prev[1];
-	s->u_prev1[2] = s->u_prev[2];
-	s->u_prev[0] = s->u[0];
-	s->u_prev[1] = s->u[1];
-	s->u_prev[2] = s->u[2];
 }
 
 static inline void recvsend_ptz_cmd(struct face_tracker_ptz *s)
