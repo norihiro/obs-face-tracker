@@ -6,7 +6,6 @@
 #include "plugin-macros.generated.h"
 #include "texture-object.h"
 #include <algorithm>
-#include <cmath>
 #include <graphics/matrix4.h>
 #include "helper.hpp"
 #include "face-tracker-ptz.hpp"
@@ -230,9 +229,9 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	float inv_x = obs_data_get_bool(settings, "invert_x") ? -1.0f : 1.0f;
 	float inv_y = obs_data_get_bool(settings, "invert_y") ? -1.0f : 1.0f;
 	float inv_z = obs_data_get_bool(settings, "invert_z") ? -1.0f : 1.0f;
-	s->kp_x = powf(10.0f, (float)obs_data_get_double(settings, "Kp_x_db")/20.0f) * inv_x;
-	s->kp_y = powf(10.0f, (float)obs_data_get_double(settings, "Kp_y_db")/20.0f) * inv_y;
-	s->kp_z = powf(10.0f, (float)obs_data_get_double(settings, "Kp_z_db")/20.0f) * inv_z;
+	s->kp_x = (float)from_dB(obs_data_get_double(settings, "Kp_x_db")) * inv_x;
+	s->kp_y = (float)from_dB(obs_data_get_double(settings, "Kp_y_db")) * inv_y;
+	s->kp_z = (float)from_dB(obs_data_get_double(settings, "Kp_z_db")) * inv_z;
 	s->ki = ki;
 	s->klpf = (float)td;
 	s->tlpf.v[0] = s->tlpf.v[1] = (float)obs_data_get_double(settings, "Tdlpf");
@@ -452,6 +451,7 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "preset_mask_track", true);
 	obs_data_set_default_bool(settings, "preset_mask_control", true);
 	face_tracker_manager::get_defaults(settings);
+	obs_data_set_default_double(settings, "tracking_th_dB", -40.0); // overwrite the default from face_tracker_manager
 	obs_data_set_default_double(settings, "track_z",  0.25); // Smaller is preferable for PTZ not to lose the face.
 	obs_data_set_default_double(settings, "track_y", +0.00); // +0.00 +0.10 +0.30
 

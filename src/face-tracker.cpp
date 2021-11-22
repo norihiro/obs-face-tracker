@@ -1,6 +1,3 @@
-#ifdef _WIN32
-#define _USE_MATH_DEFINES
-#endif // _WIN32
 #include <obs-module.h>
 #include <util/platform.h>
 #include <util/threading.h>
@@ -82,7 +79,7 @@ static void ftf_update(void *data, obs_data_t *settings)
 	double kp = obs_data_get_double(settings, "Kp");
 	float ki = (float)obs_data_get_double(settings, "Ki");
 	double td = obs_data_get_double(settings, "Td");
-	double att2 = exp(obs_data_get_double(settings, "att2_dB") * (M_LN10/20));
+	double att2 = from_dB(obs_data_get_double(settings, "att2_dB"));
 	s->kp.v[0] = s->kp.v[1] = (float)kp;
 	s->kp.v[2] = (float)(att2 * kp);
 	s->ki = ki;

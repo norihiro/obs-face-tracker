@@ -16,6 +16,7 @@ face_tracker_manager::face_tracker_manager()
 {
 	upsize_l = upsize_r = upsize_t = upsize_b = 0.0f;
 	scale = 0.0f;
+	tracking_threshold = 1e-2f;
 	crop_cur.x0 = crop_cur.x1 = crop_cur.y0 = crop_cur.y1 = 0.0f;
 	tick_cnt = detect_tick = next_tick_stage_to_detector = 0;
 	detector_in_progress = false;
@@ -49,6 +50,17 @@ inline void face_tracker_manager::retire_tracker(int ix)
 	trackers_idlepool.push_back(trackers[ix]);
 	trackers[ix].tracker->request_suspend();
 	trackers.erase(trackers.begin()+ix);
+}
+
+inline bool face_tracker_manager::is_low_confident(const tracker_inst_s &t, float th1)
+{
+	if (t.att * t.rect.score <= th1)
+		return true;
+
+	if (t.att * t.rect.score <= tracking_threshold * t.score_first)
+		return true;
+
+	return false;
 }
 
 inline void face_tracker_manager::attenuate_tracker()
@@ -94,7 +106,7 @@ inline void face_tracker_manager::attenuate_tracker()
 	for (int i=0; i<trackers.size(); i++) {
 		if (trackers[i].state != tracker_inst_s::tracker_state_available)
 			continue;
-		if (trackers[i].att * trackers[i].rect.score > 1e-2f * score_max)
+		if (!is_low_confident(trackers[i], 1e-2f * score_max))
 			continue;
 
 		retire_tracker(i);
@@ -217,6 +229,7 @@ inline void face_tracker_manager::stage_to_trackers()
 				t.crop_rect = t.crop_tracker;
 				debug_track("tracker_state_first_track %p %d %d %d %d %f", t.tracker, t.rect.x0, t.rect.y0, t.rect.x1, t.rect.y1, t.rect.score);
 				t.att = 1.0f;
+				t.score_first = t.rect.score;
 				stage_surface_to_tracker(t);
 				t.tracker->signal();
 				t.tracker->unlock();
@@ -283,15 +296,19 @@ void face_tracker_manager::update(obs_data_t *settings)
 	upsize_t = obs_data_get_double(settings, "upsize_t");
 	upsize_b = obs_data_get_double(settings, "upsize_b");
 	scale = obs_data_get_double(settings, "scale");
+	tracking_threshold = from_dB(obs_data_get_double(settings, "tracking_th_dB"));
 }
 
 void face_tracker_manager::get_properties(obs_properties_t *pp)
 {
+	obs_property_t *p;
 	obs_properties_add_float(pp, "upsize_l", obs_module_text("Left"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "upsize_r", obs_module_text("Right"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "upsize_t", obs_module_text("Top"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "upsize_b", obs_module_text("Bottom"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "scale", obs_module_text("Scale image"), 1.0, 16.0, 1.0);
+	p = obs_properties_add_float(pp, "tracking_th_dB", obs_module_text("Tracking threshold"), -120.0, -20.0, 5.0);
+	obs_property_float_set_suffix(p, " dB");
 }
 
 void face_tracker_manager::get_defaults(obs_data_t *settings)
@@ -301,4 +318,5 @@ void face_tracker_manager::get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "upsize_t", 0.3);
 	obs_data_set_default_double(settings, "upsize_b", 0.1);
 	obs_data_set_default_double(settings, "scale", 2.0);
+	obs_data_set_default_double(settings, "tracking_th_dB", -80.0);
 }

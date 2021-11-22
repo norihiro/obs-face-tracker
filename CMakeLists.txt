@@ -137,6 +137,7 @@ if(WIN32)
     # Enable Multicore Builds and disable FH4 (to not depend on VCRUNTIME140_1.DLL when building with VS2019)
     if (MSVC)
         add_definitions(/MP /d2FH4-)
+        add_definitions("-D_USE_MATH_DEFINES")
     endif()
 
 	if(CMAKE_SIZEOF_VOID_P EQUAL 8)

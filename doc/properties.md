@@ -44,6 +44,12 @@ If your resolution is much smaller, make a intermediate scene and apply face tra
 1. Apply the filter to the scene.
 1. Put the scene to your desired scene.
 
+### Tracking threshold
+This property sets the threshold when to stop tracking after the face is lost.
+During correlation tracking, scores are accumulated.
+When the score drops lower than the specified threshold,
+the tracking will be stopped.
+
 ## Tracking target location
 
 ### Zoom

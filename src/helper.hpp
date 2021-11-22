@@ -112,3 +112,8 @@ static inline void draw_rect_upsize(rect_s r, float upsize_l=0.0f, float upsize_
 
 	gs_render_stop(GS_LINES);
 }
+
+inline double from_dB(double x)
+{
+	return exp(x * (M_LN10/20));
+}

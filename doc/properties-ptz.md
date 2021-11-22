@@ -38,6 +38,12 @@ Larger value will reduce CPU usage but too large value will fail to detect faces
 The face detection engine requires size of the faces at least 80x80.
 If you have low resolution image, it is highly recommended to set to `1`.
 
+### Tracking threshold
+This property sets the threshold when to stop tracking after the face is lost.
+During correlation tracking, scores are accumulated.
+When the score drops lower than the specified threshold,
+the tracking will be stopped.
+
 ## Tracking target location
 
 ### Zoom

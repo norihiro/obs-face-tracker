@@ -18,6 +18,7 @@ class face_tracker_manager
 			rectf_s crop_tracker; // crop corresponding to current processing image
 			rectf_s crop_rect; // crop corresponding to rect
 			float att;
+			float score_first;
 			enum tracker_state_e {
 				tracker_state_init = 0,
 				tracker_state_reset_texture, // texture has been set, position is not set.
@@ -33,6 +34,7 @@ class face_tracker_manager
 		float upsize_l, upsize_r, upsize_t, upsize_b;
 		volatile float scale;
 		volatile bool reset_requested;
+		float tracking_threshold;
 
 	public: // realtime status
 		rectf_s crop_cur;
@@ -67,6 +69,7 @@ class face_tracker_manager
 
 	private:
 		inline void retire_tracker(int ix);
+		inline bool is_low_confident(const tracker_inst_s &t, float th1);
 		void attenuate_tracker();
 		void copy_detector_to_tracker();
 		void stage_to_detector();
