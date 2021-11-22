@@ -84,11 +84,13 @@ Note that these features are automatically turned off when the source is display
 You can keep enable the checkboxes and keep monitoring the detection accuracy before the scene goes to the program.
 
 ### Show face detection results
+**Deprecated**
 If enabled, face detection and tracking results are shown.
 The face detection results are displayed in blue boxes.
 The Tracking results are displayed in green boxes.
 
 ### Always show information
+**Deprecated**
 If enabled, debugging properties listed above are effective even if the source is displayed on the program.
 This will be useful to make a demonstration of face-tracker itself.
 
