@@ -71,13 +71,21 @@ class ft_manager_for_ftptz : public face_tracker_manager
 			return false;
 		}
 
+		void release_dev() {
+			if (dev) {
+				dev->set_pantilt_speed(0, 0);
+				dev->set_zoom_speed(0);
+				dev->release();
+				dev = NULL;
+			}
+		}
+
 		~ft_manager_for_ftptz()
 		{
 			release_cvtex();
 			if (ptzdev)
 				delete ptzdev;
-			if (dev)
-				dev->release();
+			release_dev();
 		}
 
 		inline void release_cvtex()
@@ -169,10 +177,7 @@ static obs_data_t *get_ptz_settings(obs_data_t *settings)
 
 static void make_ptz_device(struct face_tracker_ptz *s, const char *ptz_type, obs_data_t *data)
 {
-	if (s->ftm->dev) {
-		s->ftm->dev->release();
-		s->ftm->dev = NULL;
-	}
+	s->ftm->release_dev();
 
 	if (s->ftm->ptzdev)
 		delete s->ftm->ptzdev;
@@ -187,10 +192,7 @@ static void make_deice_obsptz(struct face_tracker_ptz *s, const char *ptz_type, 
 		s->ftm->ptzdev = NULL;
 	}
 
-	if (s->ftm->dev) {
-		s->ftm->dev->release();
-		s->ftm->dev = NULL;
-	}
+	s->ftm->release_dev();
 
 	s->ftm->dev = new obsptz_backend();
 	s->ftm->dev->set_config(data);
@@ -204,10 +206,7 @@ static void make_device_libvisca_tcp(struct face_tracker_ptz *s, const char *ptz
 		s->ftm->ptzdev = NULL;
 	}
 
-	if (s->ftm->dev) {
-		s->ftm->dev->release();
-		s->ftm->dev = NULL;
-	}
+	s->ftm->release_dev();
 
 	if (!obs_data_get_string(data, "address"))
 		return;
