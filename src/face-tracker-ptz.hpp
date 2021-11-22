@@ -13,6 +13,7 @@ struct face_tracker_ptz
 	bool is_active;
 
 	f3 detect_err;
+	bool face_found, face_found_last;
 
 	class ft_manager_for_ftptz *ftm;
 
@@ -25,6 +26,7 @@ struct face_tracker_ptz
 	f3 e_deadband, e_nonlinear; // deadband and nonlinear amount for error input
 	f3 filter_int;
 	f3 filter_lpf;
+	float f_att_int;
 	int u[3];
 	int u_prev[3];
 	int u_prev1[3];

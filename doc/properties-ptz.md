@@ -78,6 +78,9 @@ The unit is a percentage of the average of source width and height.
 If the error signal is within the dead band, error signal is forced to zero to avoid small move to be tracked.
 The nonlinear band makes smooth connection from the dead band to the linear range.
 
+### Attenuation time for lost face
+After the face is lost, integral term will be attenuated by this time. The dimension is time and the unit is s.
+
 ## Debug
 These properties enables how the face detection and tracking works.
 Note that these features are automatically turned off when the source is displayed on the program of OBS Studio.

@@ -19,9 +19,7 @@
 #include "libvisca-thread.hpp"
 #endif
 
-// #define debug_track(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
-#define debug_track(fmt, ...)
-#define debug_libvisca(...) blog(LOG_INFO, __VA_ARGS__)
+#define debug_track(fmt, ...) // blog(LOG_INFO, fmt, __VA_ARGS__)
 
 #define PTZ_MAX_X 0x18
 #define PTZ_MAX_Y 0x14
@@ -245,6 +243,8 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	s->e_nonlinear.v[0] = (float)obs_data_get_double(settings, "e_nonlinear_x") * 1e-2;
 	s->e_nonlinear.v[1] = (float)obs_data_get_double(settings, "e_nonlinear_y") * 1e-2;
 	s->e_nonlinear.v[2] = (float)obs_data_get_double(settings, "e_nonlinear_z") * 1e-2;
+	float Tatt_int = (float)obs_data_get_double(settings, "Tatt_int");
+	s->f_att_int = Tatt_int > 0.0f ? 1.0f / Tatt_int : 1e3;
 
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
@@ -409,6 +409,7 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_properties_add_float(pp, "e_nonlinear_x", "Nonlinear band (X)", 0.0, 50, 0.1);
 		obs_properties_add_float(pp, "e_nonlinear_y", "Nonlinear band (Y)", 0.0, 50, 0.1);
 		obs_properties_add_float(pp, "e_nonlinear_z", "Nonlinear band (Z)", 0.0, 50, 0.1);
+		obs_properties_add_float(pp, "Tatt_int", "Attenuation time for lost face", 0.0, 4.0, 0.5);
 		obs_properties_add_group(props, "ctrl", obs_module_text("Tracking response"), OBS_GROUP_NORMAL, pp);
 	}
 
@@ -461,6 +462,7 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "Td", 0.42);
 	obs_data_set_default_double(settings, "Tdlpf", 2.0);
 	obs_data_set_default_double(settings, "Tdlpf_z", 6.0);
+	obs_data_set_default_double(settings, "Tatt_int", 2.0);
 
 	obs_data_t *presets = obs_data_create();
 	obs_data_set_default_obj(settings, "presets", presets);
@@ -575,9 +577,20 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 
 	f3 filter_lpf_prev = s->filter_lpf;
 	s->filter_int += e_int * (second * s->ki);
+	if (!s->face_found) {
+		float x = second * s->f_att_int;
+		if (x < 1.0f)
+			s->filter_int += s->filter_int * -x;
+		else
+			s->filter_int = f3(0.0f, 0.0f, 0.0f);
+	}
 	for (int i=0; i<3; i++)
 		s->filter_lpf.v[i] = (s->filter_lpf.v[i] * s->tlpf.v[i] + e.v[i] * second) / (s->tlpf.v[i] + second);
-	f3 uf = (e + s->filter_int) * second + (s->filter_lpf - filter_lpf_prev) * s->klpf;
+	f3 uf (0.0f, 0.0f, 0.0f);
+	if (s->face_found && s->face_found_last) {
+		uf = (e + s->filter_int) * second + (s->filter_lpf - filter_lpf_prev) * s->klpf;
+	}
+	s->face_found_last = s->face_found;
 	const int u_max[3] = {s->ptz_max_x, s->ptz_max_y, s->ptz_max_z};
 	const float kp_zoom = raw2zoomfactor(s->ptz_query[2]);
 	const float kp[3] = {
@@ -785,6 +798,7 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 		s->detect_err = e_tot * (1.0f / sc_tot);
 	else
 		s->detect_err = f3(0, 0, 0);
+	s->face_found = found;
 }
 
 static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source_frame *frame)
