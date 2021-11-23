@@ -8,8 +8,6 @@ variables:
     value: true
   - name: OBSLatestTag
     value: 26.1.2
-  - name: OBSPTZTag
-    value: 987bd22
 
 trigger:
   branches:
@@ -80,7 +78,6 @@ jobs:
         OBSPath: $(OBSPath)
         buildWin32: $(buildWin32)
         buildWin64: $(buildWin64)
-        OBSPTZTag: $(OBSPTZTag)
 
     - task: MSBuild@1
       displayName: 'Build Plugin 32-bit'
@@ -121,8 +118,6 @@ jobs:
 
     - script: ./ci/linux/build-ubuntu.sh
       displayName: 'Build Plugin'
-      env:
-        OBSPTZTag: $(OBSPTZTag)
 
     - script: ./ci/linux/package-ubuntu.sh
       displayName: 'Package Plugin'
@@ -146,8 +141,6 @@ jobs:
 
     - script: ./ci/macos/build-macos.sh
       displayName: 'Build Plugin'
-      env:
-        OBSPTZTag: $(OBSPTZTag)
 
     - task: InstallAppleCertificate@2
       displayName: 'Install release signing certificates'

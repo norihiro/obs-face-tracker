@@ -28,10 +28,7 @@ struct face_tracker_ptz
 	f3 filter_lpf;
 	float f_att_int;
 	int u[3];
-	int u_prev[3];
-	int u_prev1[3];
 	int ptz_query[3];
-	bool ptz_request_reset;
 
 	bool debug_faces;
 	bool debug_notrack;

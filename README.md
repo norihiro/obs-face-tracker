@@ -56,10 +56,6 @@ git clone https://github.com/davisking/dlib.git
 cd dlib
 patch -p1 < ../ci/common/dlib-cmake-no-openblasp.patch
 cd ..
-git clone https://github.com/norihiro/obs-ptz.git
-cd obs-ptz
-git checkout mod-for-ft
-cd ..
 mkdir build && cd build
 cmake -DLIBOBS_INCLUDE_DIR=$d0/obs-studio/libobs -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 make
@@ -99,5 +95,5 @@ This plugin is licensed under GPLv2.
 
 ## Acknowledgments
 - [dlib](http://dlib.net/) - [git hub repository](https://github.com/davisking/dlib)
-- [obz-ptz](https://github.com/glikely/obs-ptz) - PTZ camera interface is based on this code.
+- [obz-ptz](https://github.com/glikely/obs-ptz) - PTZ camera control goes through this plugin.
 - [OBS Project](https://obsproject.com/)

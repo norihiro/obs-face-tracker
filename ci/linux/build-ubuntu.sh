@@ -8,11 +8,6 @@ patch -p1 < ../ci/common/dlib-slim.patch
 patch -p1 < ../ci/common/dlib-cmake-no-openblasp.patch
 cd ..
 
-git clone https://github.com/norihiro/obs-ptz.git
-cd obs-ptz
-git checkout ${OBSPTZTag}
-cd -
-
 cp LICENSE data/LICENSE-$PLUGIN_NAME
 cp dlib/LICENSE.txt data/LICENSE-dlib
 

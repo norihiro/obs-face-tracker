@@ -23,12 +23,6 @@ patch -p1 < ../ci/common/dlib-slim.patch
 patch -p1 < ../ci/common/dlib-cmake-no-openblasp.patch
 cd ..
 
-echo "=> Cloning obs-ptz..."
-git clone https://github.com/norihiro/obs-ptz.git
-cd obs-ptz
-git checkout ${OBSPTZTag}
-cd -
-
 #export QT_PREFIX="$(find /usr/local/Cellar/qt5 -d 1 | tail -n 1)"
 
 export OPENBLAS_HOME=/usr/local/opt/openblas/
