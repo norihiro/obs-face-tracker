@@ -16,6 +16,7 @@
 #ifdef WITH_PTZ_TCP
 #include "libvisca-thread.hpp"
 #endif
+#include "dummy-backend.hpp"
 
 #define debug_track(fmt, ...) // blog(LOG_INFO, fmt, __VA_ARGS__)
 
@@ -164,6 +165,14 @@ static void make_device_libvisca_tcp(struct face_tracker_ptz *s, obs_data_t *dat
 }
 #endif // WITH_PTZ_TCP
 
+static void make_device_dummy(struct face_tracker_ptz *s, obs_data_t *data)
+{
+	s->ftm->release_dev();
+
+	s->ftm->dev = new dummy_backend();
+	UNUSED_PARAMETER(data);
+}
+
 static void ftptz_update(void *data, obs_data_t *settings)
 {
 	auto *s = (struct face_tracker_ptz*)data;
@@ -215,6 +224,9 @@ static void ftptz_update(void *data, obs_data_t *settings)
 			make_device_libvisca_tcp(s, data);
 		}
 #endif // WITH_PTZ_TCP
+		else if (!strcmp(ptz_type, "dummy")) {
+			make_device_dummy(s, data);
+		}
 		else if (s->ftm->dev) {
 			s->ftm->dev->release();
 			s->ftm->dev = NULL;
@@ -363,6 +375,7 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_properties_add_bool(pp, "debug_faces", "Show face detection results");
 		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
 		obs_property_t *p = obs_properties_add_list(pp, "ptz-type", obs_module_text("PTZ Type"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+		obs_property_list_add_string(p, obs_module_text("None"), "dummy");
 		obs_property_list_add_string(p, obs_module_text("through PTZ Controls"), "obsptz");
 #ifdef WITH_PTZ_TCP
 		obs_property_list_add_string(p, obs_module_text("VISCA over TCP"), "visca-over-tcp");

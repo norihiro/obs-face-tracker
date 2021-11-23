@@ -70,6 +70,7 @@ set(PLUGIN_SOURCES
 	src/texture-object.cpp
 	src/ptz-backend.cpp
 	src/obsptz-backend.cpp
+	src/dummy-backend.cpp
 )
 
 set(PLUGIN_HEADERS
@@ -86,6 +87,7 @@ set(PLUGIN_HEADERS
 	src/helper.hpp
 	src/ptz-backend.hpp
 	src/obsptz-backend.hpp
+	src/dummy-backend.hpp
 )
 
 if (WITH_PTZ_TCP)
