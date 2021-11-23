@@ -69,20 +69,20 @@ This property set the maximum of the zoom.
 The tracking system has a PID control element + integrator.
 
 ### Kp
-This is a proportional constant. The dimention is inverse time and the unit is s<sup>-1</sup>.
+This is a proportional constant. The dimension is inverse time and the unit is s<sup>-1</sup>.
 Larger value will result faster response.
 
 ### Ki
-This is a integral constant. The dimention is inverse time and the unit is s<sup>-1</sup>.
+This is a integral constant. The dimension is inverse time and the unit is s<sup>-1</sup>.
 Larger value results more tracking of slow move.
 
 ### Td
-This is a derivative constant. The dimention is time and the unit is s.
+This is a derivative constant. The dimension is time and the unit is s.
 0 will result no derivative term.
 Larger value will make faster tracking when the subject start to move.
 
 ### LPF for Td
-This is an inverse of the cut-off frequency for the low-pass filter (LPF), which affects the derivative term of PID control element. The dimention is time and the unit is s.
+This is an inverse of the cut-off frequency for the low-pass filter (LPF), which affects the derivative term of PID control element. The dimension is time and the unit is s.
 The LPF will reduce noise of face detection and small move of the subject.
 
 ### Attenuation (Z)
