@@ -12,6 +12,6 @@ class face_detector_dlib : public face_detector_base
 	public:
 		face_detector_dlib();
 		virtual ~face_detector_dlib();
-		void set_texture(class texture_object *) override;
+		void set_texture(class texture_object *, int crop_l, int crop_r, int crop_t, int crop_b) override;
 		void get_faces(std::vector<struct rect_s> &) override;
 };

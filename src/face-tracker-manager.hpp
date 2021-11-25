@@ -35,6 +35,7 @@ class face_tracker_manager
 		volatile float scale;
 		volatile bool reset_requested;
 		float tracking_threshold;
+		int detector_crop_l, detector_crop_r, detector_crop_t, detector_crop_b;
 
 	public: // realtime status
 		rectf_s crop_cur;

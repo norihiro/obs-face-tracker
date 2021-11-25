@@ -38,6 +38,14 @@ Larger value will reduce CPU usage but too large value will fail to detect faces
 The face detection engine requires size of the faces at least 80x80.
 If you have low resolution image, it is highly recommended to set to `1`.
 
+### Crop left, right, top, and bottom for detector
+These properties crop the image before sending to the face detection algorithm.
+The unit is pixel before scaling the image.
+
+The properties won't affect tracking.
+If the face is once detected and moved out from the cropped region,
+the tracking will still continue.
+
 ### Tracking threshold
 This property sets the threshold when to stop tracking after the face is lost.
 During correlation tracking, scores are accumulated.

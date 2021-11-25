@@ -44,6 +44,14 @@ If your resolution is much smaller, make a intermediate scene and apply face tra
 1. Apply the filter to the scene.
 1. Put the scene to your desired scene.
 
+### Crop left, right, top, and bottom for detector
+These properties crop the image before sending to the face detection algorithm.
+The unit is pixel before scaling the image.
+
+The properties won't affect tracking.
+If the face is once detected and moved out from the cropped region,
+the tracking will still continue.
+
 ### Tracking threshold
 This property sets the threshold when to stop tracking after the face is lost.
 During correlation tracking, scores are accumulated.
