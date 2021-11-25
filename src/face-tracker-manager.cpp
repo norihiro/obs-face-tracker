@@ -166,7 +166,9 @@ inline void face_tracker_manager::stage_to_detector()
 	}
 
 	if (class texture_object *cvtex = get_cvtex()) {
-		detect->set_texture(cvtex);
+		detect->set_texture(cvtex,
+				detector_crop_l, detector_crop_r,
+				detector_crop_t, detector_crop_b );
 		detect->signal();
 		detector_in_progress = true;
 		detect_tick = tick_cnt;
@@ -296,6 +298,10 @@ void face_tracker_manager::update(obs_data_t *settings)
 	upsize_t = obs_data_get_double(settings, "upsize_t");
 	upsize_b = obs_data_get_double(settings, "upsize_b");
 	scale = obs_data_get_double(settings, "scale");
+	detector_crop_l = obs_data_get_int(settings, "detector_crop_l");
+	detector_crop_r = obs_data_get_int(settings, "detector_crop_r");
+	detector_crop_t = obs_data_get_int(settings, "detector_crop_t");
+	detector_crop_b = obs_data_get_int(settings, "detector_crop_b");
 	tracking_threshold = from_dB(obs_data_get_double(settings, "tracking_th_dB"));
 }
 
@@ -307,6 +313,10 @@ void face_tracker_manager::get_properties(obs_properties_t *pp)
 	obs_properties_add_float(pp, "upsize_t", obs_module_text("Top"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "upsize_b", obs_module_text("Bottom"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "scale", obs_module_text("Scale image"), 1.0, 16.0, 1.0);
+	obs_properties_add_int(pp, "detector_crop_l", obs_module_text("Crop left for detector"), 0, 1920, 1);
+	obs_properties_add_int(pp, "detector_crop_r", obs_module_text("Crop right for detector"), 0, 1920, 1);
+	obs_properties_add_int(pp, "detector_crop_t", obs_module_text("Crop top for detector"), 0, 1080, 1);
+	obs_properties_add_int(pp, "detector_crop_b", obs_module_text("Crop bottom for detector"), 0, 1080, 1);
 	p = obs_properties_add_float(pp, "tracking_th_dB", obs_module_text("Tracking threshold"), -120.0, -20.0, 5.0);
 	obs_property_float_set_suffix(p, " dB");
 }
