@@ -130,7 +130,7 @@ void texture_object::set_texture_obsframe_scale(const struct obs_source_frame *f
 			break;
 		default:
 			if (TEST_FORMAT(frame->format))
-				blog(LOG_ERROR, "unsupported frame format %d", frame->format);
+				blog(LOG_ERROR, "unsupported frame format %d. Check enum video_format in obs-studio/libobs/media-io/video-io.h for the format code.", (int)frame->format);
 	}
 	SET_FORMAT(frame->format);
 }
