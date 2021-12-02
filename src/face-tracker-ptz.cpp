@@ -352,11 +352,11 @@ static obs_properties_t *ftptz_properties(void *data)
 	{
 		obs_properties_t *pp = obs_properties_create();
 		obs_property_t *p;
-		p = obs_properties_add_float(pp, "Kp_x_db", "Track Kp (Pan)",  -40.0, +80.0, 1.0);
+		p = obs_properties_add_float(pp, "Kp_x_db", "Track Kp (X)",  -40.0, +80.0, 1.0);
 		obs_property_float_set_suffix(p, " dB");
-		p = obs_properties_add_float(pp, "Kp_y_db", "Track Kp (Tilt)", -40.0, +80.0, 1.0);
+		p = obs_properties_add_float(pp, "Kp_y_db", "Track Kp (Y)", -40.0, +80.0, 1.0);
 		obs_property_float_set_suffix(p, " dB");
-		p = obs_properties_add_float(pp, "Kp_z_db", "Track Kp (Zoom)", -40.0, +40.0, 1.0);
+		p = obs_properties_add_float(pp, "Kp_z_db", "Track Kp (Z)", -40.0, +40.0, 1.0);
 		obs_property_float_set_suffix(p, " dB");
 		obs_properties_add_float(pp, "Ki_x", "Track Ki (X)", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Ki_y", "Track Ki (Y)", 0.0, 5.0, 0.01);

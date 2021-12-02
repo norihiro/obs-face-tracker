@@ -67,7 +67,7 @@ This property set the location where the center of the face is placed.
 
 The tracking system has a PID control element + integrator.
 
-### Kp (Pan, Tilt, Zoom)
+### Kp (X, Y, Z)
 This is a proportional constant in decibel.
 Larger value will result faster response.
 Since the gain of the PTZ camera depends on the manufactures and models,
