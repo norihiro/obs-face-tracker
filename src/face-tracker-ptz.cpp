@@ -183,16 +183,18 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	s->track_x = obs_data_get_double(settings, "track_x");
 	s->track_y = obs_data_get_double(settings, "track_y");
 
-	float ki = (float)obs_data_get_double(settings, "Ki");
-	double td = obs_data_get_double(settings, "Td");
+	s->ki.v[0] = (float)obs_data_get_double(settings, "Ki_x");
+	s->ki.v[1] = (float)obs_data_get_double(settings, "Ki_y");
+	s->ki.v[2] = (float)obs_data_get_double(settings, "Ki_z");
 	float inv_x = obs_data_get_bool(settings, "invert_x") ? -1.0f : 1.0f;
 	float inv_y = obs_data_get_bool(settings, "invert_y") ? -1.0f : 1.0f;
 	float inv_z = obs_data_get_bool(settings, "invert_z") ? -1.0f : 1.0f;
 	s->kp_x = (float)from_dB(obs_data_get_double(settings, "Kp_x_db")) * inv_x;
 	s->kp_y = (float)from_dB(obs_data_get_double(settings, "Kp_y_db")) * inv_y;
 	s->kp_z = (float)from_dB(obs_data_get_double(settings, "Kp_z_db")) * inv_z;
-	s->ki = ki;
-	s->klpf = (float)td;
+	s->klpf.v[0] = obs_data_get_double(settings, "Td_x");
+	s->klpf.v[1] = obs_data_get_double(settings, "Td_y");
+	s->klpf.v[2] = obs_data_get_double(settings, "Td_z");
 	s->tlpf.v[0] = s->tlpf.v[1] = (float)obs_data_get_double(settings, "Tdlpf");
 	s->tlpf.v[2] = (float)obs_data_get_double(settings, "Tdlpf_z");
 	s->e_deadband.v[0] = (float)obs_data_get_double(settings, "e_deadband_x") * 1e-2;
@@ -356,8 +358,12 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_property_float_set_suffix(p, " dB");
 		p = obs_properties_add_float(pp, "Kp_z_db", "Track Kp (Zoom)", -40.0, +40.0, 1.0);
 		obs_property_float_set_suffix(p, " dB");
-		obs_properties_add_float(pp, "Ki", "Track Ki", 0.0, 5.0, 0.01);
-		obs_properties_add_float(pp, "Td", "Track Td", 0.0, 5.0, 0.01);
+		obs_properties_add_float(pp, "Ki_x", "Track Ki (X)", 0.0, 5.0, 0.01);
+		obs_properties_add_float(pp, "Ki_y", "Track Ki (Y)", 0.0, 5.0, 0.01);
+		obs_properties_add_float(pp, "Ki_z", "Track Ki (Z)", 0.0, 5.0, 0.01);
+		obs_properties_add_float(pp, "Td_x", "Track Td (X)", 0.0, 5.0, 0.01);
+		obs_properties_add_float(pp, "Td_y", "Track Td (Y)", 0.0, 5.0, 0.01);
+		obs_properties_add_float(pp, "Td_z", "Track Td (Z)", 0.0, 5.0, 0.01);
 		obs_properties_add_float(pp, "Tdlpf", "Track LPF for Td (X, Y)", 0.0, 10.0, 0.1);
 		obs_properties_add_float(pp, "Tdlpf_z", "Track LPF for Td (Z)", 0.0, 10.0, 0.1);
 		obs_properties_add_float(pp, "e_deadband_x", "Dead band (X)", 0.0, 50, 0.1);
@@ -408,8 +414,12 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "Kp_x_db", 50.0);
 	obs_data_set_default_double(settings, "Kp_y_db", 50.0);
 	obs_data_set_default_double(settings, "Kp_z_db", 40.0);
-	obs_data_set_default_double(settings, "Ki", 0.3);
-	obs_data_set_default_double(settings, "Td", 0.42);
+	obs_data_set_default_double(settings, "Ki_x", 0.3);
+	obs_data_set_default_double(settings, "Ki_y", 0.3);
+	obs_data_set_default_double(settings, "Ki_z", 0.1);
+	obs_data_set_default_double(settings, "Td_x", 0.42);
+	obs_data_set_default_double(settings, "Td_y", 0.42);
+	obs_data_set_default_double(settings, "Td_z", 0.14);
 	obs_data_set_default_double(settings, "Tdlpf", 2.0);
 	obs_data_set_default_double(settings, "Tdlpf_z", 6.0);
 	obs_data_set_default_double(settings, "Tatt_int", 2.0);
@@ -511,11 +521,11 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 			x -= d + n * 0.5f;
 		else
 			x += d + n * 0.5f;
-		if (second * s->ki > 1.0e-10) {
+		if (second * s->ki.v[i] > 1.0e-10) {
 			if (s->filter_int.v[i] < 0.0f && e.v[i] > 0.0f)
-				e_int.v[i] = std::min(e.v[i], -s->filter_int.v[i] / (second * s->ki));
+				e_int.v[i] = std::min(e.v[i], -s->filter_int.v[i] / (second * s->ki.v[i]));
 			else if (s->filter_int.v[i] > 0.0f && e.v[i] < 0.0f)
-				e_int.v[i] = std::max(e.v[i], -s->filter_int.v[i] / (second * s->ki));
+				e_int.v[i] = std::max(e.v[i], -s->filter_int.v[i] / (second * s->ki.v[i]));
 			else
 				e_int.v[i] = x;
 		}
@@ -523,7 +533,8 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 	}
 
 	f3 filter_lpf_prev = s->filter_lpf;
-	s->filter_int += e_int * (second * s->ki);
+	for (int i=0; i<3; i++)
+		s->filter_int.v[i] += e_int.v[i] * s->ki.v[i] * second;
 	if (!s->face_found) {
 		float x = second * s->f_att_int;
 		if (x < 1.0f)
@@ -535,7 +546,8 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 		s->filter_lpf.v[i] = (s->filter_lpf.v[i] * s->tlpf.v[i] + e.v[i] * second) / (s->tlpf.v[i] + second);
 	f3 uf (0.0f, 0.0f, 0.0f);
 	if (s->face_found && s->face_found_last) {
-		uf = (e + s->filter_int) * second + (s->filter_lpf - filter_lpf_prev) * s->klpf;
+		for (int i=0; i<3; i++)
+			uf.v[i] = (e.v[i] + s->filter_int.v[i]) * second + (s->filter_lpf.v[i] - filter_lpf_prev.v[i]) * s->klpf.v[i];
 	}
 	s->face_found_last = s->face_found;
 	const int u_max[3] = {s->ptz_max_x, s->ptz_max_y, s->ptz_max_z};

@@ -73,18 +73,19 @@ Larger value will result faster response.
 Since the gain of the PTZ camera depends on the manufactures and models,
 you need to adjust Kp for your camera.
 
-### Ki
+### Ki (X, Y, Z)
 This is a integral constant. The dimension is inverse time and the unit is s<sup>-1</sup>.
 Larger value results more tracking of slow move.
 
-### Td
+### Td (X, Y, Z)
 This is a derivative constant. The dimension is time and the unit is s.
 0 will result no derivative term.
 Larger value will make faster tracking when the subject start to move.
 
-### LPF for Td
-This is an inverse of the cut-off frequency for the low-pass filter (LPF), which affects the derivative term of PID control element. The dimension is time and the unit is s.
-The LPF will reduce noise of face detection and small move of the subject.
+### LPF for Td (X, Y, Z)
+This is an inverse of the cut-off frequency for the low-pass filter (LPF), which affects the derivative term of the PID control element. The dimension is time and the unit is s.
+The LPF will reduce noise of face detection and small movement of the subject.
+This property is shared for X and Y axises.
 
 ### Dead band nonlinear band (X, Y, Z)
 These parameters make dead bands and nonlinear bands for the error signal that goes to PID control element.
