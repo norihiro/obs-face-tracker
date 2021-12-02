@@ -74,13 +74,13 @@ Since the gain of the PTZ camera depends on the manufactures and models,
 you need to adjust Kp for your camera.
 
 ### Ki (X, Y, Z)
-This is a integral constant. The dimension is inverse time and the unit is s<sup>-1</sup>.
-Larger value results more tracking of slow move.
+This is an integral constant. The dimension is inverse time and the unit is s<sup>-1</sup>.
+Larger value results in more tracking of slow movement.
 
 ### Td (X, Y, Z)
 This is a derivative constant. The dimension is time and the unit is s.
-0 will result no derivative term.
-Larger value will make faster tracking when the subject start to move.
+0 will result in no derivative term.
+Larger value will make tracking faster when the subject starts to move.
 
 ### LPF for Td (X, Y, Z)
 This is an inverse of the cut-off frequency for the low-pass filter (LPF), which affects the derivative term of the PID control element. The dimension is time and the unit is s.
