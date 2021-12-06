@@ -211,7 +211,11 @@ if(UNIX AND NOT APPLE)
     include(GNUInstallDirs)
 
 	set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PREFIX "")
-	target_link_libraries(${CMAKE_PROJECT_NAME} obs-frontend-api)
+	if(DEFINED LIBOBS_FRONTEND_API)
+		target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBOBS_FRONTEND_API})
+	else()
+		target_link_libraries(${CMAKE_PROJECT_NAME} obs-frontend-api)
+	endif()
 
 	install(TARGETS ${CMAKE_PROJECT_NAME}
 		LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/obs-plugins")
