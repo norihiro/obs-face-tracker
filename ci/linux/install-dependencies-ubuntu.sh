@@ -11,7 +11,8 @@ sudo apt-get install -y \
 	checkinstall \
 	cmake \
 	obs-studio \
-	qtbase5-dev
+	qtbase5-dev \
+	qtbase5-private-dev
 
 # Dirty hack
 obs_version="$(dpkg -s obs-studio | awk '$1=="Version:" {print gensub(/-.*/, "", 1, $2)}')"
