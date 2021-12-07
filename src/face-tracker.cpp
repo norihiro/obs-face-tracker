@@ -740,13 +740,15 @@ static void ftf_render(void *data, gs_effect_t *)
 static uint32_t ftf_width(void *data)
 {
 	auto *s = (struct face_tracker_filter*)data;
-	return s->width_with_aspect;
+	const bool debug_notrack = s->debug_notrack && (!s->is_active || s->debug_always_show);
+	return debug_notrack ? s->known_width : s->width_with_aspect;
 }
 
 static uint32_t ftf_height(void *data)
 {
 	auto *s = (struct face_tracker_filter*)data;
-	return s->height_with_aspect;
+	const bool debug_notrack = s->debug_notrack && (!s->is_active || s->debug_always_show);
+	return debug_notrack ? s->known_height : s->height_with_aspect;
 }
 
 extern "C"
