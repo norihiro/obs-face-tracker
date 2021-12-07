@@ -5,6 +5,8 @@ When clicked, tracking state is reset to the initial condition; zero crop, reset
 (This is not a property.)
 
 ## Preset
+**Deprecated**
+Preset will be provided through a dock. The preset group in the property dialog will be removed in the future release.
 
 ### Preset
 This combo-box sets the name of the preset to be loaded or saved.
