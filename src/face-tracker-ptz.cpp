@@ -245,6 +245,8 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	}
 }
 
+static void cb_render_info(void *data, calldata_t *cd);
+
 static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 {
 	auto *s = (struct face_tracker_ptz*)bzalloc(sizeof(struct face_tracker_ptz));
@@ -254,6 +256,10 @@ static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 	s->ftm->scale = 2.0f;
 
 	obs_source_update(context, settings);
+
+	proc_handler_t *ph = obs_source_get_proc_handler(context);
+	proc_handler_add(ph, "void render_info()", cb_render_info, s);
+
 	return s;
 }
 
@@ -690,7 +696,7 @@ static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source
 	return frame;
 }
 
-static inline void draw_frame_info(struct face_tracker_ptz *s)
+static void draw_frame_info(struct face_tracker_ptz *s)
 {
 	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_SOLID);
 	while (gs_effect_loop(effect, "Solid")) {
@@ -723,6 +729,13 @@ static void ftptz_video_render(void *data, gs_effect_t *)
 
 	if (s->debug_faces && (!s->is_active || s->debug_always_show))
 		draw_frame_info(s);
+}
+
+static void cb_render_info(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_ptz*)data;
+
+	draw_frame_info(s);
 }
 
 extern "C"

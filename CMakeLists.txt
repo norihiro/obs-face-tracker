@@ -7,6 +7,7 @@ set(MACOS_BUNDLEID "net.nagater.obs-face-tracker")
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
 option(WITH_PTZ_TCP "Enable to connect PTZ camera through TCP socket" ON)
+option(ENABLE_MONITOR_USER "Enable monitor source for user" OFF)
 
 set(CMAKE_PREFIX_PATH "${QTDIR}")
 set(CMAKE_AUTOMOC ON)
@@ -63,6 +64,7 @@ set(PLUGIN_SOURCES
 	src/face-tracker-preset.cpp
 	src/face-tracker-manager.cpp
 	src/face-tracker-ptz.cpp
+	src/face-tracker-monitor.cpp
 	src/face-detector-base.cpp
 	src/face-detector-dlib.cpp
 	src/face-tracker-base.cpp

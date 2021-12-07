@@ -100,6 +100,10 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->debug_always_show = obs_data_get_bool(settings, "debug_always_show");
 }
 
+static void cb_render_frame(void *data, calldata_t *cd);
+static void cb_render_info(void *data, calldata_t *cd);
+static void cb_get_target_size(void *data, calldata_t *cd);
+
 static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 {
 	auto *s = (struct face_tracker_filter*)bzalloc(sizeof(struct face_tracker_filter));
@@ -121,6 +125,12 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 	obs_leave_graphics();
 
 	obs_source_update(context, settings);
+
+	proc_handler_t *ph = obs_source_get_proc_handler(context);
+	proc_handler_add(ph, "void render_frame(bool notrack)", cb_render_frame, s);
+	proc_handler_add(ph, "void render_info(bool notrack)", cb_render_info, s);
+	proc_handler_add(ph, "void get_target_size(out int width, out int height)", cb_get_target_size, s);
+
 	return s;
 }
 
@@ -617,13 +627,12 @@ static inline void draw_sprite_crop(float width, float height, float x0, float y
 	gs_render_stop(GS_TRISTRIP);
 }
 
-static inline void draw_frame_texture(struct face_tracker_filter *s)
+static inline void draw_frame_texture(struct face_tracker_filter *s, bool debug_notrack)
 {
 	uint32_t width = s->width_with_aspect;
 	uint32_t height = s->height_with_aspect;
 	const rectf_s &crop_cur = s->ftm->crop_cur;
 	const float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
-	const bool debug_notrack = s->debug_notrack && (!s->is_active || s->debug_always_show);
 
 	// TODO: linear_srgb, 27 only?
 
@@ -648,11 +657,10 @@ static inline void draw_frame_texture(struct face_tracker_filter *s)
 	}
 }
 
-static inline void draw_frame_info(struct face_tracker_filter *s)
+static inline void draw_frame_info(struct face_tracker_filter *s, bool debug_notrack)
 {
 	const rectf_s &crop_cur = s->ftm->crop_cur;
 
-	const bool debug_notrack = s->debug_notrack && (!s->is_active || s->debug_always_show);
 	if (!debug_notrack) {
 		uint32_t width = s->width_with_aspect;
 		uint32_t height = s->height_with_aspect;
@@ -706,10 +714,12 @@ static inline void draw_frame_info(struct face_tracker_filter *s)
 
 static inline void draw_frame(struct face_tracker_filter *s)
 {
-	draw_frame_texture(s);
+	const bool debug_notrack = s->debug_notrack && (!s->is_active || s->debug_always_show);
+
+	draw_frame_texture(s, debug_notrack);
 
 	if (s->debug_faces && (!s->is_active || s->debug_always_show))
-		draw_frame_info(s);
+		draw_frame_info(s, debug_notrack);
 }
 
 static void ftf_render(void *data, gs_effect_t *)
@@ -749,6 +759,33 @@ static uint32_t ftf_height(void *data)
 	auto *s = (struct face_tracker_filter*)data;
 	const bool debug_notrack = s->debug_notrack && (!s->is_active || s->debug_always_show);
 	return debug_notrack ? s->known_height : s->height_with_aspect;
+}
+
+static void cb_render_frame(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_filter*)data;
+
+	bool debug_notrack = false;
+	calldata_get_bool(cd, "notrack", &debug_notrack);
+
+	draw_frame_texture(s, debug_notrack);
+}
+
+static void cb_render_info(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_filter*)data;
+
+	bool debug_notrack = false;
+	calldata_get_bool(cd, "notrack", &debug_notrack);
+
+	draw_frame_info(s, debug_notrack);
+}
+
+static void cb_get_target_size(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_filter*)data;
+	calldata_set_int(cd, "width", (int)s->known_width);
+	calldata_set_int(cd, "height", (int)s->known_height);
 }
 
 extern "C"

@@ -23,6 +23,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define PLUGIN_VERSION "@CMAKE_PROJECT_VERSION@"
 
 #cmakedefine WITH_PTZ_TCP
+#cmakedefine ENABLE_MONITOR_USER
 
 #define blog(level, msg, ...) blog(level, "[" PLUGIN_NAME "] " msg, ##__VA_ARGS__)
 
