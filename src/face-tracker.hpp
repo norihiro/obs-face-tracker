@@ -36,6 +36,10 @@ struct face_tracker_filter
 	f3 filter_lpf;
 	int aspect_x, aspect_y;
 
+	// face tracker source
+	char *target_name;
+	obs_weak_source_t *target_ref;
+
 	bool debug_faces;
 	bool debug_notrack;
 	bool debug_always_show;

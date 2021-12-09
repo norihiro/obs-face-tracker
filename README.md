@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This plugin provide video filters for face detection and face tracking for mainly a speaking person.
+This plugin provide a feature to track face of a person by detecting and tracking a face.
 
 This plugin employs [dlib](http://dlib.net/) on face detection and object tracking.
 The frame of the source is periodically taken to face detection algorithm.
@@ -10,7 +10,18 @@ Once a face is found, the face is tracked.
 Based on the location and the size of the face under tracking, the frame will be cropped.
 
 ## Usage
-### Software Zoom Filter
+
+For several use cases, total 3 methods are provided.
+
+### Face Tracker Source
+The face tracker is implemented as a source. You can easily have another source that tracks and zooms into a face.
+1. Click the add button on the source list.
+2. Add `Face Tracker`.
+3. Scroll to the bottom and set `Source` property.
+
+See [Properties](doc/properties.md) for the description of each property.
+
+### Face Tracker Filter
 The face tracker is implemented as an effect filter so that any video source can have the face tracker.
 1. Open filters for a source on OBS Studio.
 2. Click the add button on `Effect Filters`.
@@ -18,7 +29,7 @@ The face tracker is implemented as an effect filter so that any video source can
 
 See [Properties](doc/properties.md) for the description of each property.
 
-### PTZ Control
+### Face Tracker PTZ
 Experimental version of PTZ control is provided as an video filter.
 1. Open filters for a source on OBS Studio,
 2. Click the add button on `Audio/Video Filters`.

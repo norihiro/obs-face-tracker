@@ -54,7 +54,11 @@ static void ftmon_update(void *data, obs_data_t *settings)
 		bfree(s->source_name);
 		s->source_name = bstrdup(source_name);
 	}
-	if (filter_name && (!s->filter_name || strcmp(filter_name, s->filter_name))) {
+
+	if (!filter_name || !*filter_name) {
+		bfree(s->filter_name);
+		s->filter_name = NULL;
+	} else if (!s->filter_name || strcmp(filter_name, s->filter_name)) {
 		bfree(s->filter_name);
 		s->filter_name = bstrdup(filter_name);
 	}
@@ -95,10 +99,17 @@ static obs_source_t *get_filter(struct face_tracker_monitor *s)
 	return obs_weak_source_get_source(s->filter_ref);
 }
 
+static obs_source_t *get_target(struct face_tracker_monitor *s)
+{
+	if (!s->filter_name || !*s->filter_name)
+		return get_source(s);
+	return get_filter(s);
+}
+
 static inline void tick_source(struct face_tracker_monitor *s, obs_weak_source_t *&source_ref, const char *source_name,
 		obs_source_t *(*get_source)(struct face_tracker_monitor *))
 {
-	if (!source_name)
+	if (!source_name || !*source_name)
 		return;
 
 	bool fail = false;
@@ -138,13 +149,18 @@ static void ftmon_tick(void *data, float second)
 {
 	auto *s = (struct face_tracker_monitor*)data;
 
-	tick_source(s, s->source_ref, s->source_name, get_source_by_name);
-	tick_source(s, s->filter_ref, s->filter_name, get_filter_by_name);
+	bool source_specified = s->source_name && *s->source_name;
+	bool filter_specified = s->filter_name && *s->filter_name;
 
-	if (!s->source_ref) {
+	if (source_specified)
+		tick_source(s, s->source_ref, s->source_name, get_source_by_name);
+	if (filter_specified)
+		tick_source(s, s->filter_ref, s->filter_name, get_filter_by_name);
+
+	if (source_specified && !s->source_ref) {
 		blog(LOG_INFO, "failed to get source \"%s\"", s->source_name);
 	}
-	else if (!s->filter_ref) {
+	else if (filter_specified && !s->filter_ref) {
 		blog(LOG_INFO, "failed to get filter \"%s\"", s->filter_name);
 	}
 }
@@ -154,10 +170,10 @@ static uint32_t ftmon_get_width(void *data)
 	auto *s = (struct face_tracker_monitor*)data;
 
 	if (s->notrack) {
-		OBSSource filter(get_filter(s));
-		obs_source_release(filter);
+		OBSSource target(get_target(s));
+		obs_source_release(target);
 
-		proc_handler_t *ph = obs_source_get_proc_handler(filter);
+		proc_handler_t *ph = obs_source_get_proc_handler(target);
 		if (!ph)
 			return 0;
 
@@ -184,10 +200,10 @@ static uint32_t ftmon_get_height(void *data)
 	auto *s = (struct face_tracker_monitor*)data;
 
 	if (s->notrack) {
-		OBSSource filter(get_filter(s));
-		obs_source_release(filter);
+		OBSSource target(get_target(s));
+		obs_source_release(target);
 
-		proc_handler_t *ph = obs_source_get_proc_handler(filter);
+		proc_handler_t *ph = obs_source_get_proc_handler(target);
 		if (!ph)
 			return 0;
 
@@ -213,15 +229,12 @@ static void ftmon_video_render(void *data, gs_effect_t *)
 {
 	auto *s = (struct face_tracker_monitor*)data;
 
-	if (!s->filter_ref)
+	OBSSource target(get_target(s));
+	obs_source_release(target);
+	if (!target)
 		return;
 
-	OBSSource filter(get_filter(s));
-	obs_source_release(filter);
-	if (!filter)
-		return;
-
-	proc_handler_t *ph = obs_source_get_proc_handler(filter);
+	proc_handler_t *ph = obs_source_get_proc_handler(target);
 	if (!ph)
 		return;
 

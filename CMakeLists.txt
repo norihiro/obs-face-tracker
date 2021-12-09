@@ -61,6 +61,7 @@ configure_file(
 set(PLUGIN_SOURCES
 	src/module-main.c
 	src/face-tracker.cpp
+	src/source_list.cc
 	src/face-tracker-preset.cpp
 	src/face-tracker-manager.cpp
 	src/face-tracker-ptz.cpp
@@ -77,6 +78,7 @@ set(PLUGIN_SOURCES
 
 set(PLUGIN_HEADERS
 	src/face-tracker.hpp
+	src/source_list.h
 	src/face-tracker-preset.h
 	src/face-tracker-manager.hpp
 	src/face-tracker-ptz.hpp

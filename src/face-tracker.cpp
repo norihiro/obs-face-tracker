@@ -11,6 +11,7 @@
 #include "face-tracker.hpp"
 #include "face-tracker-preset.h"
 #include "face-tracker-manager.hpp"
+#include "source_list.h"
 
 // #define debug_track(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
 #define debug_track(fmt, ...)
@@ -100,6 +101,18 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->debug_always_show = obs_data_get_bool(settings, "debug_always_show");
 }
 
+static void fts_update(void *data, obs_data_t *settings)
+{
+	auto *s = (struct face_tracker_filter*)data;
+	ftf_update(data, settings);
+
+	const char *target_name = obs_data_get_string(settings, "target_name");
+	if (target_name && *target_name) {
+		bfree(s->target_name);
+		s->target_name = bstrdup(target_name);
+	}
+}
+
 static void cb_render_frame(void *data, calldata_t *cd);
 static void cb_render_info(void *data, calldata_t *cd);
 static void cb_get_target_size(void *data, calldata_t *cd);
@@ -134,6 +147,17 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 	return s;
 }
 
+static void register_hotkeys(struct face_tracker_filter *s, obs_source_t *target);
+
+static void *fts_create(obs_data_t *settings, obs_source_t *context)
+{
+	auto *s = (struct face_tracker_filter *)ftf_create(settings, context);
+
+	register_hotkeys(s, context);
+
+	return s;
+}
+
 static void ftf_destroy(void *data)
 {
 	auto *s = (struct face_tracker_filter*)data;
@@ -153,6 +177,9 @@ static void ftf_destroy(void *data)
 	obs_leave_graphics();
 
 	delete s->ftm;
+
+	bfree(s->target_name);
+	obs_weak_source_release(s->target_ref);
 
 	bfree(s);
 }
@@ -253,6 +280,22 @@ static obs_properties_t *ftf_properties(void *data)
 		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
 		obs_properties_add_group(props, "debug", obs_module_text("Debugging"), OBS_GROUP_NORMAL, pp);
 	}
+
+	return props;
+}
+
+static obs_properties_t *fts_properties(void *data)
+{
+	auto *s = (struct face_tracker_filter*)data;
+
+	obs_properties_t *props = ftf_properties(data);
+
+	obs_properties_t *pp = obs_properties_create();
+	obs_property_t *p = obs_properties_add_list(pp, "target_name", obs_module_text("Source"),
+			OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	property_list_add_sources(p, s ? s->context : NULL);
+
+	obs_properties_add_group(props, "input", obs_module_text("Input"), OBS_GROUP_NORMAL, pp);
 
 	return props;
 }
@@ -400,40 +443,33 @@ static void hotkey_cb_reset(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, 
 		ftf_reset_tracking(NULL, NULL, data);
 }
 
-static void ftf_tick(void *data, float second)
+static void register_hotkeys(struct face_tracker_filter *s, obs_source_t *target)
 {
-	auto *s = (struct face_tracker_filter*)data;
-	const bool was_rendered = s->rendered;
-	s->ftm->tick(second);
-
-	obs_source_t *target = obs_filter_get_target(s->context);
 	if (!target)
-		goto err;
+		return;
 
 	if (s->hotkey_pause == OBS_INVALID_HOTKEY_PAIR_ID) {
-		obs_source_t *parent = obs_filter_get_parent(s->context);
-		s->hotkey_pause = obs_hotkey_pair_register_source(parent,
+		s->hotkey_pause = obs_hotkey_pair_register_source(target,
 				"face-tracker.pause",
 				obs_module_text("Pause"),
 				"face-tracker.pause_resume",
 				obs_module_text("Resume"),
 				hotkey_cb_pause, hotkey_cb_pause_resume, s, s);
 	}
+
 	if (s->hotkey_reset == OBS_INVALID_HOTKEY_ID) {
-		obs_source_t *parent = obs_filter_get_parent(s->context);
-		s->hotkey_reset = obs_hotkey_register_source(parent,
+		s->hotkey_reset = obs_hotkey_register_source(target,
 				"face-tracker.reset",
 				obs_module_text("Reset tracking"),
 				hotkey_cb_reset, s);
 	}
+}
 
-	s->rendered = false;
-
-	s->known_width = obs_source_get_base_width(target);
-	s->known_height = obs_source_get_base_height(target);
-
-	if (s->known_width<=0 || s->known_height<=0)
-		goto err;
+static void ft_tick_internal(struct face_tracker_filter *s, float second, bool was_rendered)
+{
+	if (s->known_width<=0 || s->known_height<=0) {
+		return;
+	}
 
 	calculate_aspect(s);
 
@@ -455,9 +491,59 @@ static void ftf_tick(void *data, float second)
 	}
 
 	s->target_valid = true;
-	return;
-err:
+}
+
+static void ftf_tick(void *data, float second)
+{
+	auto *s = (struct face_tracker_filter*)data;
+	const bool was_rendered = s->rendered;
+	s->rendered = false;
 	s->target_valid = false;
+
+	s->ftm->tick(second);
+
+	obs_source_t *target = obs_filter_get_target(s->context);
+	if (!target)
+		return;
+
+	if (
+			s->hotkey_pause == OBS_INVALID_HOTKEY_PAIR_ID ||
+			s->hotkey_reset == OBS_INVALID_HOTKEY_ID
+	   )
+		register_hotkeys(s, obs_filter_get_parent(s->context));
+
+	s->known_width = obs_source_get_base_width(target);
+	s->known_height = obs_source_get_base_height(target);
+
+	ft_tick_internal(s, second, was_rendered);
+}
+
+static void fts_tick(void *data, float second)
+{
+	auto *s = (struct face_tracker_filter*)data;
+	const bool was_rendered = s->rendered;
+	s->rendered = false;
+	s->target_valid = false;
+
+	s->ftm->tick(second);
+
+	obs_source_t *target = obs_weak_source_get_source(s->target_ref);
+	const char *name = obs_source_get_name(target);
+
+	if (s->target_name && (!target || !name || strcmp(name, s->target_name))) {
+		obs_source_release(target);
+		obs_weak_source_release(s->target_ref);
+		target = obs_get_source_by_name(s->target_name);
+		s->target_ref = obs_source_get_weak_source(target);
+		blog(LOG_INFO, "fts_tick: target=%p", target);
+	}
+
+	s->known_width = obs_source_get_width(target);
+	s->known_height = obs_source_get_height(target);
+
+	ft_tick_internal(s, second, was_rendered);
+
+	obs_source_release(target);
 }
 
 static inline void render_target(struct face_tracker_filter *s, obs_source_t *target, obs_source_t *parent)
@@ -747,6 +833,29 @@ static void ftf_render(void *data, gs_effect_t *)
 	draw_frame(s);
 }
 
+static void fts_render(void *data, gs_effect_t *)
+{
+	auto *s = (struct face_tracker_filter*)data;
+	if (!s->target_valid)
+		return;
+
+	obs_source_t *target = obs_weak_source_get_source(s->target_ref);
+
+	if (!target)
+		return;
+
+	if (!s->rendered) {
+		render_target(s, target, NULL);
+		if (!s->is_paused)
+			s->ftm->post_render();
+		s->rendered = true;
+	}
+
+	draw_frame(s);
+
+	obs_source_release(target);
+}
+
 static uint32_t ftf_width(void *data)
 {
 	auto *s = (struct face_tracker_filter*)data;
@@ -807,5 +916,15 @@ void register_face_tracker_filter()
 	info.video_render = ftf_render;
 	info.get_width = ftf_width;
 	info.get_height = ftf_height;
+	obs_register_source(&info);
+
+	info.id = "face_tracker_source";
+	info.type = OBS_SOURCE_TYPE_INPUT;
+	info.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_DO_NOT_DUPLICATE;
+	info.create = fts_create;
+	info.update = fts_update;
+	info.get_properties = fts_properties;
+	info.video_tick = fts_tick;
+	info.video_render = fts_render;
 	obs_register_source(&info);
 }

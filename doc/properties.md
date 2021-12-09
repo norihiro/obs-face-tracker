@@ -103,7 +103,11 @@ The unit is a percentage of the average of source width and height.
 If the error signal is within the dead band, error signal is forced to zero to avoid small move to be tracked.
 The nonlinear band makes smooth connection from the dead band to the linear range.
 
-## Output
+## Source and output
+
+### Source
+**Face Tracker Source only**
+This property specifies the source to take the frame texture.
 
 ### Aspect
 This parameter sets output aspect ratio. The default is same as the source.
