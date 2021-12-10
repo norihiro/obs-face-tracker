@@ -302,7 +302,18 @@ void face_tracker_manager::update(obs_data_t *settings)
 	detector_crop_r = obs_data_get_int(settings, "detector_crop_r");
 	detector_crop_t = obs_data_get_int(settings, "detector_crop_t");
 	detector_crop_b = obs_data_get_int(settings, "detector_crop_b");
-	tracking_threshold = from_dB(obs_data_get_double(settings, "tracking_th_dB"));
+	if (obs_data_get_bool(settings, "tracking_th_en"))
+		tracking_threshold = from_dB(obs_data_get_double(settings, "tracking_th_dB"));
+	else
+		tracking_threshold = 0.0;
+}
+
+static bool tracking_th_en_modified(obs_properties_t *props, obs_property_t *property, obs_data_t *settings)
+{
+	bool tracking_th_en = obs_data_get_bool(settings, "tracking_th_en");
+	obs_property_t *tracking_th_dB = obs_properties_get(props, "tracking_th_dB");
+	obs_property_set_visible(tracking_th_dB, tracking_th_en);
+	return true;
 }
 
 void face_tracker_manager::get_properties(obs_properties_t *pp)
@@ -317,6 +328,8 @@ void face_tracker_manager::get_properties(obs_properties_t *pp)
 	obs_properties_add_int(pp, "detector_crop_r", obs_module_text("Crop right for detector"), 0, 1920, 1);
 	obs_properties_add_int(pp, "detector_crop_t", obs_module_text("Crop top for detector"), 0, 1080, 1);
 	obs_properties_add_int(pp, "detector_crop_b", obs_module_text("Crop bottom for detector"), 0, 1080, 1);
+	p = obs_properties_add_bool(pp, "tracking_th_en", obs_module_text("Set tracking threshold"));
+	obs_property_set_modified_callback(p, tracking_th_en_modified);
 	p = obs_properties_add_float(pp, "tracking_th_dB", obs_module_text("Tracking threshold"), -120.0, -20.0, 5.0);
 	obs_property_float_set_suffix(p, " dB");
 }
@@ -328,5 +341,6 @@ void face_tracker_manager::get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "upsize_t", 0.3);
 	obs_data_set_default_double(settings, "upsize_b", 0.1);
 	obs_data_set_default_double(settings, "scale", 2.0);
+	obs_data_set_default_bool(settings, "tracking_th_en", true);
 	obs_data_set_default_double(settings, "tracking_th_dB", -80.0);
 }
