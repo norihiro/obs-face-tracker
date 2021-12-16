@@ -26,6 +26,7 @@ set(plugin_additional_libs)
 
 if (WITH_PTZ_TCP)
 	set(CMAKE_POSITION_INDEPENDENT_CODE true)
+	set(WITH_VISCA_SERIAL OFF)
 	add_definitions("-DVISCA_API= ")
 	add_subdirectory(libvisca/visca)
 	set(plugin_additional_libs ${plugin_additional_libs} visca)
