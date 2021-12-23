@@ -845,10 +845,10 @@ static void fts_render(void *data, gs_effect_t *)
 		return;
 
 	if (!s->rendered) {
+		s->rendered = true;
 		render_target(s, target, NULL);
 		if (!s->is_paused)
 			s->ftm->post_render();
-		s->rendered = true;
 	}
 
 	draw_frame(s);
