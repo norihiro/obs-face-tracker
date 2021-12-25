@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QVBoxLayout>
 #include <QComboBox>
+#include <QCheckBox>
 #include "plugin-macros.generated.h"
 #include "face-tracker-dock.hpp"
 #include "face-tracker-widget.hpp"
@@ -155,10 +156,17 @@ FTDock::FTDock(QWidget *parent)
 
 	targetSelector = new QComboBox(this);
 	init_target_selector(targetSelector);
-	QObject::connect(this, &FTDock::scenesMayChanged, this, &FTDock::checkTargetSelector);
 	mainLayout->addWidget(targetSelector);
+	connect(targetSelector, &QComboBox::currentTextChanged, this, &FTDock::targetSelectorChanged);
+
+	pauseButton = new QCheckBox(obs_module_text("Pause"), this);
+	mainLayout->addWidget(pauseButton);
+	connect(pauseButton, &QCheckBox::stateChanged, this, &FTDock::pauseButtonChanged);
 
 	setWidget(dockWidgetContents);
+
+	connect(this, &FTDock::scenesMayChanged, this, &FTDock::checkTargetSelector);
+	updateState();
 
 	obs_frontend_add_event_callback(frontendEvent_cb, this);
 }
@@ -196,6 +204,63 @@ void FTDock::hideEvent(QHideEvent *)
 
 void FTDock::frontendEvent(enum obs_frontend_event event)
 {
+}
+
+void FTDock::targetSelectorChanged()
+{
+	updateState();
+}
+
+OBSSource FTDock::get_source()
+{
+	OBSSource target;
+	QList<QVariant> data = targetSelector->currentData().toList();
+
+	for (int i=0; i<data.count(); i++) {
+		const char *name = data[i].toByteArray().constData();
+		if (i==0) {
+			target = obs_get_source_by_name(name);
+			obs_source_release(target);
+		} else if (i==1) {
+			target = obs_source_get_filter_by_name(target, name);
+			obs_source_release(target);
+		}
+	}
+
+	return target;
+}
+
+void FTDock::updateState()
+{
+	OBSSource target = get_source();
+	proc_handler_t *ph = obs_source_get_proc_handler(target);
+	if (!ph)
+		return;
+
+	calldata_t cd;
+	uint8_t stack[128];
+	calldata_init_fixed(&cd, stack, sizeof(stack));
+	if (proc_handler_call(ph, "get_state", &cd)) {
+		bool b;
+
+		if (calldata_get_bool(&cd, "paused", &b)) {
+			pauseButton->setCheckState(b ? Qt::Checked : Qt::Unchecked);
+		}
+	}
+}
+
+void FTDock::pauseButtonChanged(int state)
+{
+	OBSSource target = get_source();
+	proc_handler_t *ph = obs_source_get_proc_handler(target);
+	if (!ph)
+		return;
+
+	calldata_t cd;
+	uint8_t stack[128];
+	calldata_init_fixed(&cd, stack, sizeof(stack));
+	calldata_set_bool(&cd, "paused", state==Qt::Checked);
+	proc_handler_call(ph, "set_state", &cd);
 }
 
 static void save_load_ft_docks(obs_data_t *save_data, bool saving, void *)

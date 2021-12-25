@@ -6,6 +6,7 @@
 #include <QAction>
 #include <string>
 #include <obs.h>
+#include <obs.hpp>
 #include <obs-frontend-api.h>
 
 class FTDock : public QDockWidget {
@@ -19,6 +20,7 @@ public:
 
 	class QVBoxLayout *mainLayout;
 	class QComboBox *targetSelector;
+	class QCheckBox *pauseButton;
 
 public:
 	FTDock(QWidget *parent = nullptr);
@@ -38,10 +40,18 @@ private:
 	void frontendEvent(enum obs_frontend_event event);
 	static void frontendEvent_cb(enum obs_frontend_event event, void *private_data);
 
+	OBSSource get_source();
+
 signals:
 	void scenesMayChanged();
+
 public slots:
 	void checkTargetSelector();
+	void updateState();
+
+private slots:
+	void targetSelectorChanged();
+	void pauseButtonChanged(int state);
 };
 
 extern "C" {
