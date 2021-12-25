@@ -2,6 +2,8 @@
 #include <obs-frontend-api.h>
 #include <QAction>
 #include <QMainWindow>
+#include <QVBoxLayout>
+#include <QComboBox>
 #include "plugin-macros.generated.h"
 #include "face-tracker-dock.hpp"
 #include "face-tracker-widget.hpp"
@@ -41,12 +43,8 @@ void ft_dock_add(const char *name, obs_data_t *props)
 	dock->name = name ? name : generate_unique_name();
 	dock->setObjectName(QString::fromUtf8(dock->name.c_str()) + OBJ_NAME_SUFFIX);
 	dock->setWindowTitle(dock->name.c_str());
-	dock->resize(256, 256);
-	dock->setMinimumSize(128, 128);
 	dock->setAllowedAreas(Qt::AllDockWidgetAreas);
 
-	FTWidget *w = new FTWidget(dock);
-	dock->SetWidget(w);
 	dock->load_properties(props);
 
 	main_window->addDockWidget(Qt::BottomDockWidgetArea, dock);
@@ -56,15 +54,119 @@ void ft_dock_add(const char *name, obs_data_t *props)
 		docks->push_back(dock);
 }
 
+struct init_target_selector_s
+{
+	QComboBox *q;
+	int index;
+};
+
+void init_target_selector_cb_add(struct init_target_selector_s *ctx, obs_source_t *source, obs_source_t *filter)
+{
+	QString text;
+	QList<QVariant> val;
+
+	const char *name = obs_source_get_name(source);
+	text = QString::fromUtf8(name);
+	val.append(QVariant(name));
+
+	if (filter) {
+		const char *name = obs_source_get_name(filter);
+		text += " / ";
+		text += QString::fromUtf8(name);
+		val.append(QVariant(name));
+	}
+
+	if (ctx->index < ctx->q->count()) {
+		ctx->q->setItemText(ctx->index, text);
+		ctx->q->setItemData(ctx->index, QVariant(val));
+	}
+	else
+		ctx->q->insertItem(ctx->index, text, QVariant(val));
+	ctx->index++;
+}
+
+static void init_target_selector_cb_filter(obs_source_t *parent, obs_source_t *child, void *param)
+{
+	auto *ctx = (struct init_target_selector_s *)param;
+
+	const char *id = obs_source_get_id(child);
+	if (!strcmp(id, "face_tracker_filter") || !strcmp(id, "face_tracker_ptz")) {
+		init_target_selector_cb_add(ctx, parent, child);
+	}
+}
+
+static bool init_target_selector_cb_source(void *data, obs_source_t *source)
+{
+	auto *ctx = (struct init_target_selector_s *)data;
+
+	const char *id = obs_source_get_id(source);
+	if (!strcmp(id, "face_tracker_source")) {
+		init_target_selector_cb_add(ctx, source, NULL);
+		return true;
+	}
+
+	obs_source_enum_filters(source, init_target_selector_cb_filter, data);
+
+	return true;
+}
+
+static void init_target_selector(QComboBox *q)
+{
+	QString current = q->currentText();
+
+	init_target_selector_s ctx = {q, 0};
+	obs_enum_scenes(init_target_selector_cb_source, &ctx);
+	obs_enum_sources(init_target_selector_cb_source, &ctx);
+
+	while (q->count() > ctx.index)
+		q->removeItem(ctx.index);
+
+	if (current.length()) {
+		int ix = q->findText(current);
+		if (ix >= 0)
+			q->setCurrentIndex(ix);
+	}
+}
+
+void FTDock::checkTargetSelector()
+{
+	init_target_selector(targetSelector);
+}
+
+void FTDock::frontendEvent_cb(enum obs_frontend_event event, void *private_data)
+{
+	auto *dock = static_cast<FTDock*>(private_data);
+	dock->frontendEvent(event);
+}
+
 FTDock::FTDock(QWidget *parent)
 	: QDockWidget(parent)
 {
 	data = face_tracker_dock_create();
+
+	resize(256, 256);
+	setMinimumSize(128, 128);
 	setAttribute(Qt::WA_DeleteOnClose);
+
+	mainLayout = new QVBoxLayout(this);
+	auto *dockWidgetContents = new QWidget;
+	dockWidgetContents->setObjectName(QStringLiteral("contextContainer"));
+	dockWidgetContents->setLayout(mainLayout);
+
+	targetSelector = new QComboBox(this);
+	init_target_selector(targetSelector);
+	QObject::connect(this, &FTDock::scenesMayChanged, this, &FTDock::checkTargetSelector);
+	mainLayout->addWidget(targetSelector);
+
+	setWidget(dockWidgetContents);
+
+	obs_frontend_add_event_callback(frontendEvent_cb, this);
 }
 
 FTDock::~FTDock()
 {
+	obs_frontend_remove_event_callback(frontendEvent_cb, this);
+
 	face_tracker_dock_release(data);
 	if (action)
 		delete action;
@@ -80,19 +182,20 @@ void FTDock::SetWidget(class FTWidget *w)
 {
 	w->SetData(data);
 	widget = w;
-	setWidget((QWidget*)w);
 }
 
 void FTDock::showEvent(QShowEvent *)
 {
 	blog(LOG_INFO, "FTDock::showEvent");
-	widget->setShown(true);
 }
 
 void FTDock::hideEvent(QHideEvent *)
 {
 	blog(LOG_INFO, "FTDock::hideEvent");
-	widget->setShown(false);
+}
+
+void FTDock::frontendEvent(enum obs_frontend_event event)
+{
 }
 
 static void save_load_ft_docks(obs_data_t *save_data, bool saving, void *)
@@ -172,6 +275,9 @@ void FTDock::default_properties(obs_data_t *props)
 
 void FTDock::save_properties(obs_data_t *props)
 {
+	// Save indicates a source or a filter has been changed.
+	scenesMayChanged();
+
 	// pthread_mutex_lock(&data->mutex);
 	// TODO: implement me
 	// pthread_mutex_unlock(&data->mutex);
