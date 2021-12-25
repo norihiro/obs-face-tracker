@@ -246,6 +246,8 @@ static void ftptz_update(void *data, obs_data_t *settings)
 }
 
 static void cb_render_info(void *data, calldata_t *cd);
+static void cb_get_state(void *data, calldata_t *cd);
+static void cb_set_state(void *data, calldata_t *cd);
 
 static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 {
@@ -261,6 +263,8 @@ static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 
 	proc_handler_t *ph = obs_source_get_proc_handler(context);
 	proc_handler_add(ph, "void render_info()", cb_render_info, s);
+	proc_handler_add(ph, "void get_state()", cb_get_state, s);
+	proc_handler_add(ph, "void set_state()", cb_set_state, s);
 
 	return s;
 }
@@ -847,6 +851,18 @@ static void cb_render_info(void *data, calldata_t *cd)
 	calldata_get_bool(cd, "landmark_only", &landmark_only);
 
 	draw_frame_info(s, landmark_only);
+}
+
+static void cb_get_state(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_ptz*)data;
+	calldata_set_bool(cd, "paused", s->is_paused);
+}
+
+static void cb_set_state(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_ptz*)data;
+	calldata_get_bool(cd, "paused", &s->is_paused);
 }
 
 extern "C"

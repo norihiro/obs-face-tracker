@@ -116,6 +116,8 @@ static void fts_update(void *data, obs_data_t *settings)
 static void cb_render_frame(void *data, calldata_t *cd);
 static void cb_render_info(void *data, calldata_t *cd);
 static void cb_get_target_size(void *data, calldata_t *cd);
+static void cb_get_state(void *data, calldata_t *cd);
+static void cb_set_state(void *data, calldata_t *cd);
 
 static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 {
@@ -143,6 +145,8 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 	proc_handler_add(ph, "void render_frame(bool notrack)", cb_render_frame, s);
 	proc_handler_add(ph, "void render_info(bool notrack)", cb_render_info, s);
 	proc_handler_add(ph, "void get_target_size(out int width, out int height)", cb_get_target_size, s);
+	proc_handler_add(ph, "void get_state()", cb_get_state, s);
+	proc_handler_add(ph, "void set_state()", cb_set_state, s);
 
 	return s;
 }
@@ -929,6 +933,18 @@ static void cb_get_target_size(void *data, calldata_t *cd)
 	auto *s = (struct face_tracker_filter*)data;
 	calldata_set_int(cd, "width", (int)s->known_width);
 	calldata_set_int(cd, "height", (int)s->known_height);
+}
+
+static void cb_get_state(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_filter*)data;
+	calldata_set_bool(cd, "paused", s->is_paused);
+}
+
+static void cb_set_state(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_filter*)data;
+	calldata_get_bool(cd, "paused", &s->is_paused);
 }
 
 extern "C"
