@@ -6,6 +6,7 @@
 #include <QAction>
 #include <string>
 #include <obs.h>
+#include <obs-frontend-api.h>
 
 class FTDock : public QDockWidget {
 	Q_OBJECT
@@ -15,6 +16,9 @@ public:
 	std::string name;
 	QPointer<QAction> action = 0;
 	struct face_tracker_dock_s *data;
+
+	class QVBoxLayout *mainLayout;
+	class QComboBox *targetSelector;
 
 public:
 	FTDock(QWidget *parent = nullptr);
@@ -30,6 +34,14 @@ public:
 private:
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
+
+	void frontendEvent(enum obs_frontend_event event);
+	static void frontendEvent_cb(enum obs_frontend_event event, void *private_data);
+
+signals:
+	void scenesMayChanged();
+public slots:
+	void checkTargetSelector();
 };
 
 extern "C" {
