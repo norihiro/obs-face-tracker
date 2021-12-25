@@ -36,4 +36,8 @@ struct face_tracker_ptz
 
 	char *ptz_type;
 	int ptz_max_x, ptz_max_y, ptz_max_z;
+
+	bool is_paused;
+	obs_hotkey_pair_id hotkey_pause;
+	obs_hotkey_id hotkey_reset;
 };

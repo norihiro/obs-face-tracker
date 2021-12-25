@@ -254,6 +254,8 @@ static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 	s->ftm->crop_cur.x1 = s->ftm->crop_cur.y1 = -2;
 	s->context = context;
 	s->ftm->scale = 2.0f;
+	s->hotkey_pause = OBS_INVALID_HOTKEY_PAIR_ID;
+	s->hotkey_reset = OBS_INVALID_HOTKEY_ID;
 
 	obs_source_update(context, settings);
 
@@ -266,6 +268,12 @@ static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 static void ftptz_destroy(void *data)
 {
 	auto *s = (struct face_tracker_ptz*)data;
+
+	if (s->hotkey_pause != OBS_INVALID_HOTKEY_PAIR_ID)
+		obs_hotkey_pair_unregister(s->hotkey_pause);
+	if (s->hotkey_reset != OBS_INVALID_HOTKEY_ID)
+		obs_hotkey_unregister(s->hotkey_reset);
+
 	delete s->ftm;
 	bfree(s->ptz_type);
 
@@ -505,6 +513,62 @@ static inline int tilt_flt2raw(float x)
 	else return 18;
 }
 
+static bool hotkey_cb_pause(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	auto *s = (struct face_tracker_ptz*)data;
+	if (!pressed)
+		return false;
+	if (s->is_paused)
+		return false;
+	s->is_paused = true;
+	return true;
+}
+
+static bool hotkey_cb_pause_resume(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	auto *s = (struct face_tracker_ptz*)data;
+	if (!pressed)
+		return false;
+	if (!s->is_paused)
+		return false;
+	s->is_paused = false;
+	return true;
+}
+
+static void hotkey_cb_reset(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	if (pressed)
+		ftptz_reset_tracking(NULL, NULL, data);
+}
+
+static void register_hotkeys(struct face_tracker_ptz *s, obs_source_t *target)
+{
+	if (!target)
+		return;
+
+	if (s->hotkey_pause == OBS_INVALID_HOTKEY_PAIR_ID) {
+		s->hotkey_pause = obs_hotkey_pair_register_source(target,
+				"face-tracker.pause",
+				obs_module_text("Pause"),
+				"face-tracker.pause_resume",
+				obs_module_text("Resume"),
+				hotkey_cb_pause, hotkey_cb_pause_resume, s, s);
+	}
+
+	if (s->hotkey_reset == OBS_INVALID_HOTKEY_ID) {
+		s->hotkey_reset = obs_hotkey_register_source(target,
+				"face-tracker.reset",
+				obs_module_text("Reset tracking"),
+				hotkey_cb_reset, s);
+	}
+}
+
 static void tick_filter(struct face_tracker_ptz *s, float second)
 {
 	const float srwh = sqrtf((float)s->known_width * s->known_height);
@@ -623,6 +687,12 @@ static void ftptz_tick(void *data, float second)
 
 	s->rendered = false;
 
+	if (
+			s->hotkey_pause == OBS_INVALID_HOTKEY_PAIR_ID ||
+			s->hotkey_reset == OBS_INVALID_HOTKEY_ID
+	   )
+		register_hotkeys(s, obs_filter_get_parent(s->context));
+
 	s->known_width = obs_source_get_base_width(target);
 	s->known_height = obs_source_get_base_height(target);
 
@@ -630,7 +700,13 @@ static void ftptz_tick(void *data, float second)
 		return;
 
 	if (was_rendered) {
-		calculate_error(s);
+		if (!s->is_paused)
+			calculate_error(s);
+		else {
+			s->face_found = false;
+			s->detect_err = f3(0, 0, 0);
+		}
+
 		tick_filter(s, second);
 		send_ptz_cmd_immediate(s);
 	}
