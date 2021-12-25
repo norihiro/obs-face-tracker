@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QPushButton>
 #include "plugin-macros.generated.h"
 #include "face-tracker-dock.hpp"
 #include "face-tracker-widget.hpp"
@@ -163,6 +164,10 @@ FTDock::FTDock(QWidget *parent)
 	mainLayout->addWidget(pauseButton);
 	connect(pauseButton, &QCheckBox::stateChanged, this, &FTDock::pauseButtonChanged);
 
+	resetButton = new QPushButton(obs_module_text("Reset"), this);
+	mainLayout->addWidget(resetButton);
+	connect(resetButton, &QPushButton::clicked, this, &FTDock::resetButtonClicked);
+
 	setWidget(dockWidgetContents);
 
 	connect(this, &FTDock::scenesMayChanged, this, &FTDock::checkTargetSelector);
@@ -260,6 +265,22 @@ void FTDock::pauseButtonChanged(int state)
 	uint8_t stack[128];
 	calldata_init_fixed(&cd, stack, sizeof(stack));
 	calldata_set_bool(&cd, "paused", state==Qt::Checked);
+	proc_handler_call(ph, "set_state", &cd);
+}
+
+void FTDock::resetButtonClicked(bool checked)
+{
+	UNUSED_PARAMETER(checked);
+
+	OBSSource target = get_source();
+	proc_handler_t *ph = obs_source_get_proc_handler(target);
+	if (!ph)
+		return;
+
+	calldata_t cd;
+	uint8_t stack[128];
+	calldata_init_fixed(&cd, stack, sizeof(stack));
+	calldata_set_bool(&cd, "reset", true);
 	proc_handler_call(ph, "set_state", &cd);
 }
 
