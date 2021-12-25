@@ -21,6 +21,7 @@ public:
 	class QVBoxLayout *mainLayout;
 	class QComboBox *targetSelector;
 	class QCheckBox *pauseButton;
+	class QPushButton *resetButton;
 
 public:
 	FTDock(QWidget *parent = nullptr);
@@ -52,6 +53,7 @@ public slots:
 private slots:
 	void targetSelectorChanged();
 	void pauseButtonChanged(int state);
+	void resetButtonClicked(bool checked);
 };
 
 extern "C" {
