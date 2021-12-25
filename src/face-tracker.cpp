@@ -451,16 +451,16 @@ static void register_hotkeys(struct face_tracker_filter *s, obs_source_t *target
 	if (s->hotkey_pause == OBS_INVALID_HOTKEY_PAIR_ID) {
 		s->hotkey_pause = obs_hotkey_pair_register_source(target,
 				"face-tracker.pause",
-				obs_module_text("Pause"),
+				obs_module_text("Pause Face Tracker"),
 				"face-tracker.pause_resume",
-				obs_module_text("Resume"),
+				obs_module_text("Resume Face Tracker"),
 				hotkey_cb_pause, hotkey_cb_pause_resume, s, s);
 	}
 
 	if (s->hotkey_reset == OBS_INVALID_HOTKEY_ID) {
 		s->hotkey_reset = obs_hotkey_register_source(target,
 				"face-tracker.reset",
-				obs_module_text("Reset tracking"),
+				obs_module_text("Reset Face Tracker"),
 				hotkey_cb_reset, s);
 	}
 }
