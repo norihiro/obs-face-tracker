@@ -945,6 +945,11 @@ static void cb_set_state(void *data, calldata_t *cd)
 {
 	auto *s = (struct face_tracker_filter*)data;
 	calldata_get_bool(cd, "paused", &s->is_paused);
+
+	bool reset = false;
+	calldata_get_bool(cd, "reset", &reset);
+	if (reset)
+		ftf_reset_tracking(NULL, NULL, s);
 }
 
 extern "C"
