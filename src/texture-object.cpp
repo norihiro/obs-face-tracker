@@ -40,14 +40,15 @@ void texture_object::set_texture_y(uint8_t *data_, uint32_t linesize, uint32_t w
 	}
 }
 
-static void obsframe2dlib_bgrx(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale)
+static void obsframe2dlib_bgrx(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale, int size=4)
 {
 	const int nr = img.nr();
 	const int nc = img.nc();
+	const int inc = size * scale;
 	for (int i=0; i<nr; i++) {
 		auto row = img[i];
 		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
-		for (int j=0, js=0; j<nc; j++, js+=4*scale) {
+		for (int j=0, js=0; j<nc; j++, js+=inc) {
 			int r = line[js+2];
 			int g = line[js+1];
 			int b = line[js+0];
@@ -107,6 +108,9 @@ void texture_object::set_texture_obsframe_scale(const struct obs_source_frame *f
 		case VIDEO_FORMAT_BGRX:
 		case VIDEO_FORMAT_BGRA:
 			obsframe2dlib_bgrx(data->dlib_img, frame, scale);
+			break;
+		case VIDEO_FORMAT_BGR3:
+			obsframe2dlib_bgrx(data->dlib_img, frame, scale, 3);
 			break;
 		case VIDEO_FORMAT_RGBA:
 			obsframe2dlib_rgbx(data->dlib_img, frame, scale);
