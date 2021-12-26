@@ -11,6 +11,7 @@ struct face_tracker_monitor
 	char *source_name;
 	char *filter_name;
 	bool notrack;
+	bool nosource;
 
 	obs_weak_source_t *source_ref;
 	obs_weak_source_t *filter_ref;
@@ -64,6 +65,8 @@ static void ftmon_update(void *data, obs_data_t *settings)
 	}
 
 	s->notrack = obs_data_get_bool(settings, "notrack");
+
+	s->nosource = obs_data_get_bool(settings, "nosource");
 }
 
 static obs_properties_t *ftmon_properties(void *data)
@@ -77,6 +80,8 @@ static obs_properties_t *ftmon_properties(void *data)
 	obs_properties_add_text(props, "filter_name", obs_module_text("Filter name"), OBS_TEXT_DEFAULT);
 
 	obs_properties_add_bool(props, "notrack", "Display original source");
+
+	obs_properties_add_bool(props, "nosource", "Overlay only");
 
 	return props;
 }
@@ -241,10 +246,12 @@ static void ftmon_video_render(void *data, gs_effect_t *)
 	calldata_t cd = {0};
 	calldata_set_bool(&cd, "notrack", s->notrack);
 
-	if (!proc_handler_call(ph, "render_frame", &cd)) {
-		OBSSource src(get_source(s));
-		obs_source_release(src);
-		obs_source_video_render(src);
+	if (!s->nosource) {
+		if (!proc_handler_call(ph, "render_frame", &cd)) {
+			OBSSource src(get_source(s));
+			obs_source_release(src);
+			obs_source_video_render(src);
+		}
 	}
 
 	proc_handler_call(ph, "render_info", &cd);
