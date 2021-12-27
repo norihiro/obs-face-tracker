@@ -47,7 +47,7 @@ jobs:
     needs: [clang_check]
     env:
       MACOSX_DEPLOYMENT_TARGET: '10.13'
-      BLOCKED_FORMULAS: 'speexdsp curl php'
+      BLOCKED_FORMULAS: 'speexdsp curl php composer'
       CODESIGN_IDENT: '-'
       CODESIGN_IDENT_INSTALLER: '-'
       HAVE_CODESIGN_IDENTITY: ${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY != '' && secrets.MACOS_SIGNING_INSTALLER_IDENTITY && secrets.MACOS_SIGNING_CERT != '' }}
