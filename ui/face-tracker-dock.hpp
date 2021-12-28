@@ -24,6 +24,8 @@ public:
 	class QPushButton *resetButton;
 	class FTWidget *ftWidget;
 
+	bool updating_widget = false;
+
 public:
 	FTDock(QWidget *parent = nullptr);
 	~FTDock();
@@ -44,10 +46,12 @@ private:
 
 signals:
 	void scenesMayChanged();
+	void dataChanged();
 
 public slots:
 	void checkTargetSelector();
 	void updateState();
+	void updateWidget();
 
 private slots:
 	void targetSelectorChanged();

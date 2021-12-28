@@ -60,22 +60,41 @@ struct init_target_selector_s
 {
 	QComboBox *q;
 	int index;
+	const char *source_name;
+	const char *filter_name;
 };
 
-void init_target_selector_cb_add(struct init_target_selector_s *ctx, obs_source_t *source, obs_source_t *filter)
+static bool init_target_selector_compare_name(struct init_target_selector_s *ctx, const char *source_name, const char *filter_name)
+{
+	if (strcmp(ctx->source_name, source_name) != 0)
+		return false;
+
+	// both expect source
+	if (!ctx->filter_name && !filter_name)
+		return true;
+
+	// either one expects source
+	if (!ctx->filter_name || !filter_name)
+		return false;
+
+	return strcmp(ctx->filter_name, filter_name) == 0;
+}
+
+static void init_target_selector_cb_add(struct init_target_selector_s *ctx, obs_source_t *source, obs_source_t *filter)
 {
 	QString text;
 	QList<QVariant> val;
 
 	const char *name = obs_source_get_name(source);
+	const char *filter_name = NULL;
 	text = QString::fromUtf8(name);
 	val.append(QVariant(name));
 
 	if (filter) {
-		const char *name = obs_source_get_name(filter);
+		filter_name = obs_source_get_name(filter);
 		text += " / ";
-		text += QString::fromUtf8(name);
-		val.append(QVariant(name));
+		text += QString::fromUtf8(filter_name);
+		val.append(QVariant(filter_name));
 	}
 
 	if (ctx->index < ctx->q->count()) {
@@ -84,6 +103,12 @@ void init_target_selector_cb_add(struct init_target_selector_s *ctx, obs_source_
 	}
 	else
 		ctx->q->insertItem(ctx->index, text, QVariant(val));
+
+	if (ctx->source_name) {
+		if (init_target_selector_compare_name(ctx, name, filter_name))
+			ctx->q->setCurrentIndex(ctx->index);
+	}
+
 	ctx->index++;
 }
 
@@ -112,18 +137,21 @@ static bool init_target_selector_cb_source(void *data, obs_source_t *source)
 	return true;
 }
 
-static void init_target_selector(QComboBox *q)
+static void init_target_selector(QComboBox *q, const char *source_name=NULL, const char *filter_name=NULL)
 {
 	QString current = q->currentText();
 
-	init_target_selector_s ctx = {q, 0};
+	if (filter_name && !*filter_name)
+		filter_name = NULL;
+
+	init_target_selector_s ctx = {q, 0, source_name, filter_name};
 	obs_enum_scenes(init_target_selector_cb_source, &ctx);
 	obs_enum_sources(init_target_selector_cb_source, &ctx);
 
 	while (q->count() > ctx.index)
 		q->removeItem(ctx.index);
 
-	if (current.length()) {
+	if (current.length() && !source_name) {
 		int ix = q->findText(current);
 		if (ix >= 0)
 			q->setCurrentIndex(ix);
@@ -178,6 +206,8 @@ FTDock::FTDock(QWidget *parent)
 	connect(this, &FTDock::scenesMayChanged, this, &FTDock::checkTargetSelector);
 	updateState();
 
+	connect(this, &FTDock::dataChanged, this, &FTDock::updateWidget);
+
 	obs_frontend_add_event_callback(frontendEvent_cb, this);
 }
 
@@ -212,6 +242,9 @@ void FTDock::frontendEvent(enum obs_frontend_event event)
 
 void FTDock::targetSelectorChanged()
 {
+	if (updating_widget)
+		return;
+
 	updateState();
 }
 
@@ -249,7 +282,6 @@ static inline void set_monitor(obs_source_t *monitor, const QList<QVariant> &tar
 			target_data.count() > 1 ? target_data[1].toByteArray().constData() : "");
 
 	obs_source_update(monitor, data);
-	obs_source_update_properties(monitor);
 }
 
 void FTDock::updateState()
@@ -279,6 +311,27 @@ void FTDock::updateState()
 		set_monitor(data->src_monitor, targetSelector->currentData().toList());
 
 	pthread_mutex_unlock(&data->mutex);
+}
+
+void FTDock::updateWidget()
+{
+	if (updating_widget)
+		return;
+	updating_widget = true;
+	pthread_mutex_lock(&data->mutex);
+
+	if (data->src_monitor) {
+		obs_data_t *props = obs_source_get_settings(data->src_monitor);
+		const char *source_name = obs_data_get_string(props, "source_name");
+		const char *filter_name = obs_data_get_string(props, "filter_name");
+
+		init_target_selector(targetSelector, source_name, filter_name);
+
+		obs_data_release(props);
+	}
+
+	pthread_mutex_unlock(&data->mutex);
+	updating_widget = false;
 }
 
 void FTDock::pauseButtonChanged(int state)
@@ -391,16 +444,40 @@ void FTDock::save_properties(obs_data_t *props)
 	// Save indicates a source or a filter has been changed.
 	scenesMayChanged();
 
-	// pthread_mutex_lock(&data->mutex);
-	// TODO: implement me
-	// pthread_mutex_unlock(&data->mutex);
+	pthread_mutex_lock(&data->mutex);
+
+	obs_data_t *prop = obs_source_get_settings(data->src_monitor);
+	if (prop) {
+		obs_data_set_obj(props, "monitor", prop);
+		obs_data_release(prop);
+	}
+
+	pthread_mutex_unlock(&data->mutex);
 }
 
 void FTDock::load_properties(obs_data_t *props)
 {
-	// pthread_mutex_lock(&data->mutex);
-	// TODO: implement me
-	// pthread_mutex_unlock(&data->mutex);
+	pthread_mutex_lock(&data->mutex);
+
+	if (data && data->src_monitor) {
+		obs_data_t *prop = obs_data_get_obj(props, "monitor");
+		if (prop) {
+			obs_source_update(data->src_monitor, prop);
+			obs_data_release(prop);
+		}
+	}
+
+	pthread_mutex_unlock(&data->mutex);
+
+	dataChanged();
+}
+
+struct face_tracker_dock_s *face_tracker_dock_create()
+{
+	struct face_tracker_dock_s *data = (struct face_tracker_dock_s *)bzalloc(sizeof(struct face_tracker_dock_s));
+	data->ref = 1;
+	pthread_mutex_init(&data->mutex, NULL);
+	return data;
 }
 
 void face_tracker_dock_destroy(struct face_tracker_dock_s *data)
@@ -408,5 +485,6 @@ void face_tracker_dock_destroy(struct face_tracker_dock_s *data)
 	obs_display_destroy(data->disp);
 	data->disp = NULL;
 	obs_source_release(data->src_monitor);
+	pthread_mutex_destroy(&data->mutex);
 	bfree(data);
 }
