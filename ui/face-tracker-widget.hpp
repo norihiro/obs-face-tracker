@@ -27,9 +27,8 @@ class FTWidget : public QWidget {
 	OBSEventFilter *BuildEventFilter();
 
 public:
-	FTWidget(QWidget *parent);
+	FTWidget(struct face_tracker_dock_s *data, QWidget *parent);
 	~FTWidget();
-	void SetData(struct face_tracker_dock_s *data);
 	void setShown(bool shown);
 
 private:
