@@ -23,6 +23,7 @@ public:
 	class QCheckBox *pauseButton;
 	class QPushButton *resetButton;
 	class FTWidget *ftWidget;
+	class QCheckBox *notrackButton;
 
 	bool updating_widget = false;
 
@@ -57,6 +58,7 @@ private slots:
 	void targetSelectorChanged();
 	void pauseButtonChanged(int state);
 	void resetButtonClicked(bool checked);
+	void notrackButtonChanged(int state);
 };
 
 extern "C" {

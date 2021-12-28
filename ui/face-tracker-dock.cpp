@@ -201,6 +201,10 @@ FTDock::FTDock(QWidget *parent)
 	ftWidget = new FTWidget(data, this);
 	mainLayout->addWidget(ftWidget);
 
+	notrackButton = new QCheckBox(obs_module_text("Show all region"), this);
+	mainLayout->addWidget(notrackButton);
+	connect(notrackButton, &QCheckBox::stateChanged, this, &FTDock::notrackButtonChanged);
+
 	setWidget(dockWidgetContents);
 
 	connect(this, &FTDock::scenesMayChanged, this, &FTDock::checkTargetSelector);
@@ -322,10 +326,13 @@ void FTDock::updateWidget()
 
 	if (data->src_monitor) {
 		obs_data_t *props = obs_source_get_settings(data->src_monitor);
+
 		const char *source_name = obs_data_get_string(props, "source_name");
 		const char *filter_name = obs_data_get_string(props, "filter_name");
-
 		init_target_selector(targetSelector, source_name, filter_name);
+
+		bool notrack = obs_data_get_bool(props, "notrack");
+		notrackButton->setCheckState(notrack ? Qt::Checked : Qt::Unchecked);
 
 		obs_data_release(props);
 	}
@@ -362,6 +369,16 @@ void FTDock::resetButtonClicked(bool checked)
 	calldata_init_fixed(&cd, stack, sizeof(stack));
 	calldata_set_bool(&cd, "reset", true);
 	proc_handler_call(ph, "set_state", &cd);
+}
+
+void FTDock::notrackButtonChanged(int state)
+{
+	if (!data || !data->src_monitor)
+		return;
+	obs_data_t *props = obs_data_create();
+	obs_data_set_bool(props, "notrack", state==Qt::Checked);
+	obs_source_update(data->src_monitor, props);
+	obs_data_release(props);
 }
 
 static void save_load_ft_docks(obs_data_t *save_data, bool saving, void *)
