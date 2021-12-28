@@ -49,6 +49,13 @@ for current limitations of PTZ control feature.
 This plugin requires [dlib](http://dlib.net/) to be built.
 The `dlib` should be extracted under `obs-face-tracker` so that it will be linked statically.
 
+For macOS,
+install openblas and configure the path.
+```
+brew install openblas
+export OPENBLAS_HOME=/usr/local/opt/openblas/
+```
+
 For Linux and macOS,
 expand `obs-face-tracker` outside `obs-studio` and expand `dlib` under `obs-face-tracker`.
 Then, apply patch file to `dlib` so that dlib won't try to link `openblasp` but `openblas`.
@@ -68,7 +75,11 @@ cd dlib
 patch -p1 < ../ci/common/dlib-cmake-no-openblasp.patch
 cd ..
 mkdir build && cd build
-cmake -DLIBOBS_INCLUDE_DIR=$d0/obs-studio/libobs -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+cmake .. \
+	-DLIBOBS_INCLUDE_DIR=$d0/obs-studio/libobs \
+	-DLIBOBS_LIB=$d0/obs-studio/libobs \
+	-DOBS_FRONTEND_LIB="$d0/obs-studio/build/UI/obs-frontend-api/libobs-frontend-api.dylib" \
+	-DCMAKE_BUILD_TYPE=RelWithDebInfo
 make
 ```
 
