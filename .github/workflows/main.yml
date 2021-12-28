@@ -104,7 +104,10 @@ jobs:
           fi
 
       - name: 'Install dependencies'
-        run: CI/macos/01_install_dependencies.sh --architecture "${{ matrix.arch }}"
+        run: |
+          pwd
+          ls -a
+          CI/macos/01_install_dependencies.sh --architecture "${{ matrix.arch }}"
 
       - name: 'Restore libobs and obs-frontend-api from cache'
         id: libobs-cache
