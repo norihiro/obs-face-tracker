@@ -198,6 +198,12 @@ FTDock::FTDock(QWidget *parent)
 	mainLayout->addWidget(resetButton);
 	connect(resetButton, &QPushButton::clicked, this, &FTDock::resetButtonClicked);
 
+#ifdef HAVE_PROPERTY_BUTTON
+	propertyButton = new QPushButton(obs_module_text("Properties"), this);
+	mainLayout->addWidget(propertyButton);
+	connect(propertyButton, &QPushButton::clicked, this, &FTDock::propertyButtonClicked);
+#endif
+
 	ftWidget = new FTWidget(data, this);
 	mainLayout->addWidget(ftWidget);
 
@@ -370,6 +376,28 @@ void FTDock::resetButtonClicked(bool checked)
 	calldata_set_bool(&cd, "reset", true);
 	proc_handler_call(ph, "set_state", &cd);
 }
+
+#ifdef HAVE_PROPERTY_BUTTON
+void FTDock::propertyButtonClicked(bool checked)
+{
+	UNUSED_PARAMETER(checked);
+
+	QList<QVariant> data = targetSelector->currentData().toList();
+	if (data.count() < 1)
+		return;
+
+	const char *name = data[0].toByteArray().constData();
+
+	obs_source_t *target = obs_get_source_by_name(name);
+
+	if (data.count() == 1)
+		obs_frontend_open_source_properties(target);
+	else
+		obs_frontend_open_source_filters(target);
+
+	obs_source_release(target);
+}
+#endif // HAVE_PROPERTY_BUTTON
 
 void FTDock::notrackButtonChanged(int state)
 {
