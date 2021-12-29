@@ -9,6 +9,11 @@
 #include <obs.hpp>
 #include <obs-frontend-api.h>
 
+// the necessary APIs are implemented at 27.0.1-107-g5b18faeb4.
+#if LIBOBS_API_VER > MAKE_SEMANTIC_VERSION(27, 0, 1)
+#define HAVE_PROPERTY_BUTTON
+#endif
+
 class FTDock : public QDockWidget {
 	Q_OBJECT
 
@@ -22,6 +27,9 @@ public:
 	class QComboBox *targetSelector;
 	class QCheckBox *pauseButton;
 	class QPushButton *resetButton;
+#ifdef HAVE_PROPERTY_BUTTON
+	class QPushButton *propertyButton;
+#endif
 	class FTWidget *ftWidget;
 	class QCheckBox *notrackButton;
 
@@ -58,6 +66,9 @@ private slots:
 	void targetSelectorChanged();
 	void pauseButtonChanged(int state);
 	void resetButtonClicked(bool checked);
+#ifdef HAVE_PROPERTY_BUTTON
+	void propertyButtonClicked(bool checked);
+#endif
 	void notrackButtonChanged(int state);
 };
 
