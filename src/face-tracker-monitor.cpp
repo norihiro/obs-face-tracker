@@ -3,6 +3,8 @@
 #include "plugin-macros.generated.h"
 
 
+#define MAX_ERROR 2
+
 struct face_tracker_monitor
 {
 	obs_source_t *context;
@@ -16,6 +18,8 @@ struct face_tracker_monitor
 
 	obs_weak_source_t *source_ref;
 	obs_weak_source_t *filter_ref;
+
+	int n_error;
 };
 
 static const char *ftmon_get_name(void *unused)
@@ -55,14 +59,17 @@ static void ftmon_update(void *data, obs_data_t *settings)
 	if (source_name && (!s->source_name || strcmp(source_name, s->source_name))) {
 		bfree(s->source_name);
 		s->source_name = bstrdup(source_name);
+		s->n_error = 0;
 	}
 
 	if (!filter_name || !*filter_name) {
 		bfree(s->filter_name);
 		s->filter_name = NULL;
+		s->n_error = 0;
 	} else if (!s->filter_name || strcmp(filter_name, s->filter_name)) {
 		bfree(s->filter_name);
 		s->filter_name = bstrdup(filter_name);
+		s->n_error = 0;
 	}
 
 	s->notrack = obs_data_get_bool(settings, "notrack");
@@ -168,10 +175,19 @@ static void ftmon_tick(void *data, float second)
 		tick_source(s, s->filter_ref, s->filter_name, get_filter_by_name);
 
 	if (source_specified && !s->source_ref) {
-		blog(LOG_INFO, "failed to get source \"%s\"", s->source_name);
+		if (s->n_error < MAX_ERROR) {
+			blog(LOG_INFO, "failed to get source \"%s\"", s->source_name);
+			s->n_error ++;
+		}
 	}
 	else if (filter_specified && !s->filter_ref) {
-		blog(LOG_INFO, "failed to get filter \"%s\"", s->filter_name);
+		if (s->n_error < MAX_ERROR) {
+			blog(LOG_INFO, "failed to get filter \"%s\"", s->filter_name);
+			s->n_error ++;
+		}
+	}
+	else {
+		s->n_error = 0;
 	}
 }
 
