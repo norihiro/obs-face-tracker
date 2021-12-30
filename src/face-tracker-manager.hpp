@@ -9,6 +9,7 @@ class face_tracker_manager
 		struct tracker_rect_s {
 			rect_s rect;
 			rectf_s crop_rect;
+			std::vector<pointf_s> landmark;
 		};
 
 		struct tracker_inst_s
@@ -17,6 +18,7 @@ class face_tracker_manager
 			rect_s rect;
 			rectf_s crop_tracker; // crop corresponding to current processing image
 			rectf_s crop_rect; // crop corresponding to rect
+			std::vector<pointf_s> landmark;
 			float att;
 			float score_first;
 			enum tracker_state_e {
@@ -36,6 +38,7 @@ class face_tracker_manager
 		volatile bool reset_requested;
 		float tracking_threshold;
 		int detector_crop_l, detector_crop_r, detector_crop_t, detector_crop_b;
+		char *landmark_detection_data;
 
 	public: // realtime status
 		rectf_s crop_cur;
