@@ -15,5 +15,8 @@ class face_tracker_dlib : public face_tracker_base
 
 		void set_texture(texture_object *) override;
 		void set_position(const rect_s &rect) override;
+		void set_upsize_info(const rectf_s &upsize) override;
+		void set_landmark_detection(const char *data_file_path) override;
 		bool get_face(struct rect_s &) override;
+		bool get_landmark(std::vector<pointf_s> &) override;
 };

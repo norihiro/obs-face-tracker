@@ -12,6 +12,7 @@ static uint32_t formats_found = 0;
 
 struct texture_object_private_s
 {
+	// TODO: allocate RGB image. According to the example for landmark detection, dlib accept RGB image. It should be more accurate.
 	dlib::array2d<unsigned char> dlib_img;
 	void *leak_test;
 };

@@ -17,6 +17,7 @@ face_tracker_manager::face_tracker_manager()
 	upsize_l = upsize_r = upsize_t = upsize_b = 0.0f;
 	scale = 0.0f;
 	tracking_threshold = 1e-2f;
+	landmark_detection_data = NULL;
 	crop_cur.x0 = crop_cur.x1 = crop_cur.y0 = crop_cur.y1 = 0.0f;
 	tick_cnt = detect_tick = next_tick_stage_to_detector = 0;
 	detector_in_progress = false;
@@ -41,6 +42,7 @@ face_tracker_manager::~face_tracker_manager()
 		}
 	}
 	detect->stop();
+	bfree(landmark_detection_data);
 	delete detect;
 }
 
@@ -152,6 +154,7 @@ inline void face_tracker_manager::copy_detector_to_tracker()
 	r.y0 -= h * upsize_t;
 	r.y1 += h * upsize_b;
 	t.tracker->set_position(r); // TODO: consider how to track two or more faces.
+	t.tracker->set_upsize_info(rectf_s{upsize_l, upsize_t, upsize_r, upsize_b});
 	t.tracker->start();
 	t.state = tracker_inst_s::tracker_state_constructing;
 }
@@ -202,6 +205,9 @@ inline void face_tracker_manager::stage_to_detector()
 		t.state = tracker_inst_s::tracker_state_e::tracker_state_reset_texture;
 		t.tick_cnt = tick_cnt;
 		t.tracker->set_texture(cvtex);
+		t.tracker->set_landmark_detection(landmark_detection_data);
+		if (!landmark_detection_data)
+			t.landmark.clear();
 		trackers.push_back(t);
 
 		cvtex->release();
@@ -245,6 +251,8 @@ inline void face_tracker_manager::stage_to_trackers()
 				debug_track("tracker_state_first_track %p %d %d %d %d %f", t.tracker, t.rect.x0, t.rect.y0, t.rect.x1, t.rect.y1, t.rect.score);
 				t.att = 1.0f;
 				t.score_first = t.rect.score;
+				if (!ret || !landmark_detection_data || !t.tracker->get_landmark(t.landmark))
+					t.landmark.resize(0);
 				stage_surface_to_tracker(t);
 				t.tracker->signal();
 				t.tracker->unlock();
@@ -256,9 +264,11 @@ inline void face_tracker_manager::stage_to_trackers()
 		}
 		else if (t.state == tracker_inst_s::tracker_state_available) {
 			if (!t.tracker->trylock()) {
-				t.tracker->get_face(t.rect);
+				bool ret = t.tracker->get_face(t.rect);
 				t.crop_rect = t.crop_tracker;
-				debug_track("tracker_state_available %p %d %d %d %d %f", t.tracker, t.rect.x0, t.rect.y0, t.rect.x1, t.rect.y1, t.rect.score);
+				debug_track("tracker_state_available %p %d %d %d %d %f landmark=%d", t.tracker, t.rect.x0, t.rect.y0, t.rect.x1, t.rect.y1, t.rect.score, t.landmark.size());
+				if (!ret || !landmark_detection_data || !t.tracker->get_landmark(t.landmark))
+					t.landmark.resize(0);
 				stage_surface_to_tracker(t);
 				t.tracker->signal();
 				t.tracker->unlock();
@@ -270,21 +280,32 @@ inline void face_tracker_manager::stage_to_trackers()
 		remove_duplicated_tracker();
 }
 
-static inline void make_tracker_rects(face_tracker_manager *ftm)
+static inline void make_tracker_rects(
+		std::vector<face_tracker_manager::tracker_rect_s> &tracker_rects,
+		const std::deque<face_tracker_manager::tracker_inst_s> &trackers )
 {
-	ftm->tracker_rects.resize(0);
-	auto &trackers = ftm->trackers;
+	int n = 0;
 	for (int i=0; i<trackers.size(); i++) {
 		if (trackers[i].state != face_tracker_manager::tracker_inst_s::tracker_state_available)
 			continue;
-		face_tracker_manager::tracker_rect_s r;
-		r.rect = trackers[i].rect;
-		r.rect.score *= trackers[i].att;
-		r.crop_rect = trackers[i].crop_rect;
-		if (r.rect.score<=0.0f || isnan(r.rect.score))
+
+		float score = trackers[i].rect.score * trackers[i].att;
+
+		if (trackers[i].rect.score<=0.0f || isnan(score))
 			continue;
-		ftm->tracker_rects.push_back(r);
+
+		if (tracker_rects.size() <= n)
+			tracker_rects.resize(n+1);
+		auto &r = tracker_rects[n++];
+
+		r.rect = trackers[i].rect;
+		r.rect.score = score;
+		r.crop_rect = trackers[i].crop_rect;
+		r.landmark = trackers[i].landmark;
 	}
+
+	if (tracker_rects.size() > n)
+		tracker_rects.resize(n);
 }
 
 void face_tracker_manager::tick(float second)
@@ -300,7 +321,7 @@ void face_tracker_manager::tick(float second)
 
 	tick_cnt += 1;
 
-	make_tracker_rects(this);
+	make_tracker_rects(tracker_rects, trackers);
 }
 
 void face_tracker_manager::post_render()
@@ -320,6 +341,11 @@ void face_tracker_manager::update(obs_data_t *settings)
 	detector_crop_r = obs_data_get_int(settings, "detector_crop_r");
 	detector_crop_t = obs_data_get_int(settings, "detector_crop_t");
 	detector_crop_b = obs_data_get_int(settings, "detector_crop_b");
+	bool landmark_detection = obs_data_get_bool(settings, "landmark_detection");
+	bfree(landmark_detection_data);
+	landmark_detection_data = NULL;
+	if (landmark_detection)
+		landmark_detection_data = bstrdup(obs_data_get_string(settings, "landmark_detection_data"));
 	if (obs_data_get_bool(settings, "tracking_th_en"))
 		tracking_threshold = from_dB(obs_data_get_double(settings, "tracking_th_dB"));
 	else
@@ -346,6 +372,15 @@ void face_tracker_manager::get_properties(obs_properties_t *pp)
 	obs_properties_add_int(pp, "detector_crop_r", obs_module_text("Crop right for detector"), 0, 1920, 1);
 	obs_properties_add_int(pp, "detector_crop_t", obs_module_text("Crop top for detector"), 0, 1080, 1);
 	obs_properties_add_int(pp, "detector_crop_b", obs_module_text("Crop bottom for detector"), 0, 1080, 1);
+	obs_properties_add_bool(pp, "landmark_detection", obs_module_text("Enable landmark detection"));
+	p = obs_properties_add_path(pp, "landmark_detection_data", obs_module_text("Landmark detection data"),
+			OBS_PATH_FILE,
+			"Data Files (*.dat);;"
+			"All Files (*.*)",
+			NULL );
+	obs_property_set_long_description(p, obs_module_text(
+				"You can get the shape_predictor_68_face_landmarks.dat file from: "
+				"http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2" ));
 	p = obs_properties_add_bool(pp, "tracking_th_en", obs_module_text("Set tracking threshold"));
 	obs_property_set_modified_callback(p, tracking_th_en_modified);
 	p = obs_properties_add_float(pp, "tracking_th_dB", obs_module_text("Tracking threshold"), -120.0, -20.0, 5.0);

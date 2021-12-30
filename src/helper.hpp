@@ -1,6 +1,12 @@
 #pragma once
 #include <cmath>
 
+struct pointf_s
+{
+	float x;
+	float y;
+};
+
 struct rect_s
 {
 	int x0;
