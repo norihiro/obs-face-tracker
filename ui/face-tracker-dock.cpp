@@ -69,13 +69,12 @@ static bool init_target_selector_compare_name(struct init_target_selector_s *ctx
 	if (strcmp(ctx->source_name, source_name) != 0)
 		return false;
 
-	bool ctx_no_filter = !ctx->filter_name;
-	bool cur_no_filter = !filter_name;
-
-	if (ctx_no_filter && cur_no_filter)
+	// both expect source
+	if (!ctx->filter_name && !filter_name)
 		return true;
 
-	if (ctx_no_filter != cur_no_filter)
+	// either one expects source
+	if (!ctx->filter_name || !filter_name)
 		return false;
 
 	return strcmp(ctx->filter_name, filter_name) == 0;
