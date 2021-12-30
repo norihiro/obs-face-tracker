@@ -730,11 +730,24 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 	auto &tracker_rects = s->ftm->tracker_rects;
 	for (int i=0; i<tracker_rects.size(); i++) {
 		f3 r (tracker_rects[i].rect);
+
+		if (s->ftm->landmark_detection_data) {
+			pointf_s center = landmark_center(tracker_rects[i].landmark);
+			float area = landmark_area(tracker_rects[i].landmark);
+			if (area <= 0.0f)
+				continue;
+
+			r.v[0] = center.x;
+			r.v[1] = center.y;
+			r.v[2] = sqrtf(area * (float)(4.0f / M_PI));
+		}
+
 		r.v[0] -= get_width(tracker_rects[i].crop_rect) * s->track_x;
 		r.v[1] += get_height(tracker_rects[i].crop_rect) * s->track_y;
 		r.v[2] /= s->track_z;
 		f3 w (tracker_rects[i].crop_rect);
 		float score = tracker_rects[i].rect.score;
+
 		f3 e = (r-w) * score;
 		debug_track("calculate_error: %d %f %f %f %f", i, e.v[0], e.v[1], e.v[2], score);
 		if (score>0.0f && !isnan(e)) {
@@ -772,29 +785,49 @@ static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source
 	return frame;
 }
 
-static void draw_frame_info(struct face_tracker_ptz *s)
+static void draw_frame_info(struct face_tracker_ptz *s, bool landmark_only = false)
 {
+	bool draw_det = !landmark_only;
+	bool draw_trk = !landmark_only;
+	bool draw_lmk = true;
+	bool draw_ref = !landmark_only;
 	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_SOLID);
 	while (gs_effect_loop(effect, "Solid")) {
-		gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
-		for (int i=0; i<s->ftm->detect_rects.size(); i++)
-			draw_rect_upsize(s->ftm->detect_rects[i], s->ftm->upsize_l, s->ftm->upsize_r, s->ftm->upsize_t, s->ftm->upsize_b);
+		if (draw_det) {
+			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
+			for (int i=0; i<s->ftm->detect_rects.size(); i++)
+				draw_rect_upsize(s->ftm->detect_rects[i], s->ftm->upsize_l, s->ftm->upsize_r, s->ftm->upsize_t, s->ftm->upsize_b);
+		}
 
 		gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF00FF00);
 		for (int i=0; i<s->ftm->tracker_rects.size(); i++) {
-			draw_rect_upsize(s->ftm->tracker_rects[i].rect);
+			const auto &tr = s->ftm->tracker_rects[i];
+			if (draw_trk)
+				draw_rect_upsize(tr.rect);
+			if (draw_lmk && tr.landmark.size())
+				draw_landmark(tr.landmark);
 		}
 
-		gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
-		gs_render_start(false);
-		const float srwhr2 = sqrtf((float)s->known_width * s->known_height) * 0.5f;
-		const float rcx = (float)s->known_width*(0.5f + s->track_x);
-		const float rcy = (float)s->known_height*(0.5f - s->track_y);
-		gs_vertex2f(rcx-srwhr2*s->track_z, rcy);
-		gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
-		gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
-		gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
-		gs_render_stop(GS_LINES);
+		if (draw_ref) {
+			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
+			gs_render_start(false);
+			const float srwhr2 = sqrtf((float)s->known_width * s->known_height) * 0.5f;
+			const float rcx = (float)s->known_width*(0.5f + s->track_x);
+			const float rcy = (float)s->known_height*(0.5f - s->track_y);
+			gs_vertex2f(rcx-srwhr2*s->track_z, rcy);
+			gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
+			gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
+			gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
+			gs_render_stop(GS_LINES);
+
+			if (s->ftm->landmark_detection_data) {
+				gs_render_start(false);
+				float r = srwhr2 * s->track_z;
+				for (int i=0; i<=32; i++)
+					gs_vertex2f(rcx + r * sinf(M_PI * i / 8), rcy + r * cosf(M_PI * i / 8));
+				gs_render_stop(GS_LINESTRIP);
+			}
+		}
 	}
 }
 
@@ -810,8 +843,10 @@ static void ftptz_video_render(void *data, gs_effect_t *)
 static void cb_render_info(void *data, calldata_t *cd)
 {
 	auto *s = (struct face_tracker_ptz*)data;
+	bool landmark_only = false;
+	calldata_get_bool(cd, "landmark_only", &landmark_only);
 
-	draw_frame_info(s);
+	draw_frame_info(s, landmark_only);
 }
 
 extern "C"
