@@ -71,6 +71,7 @@ class face_tracker_manager
 	private:
 		inline void retire_tracker(int ix);
 		inline bool is_low_confident(const tracker_inst_s &t, float th1);
+		void remove_duplicated_tracker();
 		void attenuate_tracker();
 		void copy_detector_to_tracker();
 		void stage_to_detector();

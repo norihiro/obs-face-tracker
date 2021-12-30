@@ -63,22 +63,34 @@ inline bool face_tracker_manager::is_low_confident(const tracker_inst_s &t, floa
 	return false;
 }
 
-inline void face_tracker_manager::attenuate_tracker()
+void face_tracker_manager::remove_duplicated_tracker()
 {
-	for (int j=0; j<detect_rects.size(); j++) {
-		rect_s r = detect_rects[j];
+	for (int i=0; i<trackers.size(); i++) {
+		if (trackers[i].state != tracker_inst_s::tracker_state_available)
+			continue;
+
+		rect_s r = trackers[i].rect;
 		int a0 = (r.x1 - r.x0) * (r.y1 - r.y0);
 		int a_overlap_sum = 0;
-		for (int i=trackers.size()-1; i>=0; i--) {
-			if (trackers[i].state != tracker_inst_s::tracker_state_available)
+		bool to_remove = false;
+		for (int j=i+1; j<trackers.size() && !to_remove; j++) {
+			if (trackers[j].state != tracker_inst_s::tracker_state_available)
 				continue;
-			int a = common_area(r, trackers[i].rect);
+			int a = common_area(r, trackers[j].rect);
 			a_overlap_sum += a;
 			if (a*10>a0 && a_overlap_sum*2 > a0)
-				retire_tracker(i);
+				to_remove = true;
+		}
+
+		if (to_remove) {
+			retire_tracker(i);
+			i--;
 		}
 	}
+}
 
+inline void face_tracker_manager::attenuate_tracker()
+{
 	for (int i=0; i<trackers.size(); i++) {
 		if (trackers[i].state != tracker_inst_s::tracker_state_available)
 			continue;
@@ -213,6 +225,7 @@ inline int face_tracker_manager::stage_surface_to_tracker(struct tracker_inst_s 
 
 inline void face_tracker_manager::stage_to_trackers()
 {
+	bool have_new_tracker = false;
 	for (int i=0; i<trackers.size(); i++) {
 		struct tracker_inst_s &t = trackers[i];
 		if (t.state == tracker_inst_s::tracker_state_constructing) {
@@ -235,8 +248,10 @@ inline void face_tracker_manager::stage_to_trackers()
 				stage_surface_to_tracker(t);
 				t.tracker->signal();
 				t.tracker->unlock();
-				if (ret)
+				if (ret) {
 					t.state = tracker_inst_s::tracker_state_available;
+					have_new_tracker = true;
+				}
 			}
 		}
 		else if (t.state == tracker_inst_s::tracker_state_available) {
@@ -250,6 +265,9 @@ inline void face_tracker_manager::stage_to_trackers()
 			}
 		}
 	}
+
+	if (have_new_tracker)
+		remove_duplicated_tracker();
 }
 
 static inline void make_tracker_rects(face_tracker_manager *ftm)
