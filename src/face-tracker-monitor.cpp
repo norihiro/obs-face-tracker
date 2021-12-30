@@ -12,6 +12,7 @@ struct face_tracker_monitor
 	char *filter_name;
 	bool notrack;
 	bool nosource;
+	bool landmark_only;
 
 	obs_weak_source_t *source_ref;
 	obs_weak_source_t *filter_ref;
@@ -67,6 +68,8 @@ static void ftmon_update(void *data, obs_data_t *settings)
 	s->notrack = obs_data_get_bool(settings, "notrack");
 
 	s->nosource = obs_data_get_bool(settings, "nosource");
+
+	s->landmark_only = obs_data_get_bool(settings, "landmark_only");
 }
 
 static obs_properties_t *ftmon_properties(void *data)
@@ -82,6 +85,8 @@ static obs_properties_t *ftmon_properties(void *data)
 	obs_properties_add_bool(props, "notrack", "Display original source");
 
 	obs_properties_add_bool(props, "nosource", "Overlay only");
+
+	obs_properties_add_bool(props, "landmark_only", "Display landmark information only");
 
 	return props;
 }
@@ -253,6 +258,9 @@ static void ftmon_video_render(void *data, gs_effect_t *)
 			obs_source_video_render(src);
 		}
 	}
+
+	if (s->landmark_only)
+		calldata_set_bool(&cd, "landmark_only", true);
 
 	proc_handler_call(ph, "render_info", &cd);
 
