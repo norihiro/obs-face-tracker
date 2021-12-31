@@ -24,6 +24,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #cmakedefine WITH_PTZ_TCP
 #cmakedefine ENABLE_MONITOR_USER
+#cmakedefine WITH_DOCK
 
 #define blog(level, msg, ...) blog(level, "[" PLUGIN_NAME "] " msg, ##__VA_ARGS__)
 

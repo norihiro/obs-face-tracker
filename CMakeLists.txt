@@ -10,6 +10,7 @@ set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 option(WITH_PTZ_TCP "Enable to connect PTZ camera through TCP socket" ON)
 option(ENABLE_MONITOR_USER "Enable monitor source for user" OFF)
 option(ENABLE_DEBUG_DATA "Enable property to save error and control data" OFF)
+option(WITH_DOCK "Enable dock" ON)
 
 set(CMAKE_PREFIX_PATH "${QTDIR}")
 set(CMAKE_AUTOMOC ON)
@@ -83,8 +84,20 @@ set(PLUGIN_SOURCES
 if (WITH_PTZ_TCP)
 	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/libvisca-thread.cpp)
 endif()
+if (WITH_DOCK)
+	set(PLUGIN_SOURCES
+		${PLUGIN_SOURCES}
+		ui/face-tracker-dock.cpp
+		ui/face-tracker-widget.cpp
+	)
+endif()
 
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
+
+if (WITH_DOCK)
+	set(plugin_additional_incs ${plugin_additional_incs} src)
+	set(plugin_additional_libs ${plugin_additional_libs} Qt::Gui Qt::Widgets Qt::GuiPrivate)
+endif()
 
 include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/dlib

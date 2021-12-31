@@ -1,5 +1,8 @@
 #include <obs-module.h>
 #include "plugin-macros.generated.h"
+#ifdef WITH_DOCK
+#include "../ui/face-tracker-dock.hpp"
+#endif // WITH_DOCK
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
@@ -14,9 +17,15 @@ bool obs_module_load(void)
 	register_face_tracker_filter();
 	register_face_tracker_ptz();
 	register_face_tracker_monitor();
+#ifdef WITH_DOCK
+	ft_docks_init();
+#endif // WITH_DOCK
 	return true;
 }
 
 void obs_module_unload()
 {
+#ifdef WITH_DOCK
+	ft_docks_release();
+#endif // WITH_DOCK
 }
