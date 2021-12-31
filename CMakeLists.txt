@@ -8,6 +8,7 @@ set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
 option(WITH_PTZ_TCP "Enable to connect PTZ camera through TCP socket" ON)
 option(ENABLE_MONITOR_USER "Enable monitor source for user" OFF)
+option(ENABLE_DEBUG_DATA "Enable property to save error and control data" OFF)
 
 set(CMAKE_PREFIX_PATH "${QTDIR}")
 set(CMAKE_AUTOMOC ON)

@@ -33,6 +33,12 @@ struct face_tracker_ptz
 	bool debug_faces;
 	bool debug_notrack;
 	bool debug_always_show;
+	FILE *debug_data_tracker;
+	FILE *debug_data_error;
+	FILE *debug_data_control;
+	char *debug_data_tracker_last;
+	char *debug_data_error_last;
+	char *debug_data_control_last;
 
 	char *ptz_type;
 	int ptz_max_x, ptz_max_y, ptz_max_z;

@@ -18,8 +18,6 @@
 #endif
 #include "dummy-backend.hpp"
 
-#define debug_track(fmt, ...) // blog(LOG_INFO, fmt, __VA_ARGS__)
-
 #define PTZ_MAX_X 0x18
 #define PTZ_MAX_Y 0x14
 #define PTZ_MAX_Z 0x07
@@ -210,6 +208,10 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
 	s->debug_always_show = obs_data_get_bool(settings, "debug_always_show");
 
+	debug_data_open(&s->debug_data_tracker, &s->debug_data_tracker_last, settings, "debug_data_tracker");
+	debug_data_open(&s->debug_data_error, &s->debug_data_error_last, settings, "debug_data_error");
+	debug_data_open(&s->debug_data_control, &s->debug_data_control_last, settings, "debug_data_control");
+
 	s->ptz_max_x = obs_data_get_int(settings, "ptz_max_x");
 	s->ptz_max_y = obs_data_get_int(settings, "ptz_max_y");
 	s->ptz_max_z = obs_data_get_int(settings, "ptz_max_z");
@@ -276,6 +278,15 @@ static void ftptz_destroy(void *data)
 
 	delete s->ftm;
 	bfree(s->ptz_type);
+	if (s->debug_data_tracker)
+		fclose(s->debug_data_tracker);
+	if (s->debug_data_error)
+		fclose(s->debug_data_error);
+	if (s->debug_data_control)
+		fclose(s->debug_data_control);
+	bfree(s->debug_data_tracker_last);
+	bfree(s->debug_data_error_last);
+	bfree(s->debug_data_control_last);
 
 	bfree(s);
 }
@@ -392,8 +403,6 @@ static obs_properties_t *ftptz_properties(void *data)
 
 	{
 		obs_properties_t *pp = obs_properties_create();
-		obs_properties_add_bool(pp, "debug_faces", "Show face detection results");
-		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
 		obs_property_t *p = obs_properties_add_list(pp, "ptz-type", obs_module_text("PTZ Type"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 		obs_property_list_add_string(p, obs_module_text("None"), "dummy");
 		obs_property_list_add_string(p, obs_module_text("through PTZ Controls"), "obsptz");
@@ -411,6 +420,21 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_properties_add_bool(pp, "invert_y", obs_module_text("Invert control (Tilt)"));
 		obs_properties_add_bool(pp, "invert_z", obs_module_text("Invert control (Zoom)"));
 		obs_properties_add_group(props, "output", obs_module_text("Output"), OBS_GROUP_NORMAL, pp);
+	}
+
+	{
+		obs_properties_t *pp = obs_properties_create();
+		obs_properties_add_bool(pp, "debug_faces", "Show face detection results");
+		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
+#ifdef ENABLE_DEBUG_DATA
+		obs_properties_add_path(pp, "debug_data_tracker", "Save correlation tracker data to file",
+				OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL );
+		obs_properties_add_path(pp, "debug_data_error", "Save calculated error data to file",
+				OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL );
+		obs_properties_add_path(pp, "debug_data_control", "Save control data to file",
+				OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL );
+#endif
+		obs_properties_add_group(props, "debug", obs_module_text("Debugging"), OBS_GROUP_NORMAL, pp);
 	}
 
 	return props;
@@ -639,7 +663,13 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 		else if (n > +u_max[i]) n = +u_max[i];
 		s->u[i] = n;
 	}
-	debug_track("tick_filter: u: %d %d %d uf: %f %f %f", s->u[0], s->u[1], s->u[2], uf.v[0], uf.v[1], uf.v[2]);
+
+	if (s->debug_data_control) {
+		fprintf(s->debug_data_control, "%f\t%f\t%f\t%f\t%d\t%d\t%d\n",
+				os_gettime_ns() * 1e-9,
+				uf.v[0], uf.v[1], uf.v[2],
+				s->u[0], s->u[1], s->u[2] );
+	}
 }
 
 static void ftf_activate(void *data)
@@ -730,6 +760,7 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 	auto &tracker_rects = s->ftm->tracker_rects;
 	for (int i=0; i<tracker_rects.size(); i++) {
 		f3 r (tracker_rects[i].rect);
+		float score = tracker_rects[i].rect.score;
 
 		if (s->ftm->landmark_detection_data) {
 			pointf_s center = landmark_center(tracker_rects[i].landmark);
@@ -742,14 +773,18 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 			r.v[2] = sqrtf(area * (float)(4.0f / M_PI));
 		}
 
+		if (s->debug_data_tracker) {
+			fprintf(s->debug_data_tracker, "%f\t%f\t%f\t%f\t%f\n",
+					os_gettime_ns() * 1e-9,
+					r.v[0], r.v[1], r.v[2], score );
+		}
+
 		r.v[0] -= get_width(tracker_rects[i].crop_rect) * s->track_x;
 		r.v[1] += get_height(tracker_rects[i].crop_rect) * s->track_y;
 		r.v[2] /= s->track_z;
 		f3 w (tracker_rects[i].crop_rect);
-		float score = tracker_rects[i].rect.score;
 
 		f3 e = (r-w) * score;
-		debug_track("calculate_error: %d %f %f %f %f", i, e.v[0], e.v[1], e.v[2], score);
 		if (score>0.0f && !isnan(e)) {
 			e_tot += e;
 			sc_tot += score;
@@ -762,6 +797,12 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 	else
 		s->detect_err = f3(0, 0, 0);
 	s->face_found = found;
+
+	if (s->debug_data_error) {
+		fprintf(s->debug_data_error, "%f\t%f\t%f\t%f\n",
+				os_gettime_ns() * 1e-9,
+				s->detect_err.v[0], s->detect_err.v[1], s->detect_err.v[2] );
+	}
 }
 
 static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source_frame *frame)

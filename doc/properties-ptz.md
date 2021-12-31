@@ -107,22 +107,6 @@ The nonlinear band makes smooth connection from the dead band to the linear rang
 ### Attenuation time for lost face
 After the face is lost, integral term will be attenuated by this time. The dimension is time and the unit is s.
 
-## Debug
-These properties enables how the face detection and tracking works.
-Note that these features are automatically turned off when the source is displayed on the program of OBS Studio.
-You can keep enable the checkboxes and keep monitoring the detection accuracy before the scene goes to the program.
-
-### Show face detection results
-**Deprecated**
-If enabled, face detection and tracking results are shown.
-The face detection results are displayed in blue boxes.
-The Tracking results are displayed in green boxes.
-
-### Always show information
-**Deprecated**
-If enabled, debugging properties listed above are effective even if the source is displayed on the program.
-This will be useful to make a demonstration of face-tracker itself.
-
 ## Output
 This property group configure how to connect to the PTZ camera.
 
@@ -153,3 +137,48 @@ It might be useful if you camera is mounted on ceil.
 Just in c ase the zoom control behave opposite directon, check this.
 You should not check this in most cases.
 This is a deplicated option.
+
+## Debug
+These properties enables how the face detection and tracking works.
+Note that these features are automatically turned off when the source is displayed on the program of OBS Studio.
+You can keep enable the checkboxes and keep monitoring the detection accuracy before the scene goes to the program.
+
+### Show face detection results
+**Deprecated**
+If enabled, face detection and tracking results are shown.
+The face detection results are displayed in blue boxes.
+The Tracking results are displayed in green boxes.
+
+### Always show information
+**Deprecated**
+If enabled, debugging properties listed above are effective even if the source is displayed on the program.
+This will be useful to make a demonstration of face-tracker itself.
+
+### Save correlation tracker, calculated error, control data to file
+**Not available for released version**
+Save internal calculation into the specified file for each.
+This option is not available without building with `ENABLE_DEBUG_DATA`
+but still can be set through obs-websocket or manually editing the scene file to add a text property with a file name to be written.
+To disable it back, remove the property or set zero-length text.
+
+#### Correlation tracker
+Property name: `debug_data_tracker`
+
+The data contains time in second, 3 coordinates (X, Y, Z), and score of the correlation tracker.
+The X and Y coordinates are the center of the face.
+The Z coordinate is a square-root of the area.
+Sometimes multiple correlation trackers run at the same time. In that case, multiple lines are written at the same timing.
+
+#### Calculated error
+Property name: `debug_data_error`
+
+The data contains time in second, 3 coordinates (X, Y, Z).
+The calculated error is the adjusted measure with current resolution, the cropped region when the frame was rendered, and user-specified tracking target.
+0-value indicates the face is well aligned and positive or negative value indicates the cropped region need to be moved.
+
+#### Control
+Property name: `debug_data_control`
+
+The data contains time in second, 3 coordinates (X, Y, Z), and another set of 3 coordinates.
+The first set of the coordinates is a linear floating-point value of the control signal.
+The second set of the coordinates is an integer value that should go to the PTZ device.

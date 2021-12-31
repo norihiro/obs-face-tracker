@@ -43,6 +43,12 @@ struct face_tracker_filter
 	bool debug_faces;
 	bool debug_notrack;
 	bool debug_always_show;
+	FILE *debug_data_tracker;
+	FILE *debug_data_error;
+	FILE *debug_data_control;
+	char *debug_data_tracker_last;
+	char *debug_data_error_last;
+	char *debug_data_control_last;
 
 	bool is_paused;
 	obs_hotkey_pair_id hotkey_pause;
