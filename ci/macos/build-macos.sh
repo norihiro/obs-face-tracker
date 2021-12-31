@@ -23,6 +23,10 @@ patch -p1 < ../ci/common/dlib-slim.patch
 patch -p1 < ../ci/common/dlib-cmake-no-openblasp.patch
 cd ..
 
+echo "=> Cloning dlib-models..."
+git clone --depth 1 https://github.com/davisking/dlib-models
+bunzip2 < dlib-models/shape_predictor_5_face_landmarks.dat.bz2 > data/shape_predictor_5_face_landmarks.dat
+
 #export QT_PREFIX="$(find /usr/local/Cellar/qt5 -d 1 | tail -n 1)"
 
 export OPENBLAS_HOME=/usr/local/opt/openblas/

@@ -10,6 +10,12 @@ if not exist dlib (
 	cd ..
 )
 
+if not exist dlib-models (
+	echo checkout dlib...
+	git clone --depth 1 https://github.com/davisking/dlib-models
+)
+7z x dlib-models/shape_predictor_5_face_landmarks.dat.bz2 -so > data/shape_predictor_5_face_landmarks.dat
+
 if "%buildWin32%" == "false" goto skippedWin32
 mkdir build32
 cd build32
