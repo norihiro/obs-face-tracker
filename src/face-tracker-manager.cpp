@@ -377,7 +377,7 @@ void face_tracker_manager::get_properties(obs_properties_t *pp)
 			OBS_PATH_FILE,
 			"Data Files (*.dat);;"
 			"All Files (*.*)",
-			NULL );
+			obs_get_module_data_path(obs_current_module()) );
 	obs_property_set_long_description(p, obs_module_text(
 				"You can get the shape_predictor_68_face_landmarks.dat file from: "
 				"http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2" ));
@@ -396,4 +396,12 @@ void face_tracker_manager::get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "scale", 2.0);
 	obs_data_set_default_bool(settings, "tracking_th_en", true);
 	obs_data_set_default_double(settings, "tracking_th_dB", -80.0);
+
+	if (char *f = obs_module_file("shape_predictor_5_face_landmarks.dat")) {
+		obs_data_set_default_string(settings, "landmark_detection_data", f);
+		bfree(f);
+	}
+	else {
+		blog(LOG_ERROR, "shape_predictor_5_face_landmarks.dat is not found in the data directory.");
+	}
 }
