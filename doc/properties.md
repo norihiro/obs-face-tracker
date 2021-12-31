@@ -147,3 +147,32 @@ This is useful to check how much margins are there around the cropped area.
 ### Always show information
 If enabled, debugging properties listed above are effective even if the source is displayed on the program.
 This will be useful to make a demonstration of face-tracker itself.
+
+### Save correlation tracker, calculated error, control data to file
+**Not available for released version**
+Save internal calculation into the specified file for each.
+This option is not available without building with `ENABLE_DEBUG_DATA`
+but still can be set through obs-websocket or manually editing the scene file to add a text property with a file name to be written.
+To disable it back, remove the property or set zero-length text.
+
+#### Correlation tracker
+Property name: `debug_data_tracker`
+
+The data contains time in second, 3 coordinates (X, Y, Z), and score of the correlation tracker.
+The X and Y coordinates are the center of the face.
+The Z coordinate is a square-root of the area.
+Sometimes multiple correlation trackers run at the same time. In that case, multiple lines are written at the same timing.
+
+#### Calculated error
+Property name: `debug_data_error`
+
+The data contains time in second, 3 coordinates (X, Y, Z).
+The calculated error is the adjusted measure with current resolution, the cropped region when the frame was rendered, and user-specified tracking target.
+0-value indicates the face is well aligned and positive or negative value indicates the cropped region need to be moved.
+
+#### Control
+Property name: `debug_data_control`
+
+The data contains time in second, 3 coordinates (X, Y, Z).
+The X and Y coordinates are the center of the cropped region.
+The Z coordinate is a square-root of the area of the cropped region.

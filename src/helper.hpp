@@ -2,6 +2,12 @@
 #include <cmath>
 #include <vector>
 
+#ifdef _WIN32
+#define DEBUG_DATA_PATH_FILTER "TSV Files (*.tsv);;Data Files (*.dat);;All Files (*.*)"
+#else
+#define DEBUG_DATA_PATH_FILTER "Data Files (*.dat);;TSV Files (*.tsv);;All Files (*.*)"
+#endif
+
 struct pointf_s
 {
 	float x;
@@ -98,3 +104,5 @@ inline double from_dB(double x)
 {
 	return exp(x * (M_LN10/20));
 }
+
+void debug_data_open(FILE **dest, char **last_name, obs_data_t *settings, const char *name);

@@ -13,9 +13,6 @@
 #include "face-tracker-manager.hpp"
 #include "source_list.h"
 
-// #define debug_track(fmt, ...) blog(LOG_INFO, fmt, __VA_ARGS__)
-#define debug_track(fmt, ...)
-
 static gs_effect_t *effect_ft = NULL;
 
 static inline void scale_texture(struct face_tracker_filter *s, float scale);
@@ -99,6 +96,10 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
 	s->debug_always_show = obs_data_get_bool(settings, "debug_always_show");
+
+	debug_data_open(&s->debug_data_tracker, &s->debug_data_tracker_last, settings, "debug_data_tracker");
+	debug_data_open(&s->debug_data_error, &s->debug_data_error_last, settings, "debug_data_error");
+	debug_data_open(&s->debug_data_control, &s->debug_data_control_last, settings, "debug_data_control");
 }
 
 static void fts_update(void *data, obs_data_t *settings)
@@ -184,6 +185,15 @@ static void ftf_destroy(void *data)
 
 	bfree(s->target_name);
 	obs_weak_source_release(s->target_ref);
+	if (s->debug_data_tracker)
+		fclose(s->debug_data_tracker);
+	if (s->debug_data_error)
+		fclose(s->debug_data_error);
+	if (s->debug_data_control)
+		fclose(s->debug_data_control);
+	bfree(s->debug_data_tracker_last);
+	bfree(s->debug_data_error_last);
+	bfree(s->debug_data_control_last);
 
 	bfree(s);
 }
@@ -282,6 +292,14 @@ static obs_properties_t *ftf_properties(void *data)
 		obs_properties_add_bool(pp, "debug_faces", "Show face detection results");
 		obs_properties_add_bool(pp, "debug_notrack", "Stop tracking faces");
 		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
+#ifdef ENABLE_DEBUG_DATA
+		obs_properties_add_path(pp, "debug_data_tracker", "Save correlation tracker data to file",
+				OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL );
+		obs_properties_add_path(pp, "debug_data_error", "Save calculated error data to file",
+				OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL );
+		obs_properties_add_path(pp, "debug_data_control", "Save control data to file",
+				OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL );
+#endif
 		obs_properties_add_group(props, "debug", obs_module_text("Debugging"), OBS_GROUP_NORMAL, pp);
 	}
 
@@ -378,6 +396,12 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 			if (s->filter_int_out.v[i] > s->range_max.v[i])
 				s->filter_int_out.v[i] = s->range_max.v[i];
 		}
+	}
+
+	if (s->debug_data_control) {
+		fprintf(s->debug_data_control, "%f\t%f\t%f\t%f\n",
+				os_gettime_ns() * 1e-9,
+				u.v[0], u.v[1], u.v[2] );
 	}
 
 	s->ftm->crop_cur = f3_to_rectf(u, s->width_with_aspect, s->height_with_aspect);
@@ -614,6 +638,7 @@ static inline void calculate_error(struct face_tracker_filter *s)
 	auto &tracker_rects = s->ftm->tracker_rects;
 	for (int i=0; i<tracker_rects.size(); i++) {
 		f3 r (tracker_rects[i].rect);
+		float score = tracker_rects[i].rect.score;
 
 		if (s->ftm->landmark_detection_data) {
 			pointf_s center = landmark_center(tracker_rects[i].landmark);
@@ -626,15 +651,19 @@ static inline void calculate_error(struct face_tracker_filter *s)
 			r.v[2] = sqrtf(area * (float)(4.0f / M_PI));
 		}
 
+		if (s->debug_data_tracker) {
+			fprintf(s->debug_data_tracker, "%f\t%f\t%f\t%f\t%f\n",
+					os_gettime_ns() * 1e-9,
+					r.v[0], r.v[1], r.v[2], score );
+		}
+
 		r.v[0] -= get_width(tracker_rects[i].crop_rect) * s->track_x;
 		r.v[1] += get_height(tracker_rects[i].crop_rect) * s->track_y;
 		r.v[2] /= s->track_z;
 		r = ensure_range(r, s);
 		f3 w (tracker_rects[i].crop_rect);
-		float score = tracker_rects[i].rect.score;
 
 		f3 e = (r-w) * score;
-		debug_track("calculate_error: %d %f %f %f %f", i, e.v[0], e.v[1], e.v[2], score);
 		if (score>0.0f && !isnan(e)) {
 			e_tot += e;
 			sc_tot += score;
@@ -646,6 +675,12 @@ static inline void calculate_error(struct face_tracker_filter *s)
 		s->detect_err = e_tot * (1.0f / sc_tot);
 	else
 		s->detect_err = f3(0, 0, 0);
+
+	if (s->debug_data_error) {
+		fprintf(s->debug_data_error, "%f\t%f\t%f\t%f\n",
+				os_gettime_ns() * 1e-9,
+				s->detect_err.v[0], s->detect_err.v[1], s->detect_err.v[2] );
+	}
 }
 
 static inline void draw_sprite_crop(float width, float height, float x0, float y0, float x1, float y1);

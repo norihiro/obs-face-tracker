@@ -135,3 +135,32 @@ void draw_landmark(const std::vector<pointf_s> &landmark)
 
 	gs_render_stop(GS_LINES);
 }
+
+void debug_data_open(FILE **dest, char **last_name, obs_data_t *settings, const char *name)
+{
+	const char *debug_data = obs_data_get_string(settings, name);
+
+	// If the file name is not changed, just return.
+	if (*last_name && debug_data && strcmp(*last_name, debug_data) == 0)
+		return;
+
+	// If both file names are empty, just return.
+	if (!*last_name && (!debug_data || !*debug_data))
+		return;
+
+	if (*dest)
+		fclose(*dest);
+	*dest = NULL;
+
+	if (*last_name)
+		bfree(*last_name);
+	*last_name = NULL;
+
+	if (debug_data && *debug_data) {
+		*dest = fopen(debug_data, "a");
+		if (!*dest) {
+			blog(LOG_ERROR, "%s: Failed to open file \"%s\"", name, debug_data);
+		}
+		*last_name = bstrdup(debug_data);
+	}
+}
