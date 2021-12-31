@@ -46,6 +46,17 @@ The properties won't affect tracking.
 If the face is once detected and moved out from the cropped region,
 the tracking will still continue.
 
+### Landmark detection
+Specify dataset for face landmark detection and enable the checkbox
+to calculate location and size of the face.
+The location is calculated by the average of all the landmark points for each face.
+The size is calculated by the area surrounded by the landmark points.
+You might need to adjust tracking target location and zoom depending on the landmark datasets.
+
+A dataset file `shape_predictor_5_face_landmarks.dat` is bundled so that you can try it soon.
+Original data is distributed at [dlib-models](https://github.com/davisking/dlib-models).
+Another model `shape_predictor_68_face_landmarks.dat` is ready but not bundled due to a license incompatibility.
+
 ### Tracking threshold
 This property sets the threshold when to stop tracking after the face is lost.
 During correlation tracking, scores are accumulated.
