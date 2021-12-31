@@ -74,6 +74,7 @@ mkdir -p $ziproot/bin
 cp ./build/$PLUGIN_NAME.so $ziproot/bin/
 cp LICENSE data/LICENSE-$PLUGIN_NAME
 cp dlib/LICENSE.txt data/LICENSE-dlib
+cp dlib-models/LICENSE data/LICENSE-dlib-models
 cp -a data $ziproot/
 mkdir -p ./release
 rmdir lib || mv lib $ziproot/
