@@ -128,6 +128,10 @@ void FTWidget::CreateDisplay()
 	}
 	data->disp = obs_display_create(&info, 0);
 	obs_display_add_draw_callback(data->disp, draw, data);
+#ifdef HAVE_DISPLAY_SET_INTERLEAVE
+	blog(LOG_INFO, "calling obs_display_set_interleave interleave=2");
+	obs_display_set_interleave(data->disp, 2);
+#endif
 }
 
 void FTWidget::resizeEvent(QResizeEvent *event)
