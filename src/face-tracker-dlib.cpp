@@ -14,6 +14,7 @@ struct face_tracker_dlib_private_s
 	texture_object *tex;
 	rect_s rect;
 	dlib::correlation_tracker *tracker;
+	int tracker_nc, tracker_nr;
 	dlib::shape_predictor sp;
 	dlib::full_object_detection shape;
 	float last_scale;
@@ -104,8 +105,11 @@ void face_tracker_dlib::track_main()
 		if (!p->tracker)
 			p->tracker = new dlib::correlation_tracker();
 
+		auto &img = p->tex->get_dlib_img();
 		dlib::rectangle r (p->rect.x0, p->rect.y0, p->rect.x1, p->rect.y1);
-		p->tracker->start_track(p->tex->get_dlib_img(), r);
+		p->tracker->start_track(img, r);
+		p->tracker_nc = img.nc();
+		p->tracker_nr = img.nr();
 		p->score0 = p->rect.score;
 		p->need_restart = false;
 		p->pslr_max = 0.0f;
@@ -117,7 +121,17 @@ void face_tracker_dlib::track_main()
 		p->rect.score = 0.0f;
 	}
 	else {
-		float s = p->tracker->update(p->tex->get_dlib_img());
+		auto &img = p->tex->get_dlib_img();
+		if (img.nc() != p->tracker_nc || img.nr() != p->tracker_nr) {
+			blog(LOG_ERROR, "face_tracker_dlib::track_main: cannot run correlation-tracker with different image size %dx%d, expected %dx%d",
+					img.nc(), img.nr(),
+					p->tracker_nc, p->tracker_nr );
+			p->rect.score = 0;
+			p->n_track += 1; // to return score=0
+			return;
+		}
+
+		float s = p->tracker->update(img);
 		if (s>p->pslr_max) p->pslr_max = s;
 		if (s<p->pslr_min) p->pslr_min = s;
 		dlib::rectangle r = p->tracker->get_position();
