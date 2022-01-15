@@ -6,7 +6,7 @@ if not exist dlib (
 	git describe --tags --abbrev=0 --exclude="*-rc*" > dlib-tag.txt
 	set /p dlibTag=<"dlib-tag.txt"
 	git checkout %dlibTag%
-	patch -p1 -i ..\ci\common\dlib-slim.patch
+	git apply ../ci/common/dlib-slim.patch
 	cd ..
 )
 
