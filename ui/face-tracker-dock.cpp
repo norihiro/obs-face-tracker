@@ -198,6 +198,11 @@ FTDock::FTDock(QWidget *parent)
 	mainLayout->addWidget(resetButton);
 	connect(resetButton, &QPushButton::clicked, this, &FTDock::resetButtonClicked);
 
+	enableButton = new QPushButton("", this);
+	enableButton->setCheckable(true);
+	mainLayout->addWidget(enableButton);
+	connect(enableButton, &QPushButton::clicked, this, &FTDock::enableButtonClicked);
+
 #ifdef HAVE_PROPERTY_BUTTON
 	propertyButton = new QPushButton(obs_module_text("Properties"), this);
 	mainLayout->addWidget(propertyButton);
@@ -277,6 +282,11 @@ OBSSource FTDock::get_source()
 	return target;
 }
 
+static bool is_filter(QComboBox *targetSelector)
+{
+	return targetSelector->currentData().toList().count() == 2;
+}
+
 static inline void set_monitor(obs_source_t *monitor, const QList<QVariant> &target_data)
 {
 	blog(LOG_INFO, "set_monitor monitor=%p", monitor);
@@ -292,6 +302,16 @@ static inline void set_monitor(obs_source_t *monitor, const QList<QVariant> &tar
 			target_data.count() > 1 ? target_data[1].toByteArray().constData() : "");
 
 	obs_source_update(monitor, data);
+}
+
+static void set_enable_button(QPushButton *enableButton, bool is_filter, bool is_enabled)
+{
+	enableButton->setEnabled(is_filter);
+	enableButton->setChecked(is_filter && is_enabled);
+	if (is_filter && is_enabled)
+		enableButton->setText(obs_module_text("Disable filter"));
+	else
+		enableButton->setText(obs_module_text("Enable filter"));
 }
 
 void FTDock::updateState()
@@ -311,6 +331,8 @@ void FTDock::updateState()
 			pauseButton->setCheckState(b ? Qt::Checked : Qt::Unchecked);
 		}
 	}
+
+	set_enable_button(enableButton, is_filter(targetSelector), obs_source_enabled(target));
 
 	if (!data)
 		return;
@@ -336,6 +358,9 @@ void FTDock::updateWidget()
 		const char *source_name = obs_data_get_string(props, "source_name");
 		const char *filter_name = obs_data_get_string(props, "filter_name");
 		init_target_selector(targetSelector, source_name, filter_name);
+
+		set_enable_button(enableButton, is_filter(targetSelector),
+				obs_source_enabled(get_source()));
 
 		bool notrack = obs_data_get_bool(props, "notrack");
 		notrackButton->setCheckState(notrack ? Qt::Checked : Qt::Unchecked);
@@ -375,6 +400,19 @@ void FTDock::resetButtonClicked(bool checked)
 	calldata_init_fixed(&cd, stack, sizeof(stack));
 	calldata_set_bool(&cd, "reset", true);
 	proc_handler_call(ph, "set_state", &cd);
+}
+
+void FTDock::enableButtonClicked(bool checked)
+{
+	if (!is_filter(targetSelector))
+		return;
+
+	OBSSource target = get_source();
+
+	if (target) {
+		obs_source_set_enabled(target, checked);
+		set_enable_button(enableButton, true, checked);
+	}
 }
 
 #ifdef HAVE_PROPERTY_BUTTON
