@@ -690,10 +690,15 @@ static inline void scale_texture(struct face_tracker_filter *s, float scale)
 	if (!s->texrender_scaled)
 		s->texrender_scaled = gs_texrender_create(GS_R8, GS_ZS_NONE);
 	const uint32_t cx = s->known_width / scale, cy = s->known_height / scale;
+
+	const int align = 8;
+	uint32_t width = (cx + align - 1) / align * align;
+	uint32_t height = (cy + align - 1) / align * align;
+
 	gs_texrender_reset(s->texrender_scaled);
 	gs_blend_state_push();
 	gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
-	if (gs_texrender_begin(s->texrender_scaled, cx, cy)) {
+	if (gs_texrender_begin(s->texrender_scaled, width, height)) {
 		gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -100.0f, 100.0f);
 		gs_texture_t *tex = gs_texrender_get_texture(s->texrender);
 		if (tex && effect_ft) {
@@ -713,6 +718,10 @@ static inline int stage_to_surface(struct face_tracker_filter *s, float scale)
 	uint32_t height = s->known_height / scale;
 	if (width<=0 || height<=0)
 		return 1;
+
+	const int align = 8;
+	width = (width + align - 1) / align * align;
+	height = (height + align - 1) / align * align;
 
 	gs_texture_t *tex = gs_texrender_get_texture(s->texrender_scaled);
 	if (!tex)
