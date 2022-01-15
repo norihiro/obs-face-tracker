@@ -39,8 +39,17 @@ void *face_tracker_base::thread_routine(void *p)
 
 	base->lock();
 	while(!base->stop_requested) {
-		if (!base->suspend_requested)
-			base->track_main();
+		if (!base->suspend_requested) {
+			try {
+				base->track_main();
+			}
+			catch (std::exception &e) {
+				blog(LOG_ERROR, "track_main: exception %s", e.what());
+			}
+			catch (...) {
+				blog(LOG_ERROR, "track_main: unknown exception");
+			}
+		}
 		pthread_cond_wait(&base->cond, &base->mutex);
 	}
 	base->stopped = 1;

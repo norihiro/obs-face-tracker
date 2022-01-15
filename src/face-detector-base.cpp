@@ -40,7 +40,15 @@ void *face_detector_base::thread_routine(void *p)
 
 	base->lock();
 	while(!base->request_stop) {
-		base->detect_main();
+		try {
+			base->detect_main();
+		}
+		catch (std::exception &e) {
+			blog(LOG_ERROR, "detect_main: exception %s", e.what());
+		}
+		catch (...) {
+			blog(LOG_ERROR, "detect_main: unknown exception");
+		}
 		pthread_cond_wait(&base->cond, &base->mutex);
 	}
 	base->unlock();
