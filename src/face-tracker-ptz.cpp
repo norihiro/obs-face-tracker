@@ -537,6 +537,13 @@ static inline int tilt_flt2raw(float x)
 	else return 18;
 }
 
+static inline int zoom_flt2raw(float x, int u)
+{
+	if (std::abs(x - (float)u) < 0.75f)
+		return u;
+	return (int)roundf(x);
+}
+
 static bool hotkey_cb_pause(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
 {
 	UNUSED_PARAMETER(id);
@@ -653,11 +660,11 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 	};
 	for (int i=0; i<3; i++) {
 		float x = uf.v[i] * kp[i];
-		int n;
+		int n = s->u[i];
 		switch(i) {
 			case 0:  n = pan_flt2raw(x); break;
 			case 1:  n = tilt_flt2raw(x); break;
-			default: n = (int)roundf(x); break;
+			default: n = zoom_flt2raw(x, n); break;
 		}
 		if      (n < -u_max[i]) n = -u_max[i];
 		else if (n > +u_max[i]) n = +u_max[i];
