@@ -1,3 +1,6 @@
 [submodule "libvisca"]
 	path = libvisca
 	url = https://github.com/norihiro/libvisca-ip.git
+[submodule "dlib"]
+	path = dlib
+	url = https://github.com/norihiro/dlib.git

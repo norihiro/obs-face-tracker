@@ -1,17 +1,6 @@
 
-if not exist dlib (
-	echo checkout dlib...
-	git clone https://github.com/davisking/dlib.git dlib
-	cd dlib
-	git describe --tags --abbrev=0 --exclude="*-rc*" > dlib-tag.txt
-	set /p dlibTag=<"dlib-tag.txt"
-	git checkout %dlibTag%
-	patch -p1 -i ..\ci\common\dlib-slim.patch
-	cd ..
-)
-
 if not exist dlib-models (
-	echo checkout dlib...
+	echo checkout dlib-models...
 	git clone --depth 1 https://github.com/davisking/dlib-models
 )
 7z x dlib-models/shape_predictor_5_face_landmarks.dat.bz2 -so > data/shape_predictor_5_face_landmarks.dat
