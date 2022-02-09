@@ -10,6 +10,8 @@ class obsptz_backend : public ptz_backend
 	int prev_pan = 0;
 	int prev_tilt = 0;
 	int prev_zoom = 0;
+	int same_pantilt_cnt = 0;
+	int same_zoom_cnt = 0;
 public:
 	obsptz_backend();
 	~obsptz_backend() override;
