@@ -134,6 +134,7 @@ if(WIN32)
     if (MSVC)
         add_definitions(/MP /d2FH4-)
         add_definitions("-D_USE_MATH_DEFINES")
+        add_definitions("-D_CRT_SECURE_NO_WARNINGS") # to avoid a warning for `fopen`
     endif()
 
 	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
