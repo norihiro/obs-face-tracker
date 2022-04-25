@@ -54,6 +54,15 @@ static const struct {
 	{ "e_nonlineaeer_x", copy_data_double, preset_mask_control },
 	{ "e_nonlineaeer_y", copy_data_double, preset_mask_control },
 	{ "e_nonlineaeer_z", copy_data_double, preset_mask_control },
+	// specific to face_tracker_ptz
+	{ "Kp_x_db",         copy_data_double, preset_mask_control },
+	{ "Kp_y_db",         copy_data_double, preset_mask_control },
+	{ "Kp_z_db",         copy_data_double, preset_mask_control },
+	{ "Td_x",            copy_data_double, preset_mask_control },
+	{ "Td_y",            copy_data_double, preset_mask_control },
+	{ "Td_z",            copy_data_double, preset_mask_control },
+	{ "Tdlpf_z",         copy_data_double, preset_mask_control },
+	{ "Tatt_int",        copy_data_double, preset_mask_control },
 	{ NULL, NULL }
 };
 
