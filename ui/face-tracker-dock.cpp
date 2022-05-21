@@ -146,6 +146,8 @@ FTDock::FTDock(QWidget *parent)
 {
 	data = face_tracker_dock_create();
 
+	data->src_monitor = obs_source_create_private("face_tracker_monitor", "monitor", NULL);
+
 	resize(256, 256);
 	setMinimumSize(128, 128);
 	setAttribute(Qt::WA_DeleteOnClose);
@@ -168,6 +170,9 @@ FTDock::FTDock(QWidget *parent)
 	mainLayout->addWidget(resetButton);
 	connect(resetButton, &QPushButton::clicked, this, &FTDock::resetButtonClicked);
 
+	ftWidget = new FTWidget(data, this);
+	mainLayout->addWidget(ftWidget);
+
 	setWidget(dockWidgetContents);
 
 	connect(this, &FTDock::scenesMayChanged, this, &FTDock::checkTargetSelector);
@@ -189,12 +194,6 @@ FTDock::~FTDock()
 			break;
 		}
 	}
-}
-
-void FTDock::SetWidget(class FTWidget *w)
-{
-	w->SetData(data);
-	widget = w;
 }
 
 void FTDock::showEvent(QShowEvent *)
@@ -235,6 +234,24 @@ OBSSource FTDock::get_source()
 	return target;
 }
 
+static inline void set_monitor(obs_source_t *monitor, const QList<QVariant> &target_data)
+{
+	blog(LOG_INFO, "set_monitor monitor=%p", monitor);
+	OBSData data = obs_data_create();
+	obs_data_release(data);
+
+	if (target_data.count() < 1)
+		return;
+
+	obs_data_set_string(data, "source_name", target_data[0].toByteArray().constData());
+
+	obs_data_set_string(data, "filter_name",
+			target_data.count() > 1 ? target_data[1].toByteArray().constData() : "");
+
+	obs_source_update(monitor, data);
+	obs_source_update_properties(monitor);
+}
+
 void FTDock::updateState()
 {
 	OBSSource target = get_source();
@@ -252,6 +269,16 @@ void FTDock::updateState()
 			pauseButton->setCheckState(b ? Qt::Checked : Qt::Unchecked);
 		}
 	}
+
+	if (!data)
+		return;
+
+	pthread_mutex_lock(&data->mutex);
+
+	if (data->src_monitor)
+		set_monitor(data->src_monitor, targetSelector->currentData().toList());
+
+	pthread_mutex_unlock(&data->mutex);
 }
 
 void FTDock::pauseButtonChanged(int state)
@@ -374,4 +401,12 @@ void FTDock::load_properties(obs_data_t *props)
 	// pthread_mutex_lock(&data->mutex);
 	// TODO: implement me
 	// pthread_mutex_unlock(&data->mutex);
+}
+
+void face_tracker_dock_destroy(struct face_tracker_dock_s *data)
+{
+	obs_display_destroy(data->disp);
+	data->disp = NULL;
+	obs_source_release(data->src_monitor);
+	bfree(data);
 }

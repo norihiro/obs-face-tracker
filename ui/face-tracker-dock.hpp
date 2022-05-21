@@ -22,6 +22,7 @@ public:
 	class QComboBox *targetSelector;
 	class QCheckBox *pauseButton;
 	class QPushButton *resetButton;
+	class FTWidget *ftWidget;
 
 public:
 	FTDock(QWidget *parent = nullptr);
@@ -31,8 +32,6 @@ public:
 	static void default_properties(obs_data_t *);
 	void save_properties(obs_data_t*);
 	void load_properties(obs_data_t*);
-
-	void SetWidget(class FTWidget *w);
 
 private:
 	void showEvent(QShowEvent *event) override;
