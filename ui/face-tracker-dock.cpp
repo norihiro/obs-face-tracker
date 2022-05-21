@@ -230,6 +230,11 @@ FTDock::~FTDock()
 {
 	obs_frontend_remove_event_callback(frontendEvent_cb, this);
 
+	if (source_sh) {
+		signal_handler_disconnect(source_sh, "state_changed", onStateChanged, this);
+		source_sh = NULL;
+	}
+
 	face_tracker_dock_release(data);
 	if (action)
 		delete action;
@@ -314,12 +319,25 @@ static void set_enable_button(QPushButton *enableButton, bool is_filter, bool is
 		enableButton->setText(obs_module_text("Enable filter"));
 }
 
+void FTDock::onStateChanged(void *data, calldata_t *)
+{
+	FTDock *dock = (FTDock *)data;
+	QMetaObject::invokeMethod(dock, "updateState", Qt::QueuedConnection);
+}
+
 void FTDock::updateState()
 {
 	OBSSource target = get_source();
 	proc_handler_t *ph = obs_source_get_proc_handler(target);
-	if (!ph)
+	if (!ph) {
+		if (source_sh) {
+			signal_handler_disconnect(source_sh, "state_changed", onStateChanged, this);
+			source_sh = NULL;
+		}
 		return;
+	}
+
+	in_updateState = true;
 
 	calldata_t cd;
 	uint8_t stack[128];
@@ -333,6 +351,16 @@ void FTDock::updateState()
 	}
 
 	set_enable_button(enableButton, is_filter(targetSelector), obs_source_enabled(target));
+
+	signal_handler_t *sh = obs_source_get_signal_handler(target);
+	if (sh && sh!=source_sh) {
+		if (source_sh)
+			signal_handler_disconnect(source_sh, "state_changed", onStateChanged, this);
+		source_sh = sh;
+		signal_handler_connect_ref(source_sh, "state_changed", onStateChanged, this);
+	}
+
+	in_updateState = false;
 
 	if (!data)
 		return;
@@ -370,10 +398,15 @@ void FTDock::updateWidget()
 
 	pthread_mutex_unlock(&data->mutex);
 	updating_widget = false;
+
+	updateState();
 }
 
 void FTDock::pauseButtonChanged(int state)
 {
+	if (in_updateState)
+		return;
+
 	OBSSource target = get_source();
 	proc_handler_t *ph = obs_source_get_proc_handler(target);
 	if (!ph)
@@ -389,6 +422,9 @@ void FTDock::pauseButtonChanged(int state)
 void FTDock::resetButtonClicked(bool checked)
 {
 	UNUSED_PARAMETER(checked);
+
+	if (in_updateState)
+		return;
 
 	OBSSource target = get_source();
 	proc_handler_t *ph = obs_source_get_proc_handler(target);

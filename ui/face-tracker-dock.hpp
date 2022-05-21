@@ -35,6 +35,7 @@ public:
 	class QCheckBox *notrackButton;
 
 	bool updating_widget = false;
+	bool in_updateState = false;
 
 public:
 	FTDock(QWidget *parent = nullptr);
@@ -53,6 +54,9 @@ private:
 	static void frontendEvent_cb(enum obs_frontend_event event, void *private_data);
 
 	OBSSource get_source();
+	signal_handler_t *source_sh = NULL;
+
+	static void onStateChanged(void *data, calldata_t *cd);
 
 signals:
 	void scenesMayChanged();
