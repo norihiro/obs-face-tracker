@@ -123,28 +123,31 @@ static obs_source_t *get_target(struct face_tracker_monitor *s)
 	return get_filter(s);
 }
 
-static inline void tick_source(struct face_tracker_monitor *s, obs_weak_source_t *&source_ref, const char *source_name,
-		obs_source_t *(*get_source)(struct face_tracker_monitor *))
+static inline bool test_weak_source_name(obs_weak_source_t *ref, const char *name)
 {
-	if (!source_name || !*source_name)
+	obs_source_t *src = obs_weak_source_get_source(ref);
+	if (!src)
+		return false;
+
+	const char *n = obs_source_get_name(src);
+	if (!n)
+		return false;
+	bool ret = strcmp(n, name) == 0;
+	obs_source_release(src);
+	return ret;
+}
+
+static inline void tick_source(struct face_tracker_monitor *s, obs_weak_source_t *&ref, const char *name,
+		obs_source_t *(*get_by_name)(struct face_tracker_monitor *))
+{
+	if (!name || !*name)
 		return;
 
-	bool fail = false;
-	obs_source_t *src = get_filter(s);
-	if (!src)
-		fail = true;
-	const char *name = src ? obs_source_get_name(src) : NULL;
-	if (!name || source_name)
-		fail = true;
-	else if (strcmp(name, source_name))
-		fail = true;
-
-	obs_source_release(src);
-
-	if (fail) {
-		obs_weak_source_release(source_ref);
-		src = get_source(s);
-		source_ref = obs_source_get_weak_source(src);
+	if (!test_weak_source_name(ref, name)) {
+		obs_weak_source_release(ref);
+		ref = NULL;
+		obs_source_t *src = get_by_name(s);
+		ref = obs_source_get_weak_source(src);
 		obs_source_release(src);
 	}
 }
