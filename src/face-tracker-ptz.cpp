@@ -248,6 +248,13 @@ static void ftptz_update(void *data, obs_data_t *settings)
 }
 
 static void cb_render_info(void *data, calldata_t *cd);
+static void cb_get_state(void *data, calldata_t *cd);
+static void cb_set_state(void *data, calldata_t *cd);
+static const char *ftptz_signals[] = {
+	"void state_changed()",
+	NULL
+};
+static void emit_state_changed(struct face_tracker_ptz *);
 
 static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 {
@@ -263,6 +270,11 @@ static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 
 	proc_handler_t *ph = obs_source_get_proc_handler(context);
 	proc_handler_add(ph, "void render_info()", cb_render_info, s);
+	proc_handler_add(ph, "void get_state()", cb_get_state, s);
+	proc_handler_add(ph, "void set_state()", cb_set_state, s);
+
+	signal_handler_t *sh = obs_source_get_signal_handler(context);
+	signal_handler_add_array(sh, ftptz_signals);
 
 	return s;
 }
@@ -554,6 +566,7 @@ static bool hotkey_cb_pause(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hot
 	if (s->is_paused)
 		return false;
 	s->is_paused = true;
+	emit_state_changed(s);
 	return true;
 }
 
@@ -567,6 +580,7 @@ static bool hotkey_cb_pause_resume(void *data, obs_hotkey_pair_id id, obs_hotkey
 	if (!s->is_paused)
 		return false;
 	s->is_paused = false;
+	emit_state_changed(s);
 	return true;
 }
 
@@ -895,6 +909,41 @@ static void cb_render_info(void *data, calldata_t *cd)
 	calldata_get_bool(cd, "landmark_only", &landmark_only);
 
 	draw_frame_info(s, landmark_only);
+}
+
+static void cb_get_state(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_ptz*)data;
+	calldata_set_bool(cd, "paused", s->is_paused);
+}
+
+static void cb_set_state(void *data, calldata_t *cd)
+{
+	auto *s = (struct face_tracker_ptz*)data;
+	bool is_paused = s->is_paused;
+	calldata_get_bool(cd, "paused", &is_paused);
+	if (is_paused != s->is_paused) {
+		s->is_paused = is_paused;
+		emit_state_changed(s);
+	}
+
+	bool reset = false;
+	calldata_get_bool(cd, "reset", &reset);
+	if (reset)
+		ftptz_reset_tracking(NULL, NULL, s);
+}
+
+static void emit_state_changed(struct face_tracker_ptz *s)
+{
+	struct calldata cd;
+	uint8_t stack[128];
+
+	calldata_init_fixed(&cd, stack, sizeof(stack));
+	calldata_set_ptr(&cd, "source", s->context);
+	cb_get_state(s, &cd);
+
+	signal_handler_t *sh = obs_source_get_signal_handler(s->context);
+	signal_handler_signal(sh, "state_changed", &cd);
 }
 
 extern "C"
