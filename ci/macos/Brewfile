@@ -1,0 +1,4 @@
+brew "coreutils"
+brew "cmake"
+brew "jq"
+brew "ninja"

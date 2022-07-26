@@ -1,0 +1,281 @@
+name: Plugin Build
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+    branches:
+      - main
+    tags:
+      - '*'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+    branches:
+      - main
+
+env:
+  artifactName: ${{ contains(github.ref_name, '/') && 'artifact' || github.ref_name }}
+
+jobs:
+  linux_build:
+    runs-on: ${{ matrix.ubuntu }}
+    strategy:
+      fail-fast: false
+      matrix:
+        obs: [27, 28]
+        ubuntu: ['ubuntu-20.04', 'ubuntu-22.04']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Download obs-studio development environment
+        id: obsdeps
+        uses: norihiro/obs-studio-devel-action@v1-beta
+        with:
+          obs: ${{ matrix.obs }}
+          verbose: true
+
+      - name: Download dlib-models
+        run: |
+          git clone --depth 1 https://github.com/davisking/dlib-models
+          bunzip2 < dlib-models/shape_predictor_5_face_landmarks.dat.bz2 > data/shape_predictor_5_face_landmarks.dat
+          cp dlib/LICENSE.txt data/LICENSE-dlib
+          cp dlib-models/LICENSE data/LICENSE-dlib-models
+
+      - name: Build plugin
+        run: |
+          OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
+          mkdir build
+          cd build
+          cmake .. \
+            -D QT_VERSION=$OBS_QT_VERSION_MAJOR \
+            -D CMAKE_INSTALL_PREFIX=/usr \
+            -D CMAKE_BUILD_TYPE=RelWithDebInfo \
+            -D LINUX_PORTABLE=OFF -D CMAKE_INSTALL_LIBDIR=/usr/lib/ \
+            -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON \
+            -D PKG_SUFFIX=-obs${{ matrix.obs }}-${{ matrix.ubuntu }}-x86_64
+          make -j4
+          make package
+          echo "FILE_NAME=$(find $PWD -name '*.deb' | head -n 1)" >> $GITHUB_ENV
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.artifactName }}
+          path: '${{ env.FILE_NAME }}'
+      - name: Check package
+        run: |
+          . ci/ci_includes.generated.sh
+          set -ex
+          sudo apt install '${{ env.FILE_NAME }}'
+          ldd /usr/lib/obs-plugins/${PLUGIN_NAME}.so > ldd.out
+          if grep not.found ldd.out ; then
+            echo "Error: unresolved shared object." >&2
+            exit 1
+          fi
+          ls /usr/share/obs/obs-plugins/${PLUGIN_NAME}/
+
+  macos_build:
+    runs-on: macos-12
+    strategy:
+      fail-fast: false
+      matrix:
+        obs: [27, 28]
+        arch: [x86_64, arm64]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Setup Environment
+        id: setup
+        run: |
+          set -e
+          echo '::group::Set up code signing'
+          if [[ '${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}' != '' && \
+                '${{ secrets.MACOS_SIGNING_INSTALLER_IDENTITY }}' != '' && \
+                '${{ secrets.MACOS_SIGNING_CERT }}' != '' ]]; then
+            echo '::set-output name=haveCodesignIdent::true'
+          else
+            echo '::set-output name=haveCodesignIdent::false'
+          fi
+          if [[ '${{ secrets.MACOS_NOTARIZATION_USERNAME }}' != '' && \
+                '${{ secrets.MACOS_NOTARIZATION_PASSWORD }}' != '' ]]; then
+            echo '::set-output name=haveNotarizationUser::true'
+          else
+            echo '::set-output name=haveNotarizationUser::false'
+          fi
+          echo '::endgroup::'
+
+      - name: Install Apple Developer Certificate
+        if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
+        uses: apple-actions/import-codesign-certs@253ddeeac23f2bdad1646faac5c8c2832e800071
+        with:
+          keychain-password: ${{ github.run_id }}
+          p12-file-base64: ${{ secrets.MACOS_SIGNING_CERT }}
+          p12-password: ${{ secrets.MACOS_SIGNING_CERT_PASSWORD }}
+
+      - name: Set Signing Identity
+        if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
+        run: |
+          set -e
+          TEAM_ID=$(echo "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" | sed 's/.*(\([A-Za-z0-9]*\))$/\1/')
+          xcrun notarytool store-credentials AC_PASSWORD \
+            --apple-id "${{ secrets.MACOS_NOTARIZATION_USERNAME }}" \
+            --team-id "$TEAM_ID" \
+            --password "${{ secrets.MACOS_NOTARIZATION_PASSWORD }}"
+
+      - name: Download obs-studio development environment
+        id: obsdeps
+        uses: norihiro/obs-studio-devel-action@v1-beta
+        with:
+          path: /tmp/deps-${{ matrix.obs }}-${{ matrix.arch }}
+          arch: ${{ matrix.arch }}
+          obs: ${{ matrix.obs }}
+          verbose: true
+
+      - name: Prepare dlib dependency
+        run: |
+          brew install openblas
+
+      - name: Download dlib-models
+        run: |
+          git clone --depth 1 https://github.com/davisking/dlib-models
+          bunzip2 < dlib-models/shape_predictor_5_face_landmarks.dat.bz2 > data/shape_predictor_5_face_landmarks.dat
+          cp dlib/LICENSE.txt data/LICENSE-dlib
+          cp dlib-models/LICENSE data/LICENSE-dlib-models
+
+      - name: Build plugin
+        run: |
+          arch=${{ matrix.arch }}
+          deps=/tmp/deps-${{ matrix.obs }}-${{ matrix.arch }}
+          MACOSX_DEPLOYMENT_TARGET=${{ steps.obsdeps.outputs.MACOSX_DEPLOYMENT_TARGET }}
+          OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
+          GIT_TAG=$(git describe --tags --always)
+          PKG_SUFFIX=-${GIT_TAG}-obs${{ matrix.obs }}-macos-${{ matrix.arch }}
+          export OPENBLAS_HOME=/usr/local/opt/openblas/
+          set -e
+          cmake -S . -B build -G Ninja \
+            -D QT_VERSION=$OBS_QT_VERSION_MAJOR \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_PREFIX_PATH="$PWD/release/" \
+            -DCMAKE_OSX_ARCHITECTURES=$arch \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
+            -DCMAKE_FRAMEWORK_PATH="$deps/Frameworks;$deps/lib/cmake;$deps" \
+            -D PKG_SUFFIX=$PKG_SUFFIX
+          cmake --build build --config RelWithDebInfo
+          echo "PKG_SUFFIX='$PKG_SUFFIX'" >> ci/ci_includes.generated.sh
+
+      - name: Prepare package
+        run: |
+          set -ex
+          . ci/ci_includes.generated.sh
+          cmake --install build --config RelWithDebInfo --prefix=release
+          (cd release/${PLUGIN_NAME} && ../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ bin/${PLUGIN_NAME}.so)
+          cp LICENSE release/${PLUGIN_NAME}/data/LICENSE-$PLUGIN_NAME
+
+      - name: Codesign
+        if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
+        run: |
+          . ci/ci_includes.generated.sh
+          for dylib in release/${PLUGIN_NAME}/*/*.{so,dylib}; do
+            test -f "$dylib" || continue
+            codesign --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
+          done
+
+      - name: Package
+        run: |
+          . ci/ci_includes.generated.sh
+          zipfile=$PWD/package/${PLUGIN_NAME}${PKG_SUFFIX}.zip
+          mkdir package
+          (cd release/ && zip -r $zipfile $PLUGIN_NAME)
+          ci/macos/install-packagesbuild.sh
+          packagesbuild \
+            --build-folder $PWD/package/ \
+            build/installer-macOS.generated.pkgproj
+
+      - name: Productsign
+        if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
+        run: |
+          . ci/ci_includes.generated.sh
+          pkgfile=package/${PLUGIN_NAME}${PKG_SUFFIX}.pkg
+          set -e
+          . ci/ci_includes.generated.sh
+          productsign --sign "${{ secrets.MACOS_SIGNING_INSTALLER_IDENTITY }}" $pkgfile package/${PLUGIN_NAME}-signed.pkg
+          mv package/${PLUGIN_NAME}-signed.pkg $pkgfile
+
+      - name: Notarize
+        if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
+        uses: norihiro/macos-notarize-action@v1-beta
+        with:
+          path: package/*
+          keychainProfile: AC_PASSWORD
+          verbose: true
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.artifactName }}
+          path: package/*
+
+  windows_build:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        obs: [27, 28]
+        arch: [x64]
+    env:
+      visualStudio: 'Visual Studio 17 2022'
+      Configuration: 'RelWithDebInfo'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Download obs-studio
+        id: obsdeps
+        uses: norihiro/obs-studio-devel-action@v1-beta
+        with:
+          obs: ${{ matrix.obs }}
+
+      - name: Download dlib-models
+        shell: bash
+        run: |
+          set -ex
+          git clone --depth 1 https://github.com/davisking/dlib-models
+          7z x dlib-models/shape_predictor_5_face_landmarks.dat.bz2 -so > data/shape_predictor_5_face_landmarks.dat
+          cp dlib/LICENSE.txt data/LICENSE-dlib
+          cp dlib-models/LICENSE data/LICENSE-dlib-models
+
+      - name: Build plugin
+        run: |
+          $CmakeArgs = @(
+            '-G', "${{ env.visualStudio }}"
+            '-DQT_VERSION=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}'
+            '-DCMAKE_SYSTEM_VERSION=10.0.18363.657'
+            "-DCMAKE_INSTALL_PREFIX=$(Resolve-Path -Path "./obs-build-dependencies/plugin-deps-${{ matrix.arch }}")"
+            "-DCMAKE_PREFIX_PATH=$(Resolve-Path -Path "./obs-build-dependencies/plugin-deps-${{ matrix.arch }}")"
+          )
+          cmake -S . -B build @CmakeArgs
+          cmake --build build --config RelWithDebInfo -j 4
+          cmake --install build --config RelWithDebInfo --prefix "$(Resolve-Path -Path .)/release"
+      - name: Package plugin
+        run: ci/windows/package-windows.cmd ${{ matrix.obs }}
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.artifactName }}
+          path: package/*
