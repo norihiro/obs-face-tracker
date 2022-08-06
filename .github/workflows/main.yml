@@ -50,6 +50,9 @@ jobs:
 
       - name: Build plugin
         run: |
+          set -ex
+          sudo apt install apt install libopenblas-dev libopenblas0 || true
+          export OPENBLAS_HOME=/lib/x86_64-linux-gnu/
           OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
           mkdir build
           cd build
@@ -144,8 +147,10 @@ jobs:
           verbose: true
 
       - name: Prepare dlib dependency
+        if: ${{ matrix.arch == 'x86_64' }}
         run: |
           brew install openblas
+          echo "OPENBLAS_HOME=/usr/local/opt/openblas/" >> $GITHUB_ENV
 
       - name: Download dlib-models
         run: |
@@ -162,7 +167,7 @@ jobs:
           OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
           GIT_TAG=$(git describe --tags --always)
           PKG_SUFFIX=-${GIT_TAG}-obs${{ matrix.obs }}-macos-${{ matrix.arch }}
-          export OPENBLAS_HOME=/usr/local/opt/openblas/
+          export OPENBLAS_HOME=${{ env.OPENBLAS_HOME }}
           set -e
           cmake -S . -B build -G Ninja \
             -D QT_VERSION=$OBS_QT_VERSION_MAJOR \
