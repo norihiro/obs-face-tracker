@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "plugin-macros.generated.h"
 #include "obsptz-backend.hpp"
+#include "helper.hpp"
 
 #define debug(...) blog(LOG_INFO, __VA_ARGS__)
 
@@ -43,10 +44,9 @@ proc_handler_t *obsptz_backend::get_ptz_ph()
 	if (!ph)
 		return NULL;
 
-	calldata_t cd = {0};
+	CALLDATA_FIXED_DECL(cd, 128);
 	proc_handler_call(ph, "ptz_get_proc_handler", &cd);
 	calldata_get_ptr(&cd, "return", &ptz_ph);
-	calldata_free(&cd);
 
 	return ptz_ph;
 }
@@ -62,7 +62,7 @@ void obsptz_backend::set_pantilt_speed(int pan, int tilt)
 		same_pantilt_cnt = 0;
 	}
 
-	calldata_t cd = {0};
+	CALLDATA_FIXED_DECL(cd, 128);
 	calldata_set_int(&cd, "device_id", device_id);
 	calldata_set_float(&cd, "pan", pan / 24.0f);
 	calldata_set_float(&cd, "tilt", -tilt / 20.0f);
@@ -74,7 +74,6 @@ void obsptz_backend::set_pantilt_speed(int pan, int tilt)
 		ph = obs_get_proc_handler();
 		proc_handler_call(ph, "ptz_pantilt", &cd);
 	}
-	calldata_free(&cd);
 	uint64_t ns = os_gettime_ns();
 	available_ns = std::max(available_ns, ns) + (60*1000*1000);
 	prev_pan = pan;
@@ -96,12 +95,11 @@ void obsptz_backend::set_zoom_speed(int zoom)
 	if (!ph)
 		return;
 
-	calldata_t cd = {0};
+	CALLDATA_FIXED_DECL(cd, 128);
 	calldata_set_int(&cd, "device_id", device_id);
 	calldata_set_float(&cd, "zoom", -zoom / 7.0f);
 	proc_handler_call(ph, "ptz_move_continuous", &cd);
 
-	calldata_free(&cd);
 	uint64_t ns = os_gettime_ns();
 	available_ns = std::max(available_ns, ns) + (60*1000*1000);
 	prev_zoom = zoom;

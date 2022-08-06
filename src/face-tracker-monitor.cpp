@@ -1,6 +1,7 @@
 #include <obs-module.h>
 #include <obs.hpp>
 #include "plugin-macros.generated.h"
+#include "helper.hpp"
 
 
 #define MAX_ERROR 2
@@ -205,15 +206,12 @@ static uint32_t ftmon_get_width(void *data)
 		if (!ph)
 			return 0;
 
-		calldata_t cd = {0};
+		CALLDATA_FIXED_DECL(cd, 128);
 		if (proc_handler_call(ph, "get_target_size", &cd)) {
 			long long ret;
-			if (calldata_get_int(&cd, "width", &ret)) {
-				calldata_free(&cd);
-				return (int32_t)ret;
-			}
+			if (calldata_get_int(&cd, "width", &ret))
+				return (uint32_t)ret;
 		}
-		calldata_free(&cd);
 	}
 
 	OBSSource source(get_source(s));
@@ -235,15 +233,12 @@ static uint32_t ftmon_get_height(void *data)
 		if (!ph)
 			return 0;
 
-		calldata_t cd = {0};
+		CALLDATA_FIXED_DECL(cd, 128);
 		if (proc_handler_call(ph, "get_target_size", &cd)) {
 			long long ret;
-			if (calldata_get_int(&cd, "height", &ret)) {
-				calldata_free(&cd);
-				return (int32_t)ret;
-			}
+			if (calldata_get_int(&cd, "height", &ret))
+				return (uint32_t)ret;
 		}
-		calldata_free(&cd);
 	}
 
 	OBSSource source(get_source(s));
@@ -266,7 +261,7 @@ static void ftmon_video_render(void *data, gs_effect_t *)
 	if (!ph)
 		return;
 
-	calldata_t cd = {0};
+	CALLDATA_FIXED_DECL(cd, 128);
 	calldata_set_bool(&cd, "notrack", s->notrack);
 
 	if (!s->nosource) {
@@ -281,8 +276,6 @@ static void ftmon_video_render(void *data, gs_effect_t *)
 		calldata_set_bool(&cd, "landmark_only", true);
 
 	proc_handler_call(ph, "render_info", &cd);
-
-	calldata_free(&cd);
 }
 
 extern "C"

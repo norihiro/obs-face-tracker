@@ -8,6 +8,8 @@
 #define DEBUG_DATA_PATH_FILTER "Data Files (*.dat);;TSV Files (*.tsv);;All Files (*.*)"
 #endif
 
+#define CALLDATA_FIXED_DECL(cd, size) calldata_t cd; uint8_t calldata_##cd##_stack[128]; calldata_init_fixed(&cd, calldata_##cd##_stack, sizeof(calldata_##cd##_stack));
+
 struct pointf_s
 {
 	float x;
