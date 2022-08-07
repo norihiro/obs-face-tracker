@@ -61,7 +61,7 @@ class face_tracker_manager
 
 	public:
 		face_tracker_manager();
-		~face_tracker_manager();
+		virtual ~face_tracker_manager();
 		void tick(float second);
 		void post_render();
 		void update(obs_data_t *settings);
