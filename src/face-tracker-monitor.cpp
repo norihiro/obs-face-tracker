@@ -79,9 +79,8 @@ static void ftmon_update(void *data, obs_data_t *settings)
 	s->landmark_only = obs_data_get_bool(settings, "landmark_only");
 }
 
-static obs_properties_t *ftmon_properties(void *data)
+static obs_properties_t *ftmon_properties(void *)
 {
-	auto *s = (struct face_tracker_monitor*)data;
 	obs_properties_t *props;
 	props = obs_properties_create();
 
@@ -98,7 +97,7 @@ static obs_properties_t *ftmon_properties(void *data)
 	return props;
 }
 
-static void ftmon_get_defaults(obs_data_t *settings)
+static void ftmon_get_defaults(obs_data_t *)
 {
 }
 
@@ -165,7 +164,7 @@ obs_source_t *get_filter_by_name(struct face_tracker_monitor *s)
 	return ret;
 }
 
-static void ftmon_tick(void *data, float second)
+static void ftmon_tick(void *data, float)
 {
 	auto *s = (struct face_tracker_monitor*)data;
 

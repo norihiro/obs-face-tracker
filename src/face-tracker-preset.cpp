@@ -63,7 +63,7 @@ static const struct {
 	{ "Td_z",            copy_data_double, preset_mask_control },
 	{ "Tdlpf_z",         copy_data_double, preset_mask_control },
 	{ "Tatt_int",        copy_data_double, preset_mask_control },
-	{ NULL, NULL }
+	{ NULL, NULL, 0 }
 };
 
 static void copy_preset(obs_data_t *dst, obs_data_t *src, uint32_t mask)
@@ -91,7 +91,7 @@ void ftf_preset_item_to_list(obs_property_t *p, obs_data_t *settings)
 	obs_data_release(presets);
 }
 
-bool ftf_preset_load(obs_properties_t *props, obs_property_t *, void *ctx_data)
+bool ftf_preset_load(obs_properties_t *, obs_property_t *, void *ctx_data)
 {
 	auto *s = (struct face_tracker_filter*)ctx_data;
 

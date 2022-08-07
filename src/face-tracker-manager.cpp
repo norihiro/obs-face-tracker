@@ -67,7 +67,7 @@ inline bool face_tracker_manager::is_low_confident(const tracker_inst_s &t, floa
 
 void face_tracker_manager::remove_duplicated_tracker()
 {
-	for (int i=0; i<trackers.size(); i++) {
+	for (size_t i = 0; i < trackers.size(); i++) {
 		if (trackers[i].state != tracker_inst_s::tracker_state_available)
 			continue;
 
@@ -75,7 +75,7 @@ void face_tracker_manager::remove_duplicated_tracker()
 		int a0 = (r.x1 - r.x0) * (r.y1 - r.y0);
 		int a_overlap_sum = 0;
 		bool to_remove = false;
-		for (int j=i+1; j<trackers.size() && !to_remove; j++) {
+		for (size_t j = i + 1; j < trackers.size() && !to_remove; j++) {
 			if (trackers[j].state != tracker_inst_s::tracker_state_available)
 				continue;
 			int a = common_area(r, trackers[j].rect);
@@ -93,14 +93,14 @@ void face_tracker_manager::remove_duplicated_tracker()
 
 inline void face_tracker_manager::attenuate_tracker()
 {
-	for (int i=0; i<trackers.size(); i++) {
+	for (size_t i = 0; i < trackers.size(); i++) {
 		if (trackers[i].state != tracker_inst_s::tracker_state_available)
 			continue;
 		struct tracker_inst_s &t = trackers[i];
 
 		int a1 = (t.rect.x1 - t.rect.x0) * (t.rect.y1 - t.rect.y0);
 		float amax = (float)a1*0.1f;
-		for (int j=0; j<detect_rects.size(); j++) {
+		for (size_t j = 0; j < detect_rects.size(); j++) {
 			rect_s r = detect_rects[j];
 			float a = (float)common_area(r, t.rect);
 			if (a > amax) amax = a;
@@ -110,14 +110,14 @@ inline void face_tracker_manager::attenuate_tracker()
 	}
 
 	float score_max = 1e-17f;
-	for (int i=0; i<trackers.size(); i++) {
+	for (size_t i = 0; i < trackers.size(); i++) {
 		if (trackers[i].state == tracker_inst_s::tracker_state_available) {
 			float s = trackers[i].att * trackers[i].rect.score;
 			if (s > score_max) score_max = s;
 		}
 	}
 
-	for (int i=0; i<trackers.size(); i++) {
+	for (size_t i = 0; i < trackers.size(); i++) {
 		if (trackers[i].state != tracker_inst_s::tracker_state_available)
 			continue;
 		if (!is_low_confident(trackers[i], 1e-2f * score_max))
@@ -130,7 +130,7 @@ inline void face_tracker_manager::attenuate_tracker()
 
 inline void face_tracker_manager::copy_detector_to_tracker()
 {
-	int i_tracker;
+	size_t i_tracker;
 	for (i_tracker=0; i_tracker < trackers.size(); i_tracker++)
 		if (
 				trackers[i_tracker].tick_cnt == detect_tick &&
@@ -167,7 +167,7 @@ inline void face_tracker_manager::stage_to_detector()
 	// get previous results
 	if (detector_in_progress) {
 		detect->get_faces(detect_rects);
-		for (int i=0; i<detect_rects.size(); i++)
+		for (size_t i = 0; i < detect_rects.size(); i++)
 			debug_detect("stage_to_detector: detect_rects %d %d %d %d %d %f", i,
 					detect_rects[i].x0, detect_rects[i].y0, detect_rects[i].x1, detect_rects[i].y1, detect_rects[i].score );
 		attenuate_tracker();
@@ -197,7 +197,7 @@ inline void face_tracker_manager::stage_to_detector()
 		else {
 			debug_track_thread("%p No available idle tracker, creating new tracker thread. There are %d existing thread.", this, trackers.size());
 			t.tracker = new face_tracker_dlib();
-			for (int i=0; i<trackers.size(); i++) {
+			for (size_t i = 0; i < trackers.size(); i++) {
 				debug_track_thread("%p existing tracker[%d]: state=%d", this, i, (int)trackers[i].state);
 			}
 		}
@@ -232,7 +232,7 @@ inline int face_tracker_manager::stage_surface_to_tracker(struct tracker_inst_s 
 inline void face_tracker_manager::stage_to_trackers()
 {
 	bool have_new_tracker = false;
-	for (int i=0; i<trackers.size(); i++) {
+	for (size_t i = 0; i < trackers.size(); i++) {
 		struct tracker_inst_s &t = trackers[i];
 		if (t.state == tracker_inst_s::tracker_state_constructing) {
 			if (!t.tracker->trylock()) {
@@ -284,8 +284,8 @@ static inline void make_tracker_rects(
 		std::vector<face_tracker_manager::tracker_rect_s> &tracker_rects,
 		const std::deque<face_tracker_manager::tracker_inst_s> &trackers )
 {
-	int n = 0;
-	for (int i=0; i<trackers.size(); i++) {
+	size_t n = 0;
+	for (size_t i = 0; i < trackers.size(); i++) {
 		if (trackers[i].state != face_tracker_manager::tracker_inst_s::tracker_state_available)
 			continue;
 
@@ -352,7 +352,7 @@ void face_tracker_manager::update(obs_data_t *settings)
 		tracking_threshold = 0.0;
 }
 
-static bool tracking_th_en_modified(obs_properties_t *props, obs_property_t *property, obs_data_t *settings)
+static bool tracking_th_en_modified(obs_properties_t *props, obs_property_t *, obs_data_t *settings)
 {
 	bool tracking_th_en = obs_data_get_bool(settings, "tracking_th_en");
 	obs_property_t *tracking_th_dB = obs_properties_get(props, "tracking_th_dB");

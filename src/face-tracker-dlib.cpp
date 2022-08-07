@@ -124,7 +124,7 @@ void face_tracker_dlib::track_main()
 		auto &img = p->tex->get_dlib_img();
 		if (img.nc() != p->tracker_nc || img.nr() != p->tracker_nr) {
 			blog(LOG_ERROR, "face_tracker_dlib::track_main: cannot run correlation-tracker with different image size %dx%d, expected %dx%d",
-					img.nc(), img.nr(),
+					(int)img.nc(), (int)img.nr(),
 					p->tracker_nc, p->tracker_nr );
 			p->rect.score = 0;
 			p->n_track += 1; // to return score=0

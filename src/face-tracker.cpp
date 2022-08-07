@@ -632,7 +632,7 @@ static inline void calculate_error(struct face_tracker_filter *s)
 	float sc_tot = 0.0f;
 	bool found = false;
 	auto &tracker_rects = s->ftm->tracker_rects;
-	for (int i=0; i<tracker_rects.size(); i++) {
+	for (size_t i = 0; i < tracker_rects.size(); i++) {
 		f3 r (tracker_rects[i].rect);
 		float score = tracker_rects[i].rect.score;
 
@@ -766,7 +766,6 @@ static inline void draw_frame_texture(struct face_tracker_filter *s, bool debug_
 	uint32_t width = s->width_with_aspect;
 	uint32_t height = s->height_with_aspect;
 	const rectf_s &crop_cur = s->ftm->crop_cur;
-	const float scale = sqrtf((float)(width*height) / ((crop_cur.x1-crop_cur.x0) * (crop_cur.y1-crop_cur.y0)));
 
 	// TODO: linear_srgb, 27 only?
 
@@ -817,12 +816,12 @@ static inline void draw_frame_info(struct face_tracker_filter *s, bool debug_not
 	while (gs_effect_loop(effect, "Solid")) {
 		if (draw_det) {
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
-			for (int i=0; i<s->ftm->detect_rects.size(); i++)
+			for (size_t i = 0; i < s->ftm->detect_rects.size(); i++)
 				draw_rect_upsize(s->ftm->detect_rects[i], s->ftm->upsize_l, s->ftm->upsize_r, s->ftm->upsize_t, s->ftm->upsize_b);
 		}
 
 		gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF00FF00);
-		for (int i=0; i<s->ftm->tracker_rects.size(); i++) {
+		for (size_t i = 0; i < s->ftm->tracker_rects.size(); i++) {
 			const auto &tr = s->ftm->tracker_rects[i];
 			if (draw_trk)
 				draw_rect_upsize(tr.rect);

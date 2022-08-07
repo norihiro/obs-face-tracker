@@ -12,7 +12,7 @@ dummy_backend::~dummy_backend()
 {
 }
 
-void dummy_backend::set_config(struct obs_data *data)
+void dummy_backend::set_config(struct obs_data *)
 {
 }
 

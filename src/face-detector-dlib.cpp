@@ -61,7 +61,7 @@ void face_detector_dlib::detect_main()
 		if (x1 - x0 < 80 || y1 - y0 < 80) {
 			if (p->n_error++ < MAX_ERROR)
 				blog(LOG_ERROR, "too small image: %dx%d cropped left=%d right=%d top=%d bottom=%d",
-						img->nc(), img->nr(),
+						(int)img->nc(), (int)img->nr(),
 						p->crop_l, p->crop_r, p->crop_t, p->crop_b );
 			return;
 		}
@@ -78,7 +78,7 @@ void face_detector_dlib::detect_main()
 	}
 	if (img->nc()<80 || img->nr()<80) {
 		if (p->n_error++ < MAX_ERROR)
-			blog(LOG_ERROR, "too small image: %dx%d", img->nc(), img->nr());
+			blog(LOG_ERROR, "too small image: %dx%d", (int)img->nc(), (int)img->nr());
 		return;
 	}
 	else if (p->n_error) {

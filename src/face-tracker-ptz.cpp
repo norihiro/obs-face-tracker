@@ -311,7 +311,7 @@ static void set_properties_visible(obs_properties_t *props, const char **names, 
 	}
 }
 
-static bool ptz_type_modified(obs_properties_t *props, obs_property_t *p, obs_data_t *settings)
+static bool ptz_type_modified(obs_properties_t *props, obs_property_t *, obs_data_t *settings)
 {
 	const char *ptz_type = obs_data_get_string(settings, "ptz-type");
 
@@ -754,7 +754,7 @@ static void ftptz_tick(void *data, float second)
 	}
 }
 
-static inline void render_target(struct face_tracker_ptz *s, obs_source_t *target, obs_source_t *parent)
+static inline void render_target(struct face_tracker_ptz *s, obs_source_t *, obs_source_t *)
 {
 	s->ftm->release_cvtex();
 }
@@ -765,7 +765,7 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 	float sc_tot = 0.0f;
 	bool found = false;
 	auto &tracker_rects = s->ftm->tracker_rects;
-	for (int i=0; i<tracker_rects.size(); i++) {
+	for (size_t i = 0; i < tracker_rects.size(); i++) {
 		f3 r (tracker_rects[i].rect);
 		float score = tracker_rects[i].rect.score;
 
@@ -843,12 +843,12 @@ static void draw_frame_info(struct face_tracker_ptz *s, bool landmark_only = fal
 	while (gs_effect_loop(effect, "Solid")) {
 		if (draw_det) {
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
-			for (int i=0; i<s->ftm->detect_rects.size(); i++)
+			for (size_t i = 0; i < s->ftm->detect_rects.size(); i++)
 				draw_rect_upsize(s->ftm->detect_rects[i], s->ftm->upsize_l, s->ftm->upsize_r, s->ftm->upsize_t, s->ftm->upsize_b);
 		}
 
 		gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF00FF00);
-		for (int i=0; i<s->ftm->tracker_rects.size(); i++) {
+		for (size_t i = 0; i < s->ftm->tracker_rects.size(); i++) {
 			const auto &tr = s->ftm->tracker_rects[i];
 			if (draw_trk)
 				draw_rect_upsize(tr.rect);
