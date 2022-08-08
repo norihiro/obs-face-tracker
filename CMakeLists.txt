@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(obs-face-tracker VERSION 0.5.4)
+project(obs-face-tracker VERSION 0.6.0)
 set(PLUGIN_AUTHOR "Norihiro Kamae")
 set(MACOS_BUNDLEID "net.nagater.obs-face-tracker")
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
