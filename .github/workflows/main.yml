@@ -152,6 +152,10 @@ jobs:
           brew install openblas
           echo "OPENBLAS_HOME=/usr/local/opt/openblas/" >> $GITHUB_ENV
 
+      - name: Prepare dlib dependency
+        if: ${{ matrix.arch == 'arm64' }}
+        run: ci/macos/download-openblas-arm64.sh
+
       - name: Download dlib-models
         run: |
           git clone --depth 1 https://github.com/davisking/dlib-models
