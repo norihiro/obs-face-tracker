@@ -151,6 +151,7 @@ jobs:
         run: |
           brew install openblas
           echo "OPENBLAS_HOME=/usr/local/opt/openblas/" >> $GITHUB_ENV
+          cp /usr/local/opt/openblas/LICENSE data/LICENSE-openblas
 
       - name: Prepare dlib dependency
         if: ${{ matrix.arch == 'arm64' }}
