@@ -197,6 +197,10 @@ jobs:
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
           . ci/ci_includes.generated.sh
+          for dylib in release/${PLUGIN_NAME}/lib/*.dylib; do
+            test -f "$dylib" || continue
+            codesign --remove-signature "$dylib"
+          done
           for dylib in release/${PLUGIN_NAME}/*/*.{so,dylib}; do
             test -f "$dylib" || continue
             codesign --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
