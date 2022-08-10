@@ -197,6 +197,7 @@ jobs:
       - name: Codesign
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
+          set -ex
           . ci/ci_includes.generated.sh
           for dylib in release/${PLUGIN_NAME}/lib/*.dylib; do
             test -f "$dylib" || continue
