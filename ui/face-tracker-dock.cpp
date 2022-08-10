@@ -258,6 +258,13 @@ void FTDock::hideEvent(QHideEvent *)
 
 void FTDock::frontendEvent(enum obs_frontend_event event)
 {
+	if (event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CLEANUP ||
+			event == OBS_FRONTEND_EVENT_EXIT) {
+		if (docks) while (docks->size()) {
+			(*docks)[docks->size()-1]->close();
+			delete (*docks)[docks->size()-1];
+		}
+	}
 }
 
 void FTDock::targetSelectorChanged()
