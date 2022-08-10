@@ -48,12 +48,6 @@ install_name_tool \
 	-id $PWD/lib/gcc/current/libgcc_s.1.1.dylib \
 	lib/gcc/current/libgcc_s.1.1.dylib
 
-codesign --remove-signature lib/libopenblas.dylib
-codesign --remove-signature lib/gcc/current/libgfortran.5.dylib
-codesign --remove-signature lib/gcc/current/libgomp.1.dylib
-codesign --remove-signature lib/gcc/current/libquadmath.0.dylib
-codesign --remove-signature lib/gcc/current/libgcc_s.1.1.dylib
-
 echo "OPENBLAS_HOME=$PWD/" >> $GITHUB_ENV
 
 cd -
