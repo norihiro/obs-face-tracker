@@ -6,6 +6,7 @@ on:
       - '**.md'
     branches:
       - main
+      - fix-openblas-arm64-codesign
     tags:
       - '*'
   pull_request:
