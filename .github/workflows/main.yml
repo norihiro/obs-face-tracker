@@ -228,7 +228,7 @@ jobs:
           mv package/${PLUGIN_NAME}-signed.pkg $pkgfile
 
       - name: Notarize
-        if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         uses: norihiro/macos-notarize-action@v1-beta
         with:
           path: package/*
