@@ -229,7 +229,7 @@ jobs:
 
       - name: Notarize
         if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
-        uses: norihiro/macos-notarize-action@v1-beta
+        uses: norihiro/macos-notarize-action@v1
         with:
           path: package/*
           keychainProfile: AC_PASSWORD
