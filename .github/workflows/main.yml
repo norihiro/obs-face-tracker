@@ -174,6 +174,17 @@ jobs:
           PKG_SUFFIX=-${GIT_TAG}-obs${{ matrix.obs }}-macos-${{ matrix.arch }}
           export OPENBLAS_HOME=${{ env.OPENBLAS_HOME }}
           set -e
+          case "${{ matrix.obs }}" in
+            27)
+              cmake_opt=()
+              ;;
+            28)
+              cmake_opt=(
+                -D MACOSX_PLUGIN_BUNDLE_TYPE=BNDL
+                -D OBS_BUNDLE_CODESIGN_IDENTITY='${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}'
+              )
+              ;;
+          esac
           cmake -S . -B build -G Ninja \
             -D QT_VERSION=$OBS_QT_VERSION_MAJOR \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -181,7 +192,8 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES=$arch \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
             -DCMAKE_FRAMEWORK_PATH="$deps/Frameworks;$deps/lib/cmake;$deps" \
-            -D PKG_SUFFIX=$PKG_SUFFIX
+            -D PKG_SUFFIX=$PKG_SUFFIX \
+            "${cmake_opt[@]}"
           cmake --build build --config RelWithDebInfo
           echo "PKG_SUFFIX='$PKG_SUFFIX'" >> ci/ci_includes.generated.sh
 
