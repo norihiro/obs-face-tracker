@@ -202,28 +202,54 @@ jobs:
           set -ex
           . ci/ci_includes.generated.sh
           cmake --install build --config RelWithDebInfo --prefix=release
-          (cd release/${PLUGIN_NAME} && ../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ bin/${PLUGIN_NAME}.so)
-          cp LICENSE release/${PLUGIN_NAME}/data/LICENSE-$PLUGIN_NAME
+          case ${{ matrix.obs }} in
+            27)
+              (cd release/${PLUGIN_NAME} && ../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ bin/${PLUGIN_NAME}.so)
+              cp LICENSE release/${PLUGIN_NAME}/data/LICENSE-$PLUGIN_NAME
+              ;;
+            28)
+              (cd release/${PLUGIN_NAME}.plugin/Contents && ../../../ci/macos/change-rpath.sh -obs 28 -lib lib/ bin/${PLUGIN_NAME})
+              cp LICENSE release/${PLUGIN_NAME}.plugin/Contents/Resources/LICENSE-$PLUGIN_NAME
+              ;;
+          esac
 
       - name: Codesign
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
           . ci/ci_includes.generated.sh
-          for dylib in release/${PLUGIN_NAME}/lib/*.dylib; do
+          set -ex
+          for dylib in release/${PLUGIN_NAME}*/lib/*.dylib; do
             test -f "$dylib" || continue
             codesign --remove-signature "$dylib"
           done
-          for dylib in release/${PLUGIN_NAME}/*/*.{so,dylib}; do
-            test -f "$dylib" || continue
+          case ${{ matrix.obs }} in
+            27)
+              files=(
+                release/${PLUGIN_NAME}/bin/${PLUGIN_NAME}.so
+                $(ls release/${PLUGIN_NAME}/*/*.dylib || :)
+              )
+              ;;
+            28)
+              files=(
+                release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
+                $(ls release/${PLUGIN_NAME}.plugin/*/*.dylib || :)
+              )
+              ;;
+          esac
+          for dylib in "${files[@]}"; do
             codesign --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
           done
 
       - name: Package
         run: |
           . ci/ci_includes.generated.sh
+          set -ex
           zipfile=$PWD/package/${PLUGIN_NAME}${PKG_SUFFIX}.zip
           mkdir package
-          (cd release/ && zip -r $zipfile $PLUGIN_NAME)
+          case ${{ matrix.obs }} in
+            27) (cd release/ && zip -r $zipfile ${PLUGIN_NAME}) ;;
+            28) (cd release/ && zip -r $zipfile ${PLUGIN_NAME}.plugin) ;;
+          esac
           ci/macos/install-packagesbuild.sh
           packagesbuild \
             --build-folder $PWD/package/ \
