@@ -190,9 +190,10 @@ FTDock::FTDock(QWidget *parent)
 	mainLayout->addWidget(targetSelector);
 	connect(targetSelector, &QComboBox::currentTextChanged, this, &FTDock::targetSelectorChanged);
 
-	pauseButton = new QCheckBox(obs_module_text("Pause"), this);
+	pauseButton = new QPushButton(obs_module_text("Pause"), this);
+	pauseButton->setCheckable(true);
 	mainLayout->addWidget(pauseButton);
-	connect(pauseButton, &QCheckBox::stateChanged, this, &FTDock::pauseButtonChanged);
+	connect(pauseButton, &QPushButton::clicked, this, &FTDock::pauseButtonClicked);
 
 	resetButton = new QPushButton(obs_module_text("Reset"), this);
 	mainLayout->addWidget(resetButton);
@@ -326,6 +327,16 @@ static void set_enable_button(QPushButton *enableButton, bool is_filter, bool is
 		enableButton->setText(obs_module_text("Enable filter"));
 }
 
+static void set_pause_button(QPushButton *pauseButton, bool is_paused)
+{
+	pauseButton->setEnabled(true);
+	pauseButton->setChecked(is_paused);
+	if (is_paused)
+		pauseButton->setText(obs_module_text("Resume"));
+	else
+		pauseButton->setText(obs_module_text("Pause"));
+}
+
 void FTDock::onStateChanged(void *data, calldata_t *)
 {
 	FTDock *dock = (FTDock *)data;
@@ -353,7 +364,7 @@ void FTDock::updateState()
 		bool b;
 
 		if (calldata_get_bool(&cd, "paused", &b)) {
-			pauseButton->setCheckState(b ? Qt::Checked : Qt::Unchecked);
+			set_pause_button(pauseButton, b);
 		}
 	}
 
@@ -409,7 +420,7 @@ void FTDock::updateWidget()
 	updateState();
 }
 
-void FTDock::pauseButtonChanged(int state)
+void FTDock::pauseButtonClicked(bool checked)
 {
 	if (in_updateState)
 		return;
@@ -419,11 +430,15 @@ void FTDock::pauseButtonChanged(int state)
 	if (!ph)
 		return;
 
+	blog(LOG_INFO, "FTDock::pauseButtonClicked checked=%d", (int)checked);
+
 	calldata_t cd;
 	uint8_t stack[128];
 	calldata_init_fixed(&cd, stack, sizeof(stack));
-	calldata_set_bool(&cd, "paused", state==Qt::Checked);
+	calldata_set_bool(&cd, "paused", checked);
 	proc_handler_call(ph, "set_state", &cd);
+
+	set_pause_button(pauseButton, checked);
 }
 
 void FTDock::resetButtonClicked(bool checked)

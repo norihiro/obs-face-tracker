@@ -25,7 +25,7 @@ public:
 
 	class QVBoxLayout *mainLayout;
 	class QComboBox *targetSelector;
-	class QCheckBox *pauseButton;
+	class QPushButton *pauseButton;
 	class QPushButton *resetButton;
 	class QPushButton *enableButton;
 #ifdef HAVE_PROPERTY_BUTTON
@@ -69,7 +69,7 @@ public slots:
 
 private slots:
 	void targetSelectorChanged();
-	void pauseButtonChanged(int state);
+	void pauseButtonClicked(bool checked);
 	void resetButtonClicked(bool checked);
 	void enableButtonClicked(bool checked);
 #ifdef HAVE_PROPERTY_BUTTON

@@ -286,14 +286,5 @@ bool FTWidget::HandleMouseWheelEvent(QWheelEvent *event)
 			yDelta = angleDelta.y();
 	}
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-	const QPointF position = event->position();
-	const int x = position.x();
-	const int y = position.y();
-#else
-	const int x = event->x();
-	const int y = event->y();
-#endif
-
 	return true;
 }
