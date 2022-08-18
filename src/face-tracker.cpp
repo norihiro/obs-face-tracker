@@ -381,7 +381,7 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 
 	for (int i=0; i<3; i++) {
 		if (isnan(u.v[i]))
-			u.v[i] = s->range_min_out.v[i];
+			u.v[i] = (s->range_max.v[i] + s->range_min_out.v[i]) * 0.5f;
 		else if (u.v[i] < s->range_min_out.v[i]) {
 			u.v[i] = s->range_min_out.v[i];
 			if (s->filter_int_out.v[i] < s->range_min_out.v[i])
@@ -393,6 +393,8 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 				s->filter_int_out.v[i] = s->range_max.v[i];
 		}
 	}
+
+	s->u_last = u;
 
 	if (s->debug_data_control) {
 		fprintf(s->debug_data_control, "%f\t%f\t%f\t%f\n",
@@ -509,7 +511,7 @@ static void ft_tick_internal(struct face_tracker_filter *s, float second, bool w
 		s->range_min.v[2] = sqrtf(s->known_width*s->known_height) / s->scale_max;
 		s->range_max.v[2] = sqrtf(s->width_with_aspect * s->height_with_aspect);
 		s->range_min_out = s->range_min;
-		s->range_min_out.v[2] = std::min(s->range_min.v[2], s->filter_int_out.v[2]);
+		s->range_min_out.v[2] = std::max(std::min(s->range_min.v[2], s->u_last.v[2]), 1.0f);
 		calculate_error(s);
 		tick_filter(s, second);
 	}

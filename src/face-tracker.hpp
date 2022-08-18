@@ -34,6 +34,7 @@ struct face_tracker_filter
 	f3 filter_int_out;
 	f3 filter_int;
 	f3 filter_lpf;
+	f3 u_last;
 	int aspect_x, aspect_y;
 
 	// face tracker source
