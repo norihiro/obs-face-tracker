@@ -110,6 +110,32 @@ if(OS_MACOS)
 	set(CMAKE_INSTALL_RPATH_USE_LINK_PATH OFF)
 
 	function(setup_plugin_target target)
+		if(NOT DEFINED MACOSX_PLUGIN_GUI_IDENTIFIER)
+			message(
+				FATAL_ERROR
+				"No 'MACOSX_PLUGIN_GUI_IDENTIFIER' set, but is required to build plugin bundles on macOS - example: 'com.yourname.pluginname'"
+				)
+		endif()
+
+		if(NOT DEFINED MACOSX_PLUGIN_BUNDLE_VERSION)
+			message(
+				FATAL_ERROR
+				"No 'MACOSX_PLUGIN_BUNDLE_VERSION' set, but is required to build plugin bundles on macOS - example: '25'"
+				)
+		endif()
+
+		if(NOT DEFINED MACOSX_PLUGIN_SHORT_VERSION_STRING)
+			message(
+				FATAL_ERROR
+				"No 'MACOSX_PLUGIN_SHORT_VERSION_STRING' set, but is required to build plugin bundles on macOS - example: '1.0.2'"
+				)
+		endif()
+
+		set(MACOSX_PLUGIN_BUNDLE_NAME "${target}" PARENT_SCOPE)
+		set(MACOSX_PLUGIN_BUNDLE_VERSION "${MACOSX_BUNDLE_BUNDLE_VERSION}" PARENT_SCOPE)
+		set(MACOSX_PLUGIN_SHORT_VERSION_STRING "${MACOSX_BUNDLE_SHORT_VERSION_STRING}" PARENT_SCOPE)
+		set(MACOSX_PLUGIN_EXECUTABLE_NAME "${target}" PARENT_SCOPE)
+		set(MACOSX_PLUGIN_BUNDLE_TYPE "BNDL" PARENT_SCOPE)
 
 		install(
 			TARGETS ${target}

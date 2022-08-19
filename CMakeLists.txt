@@ -117,6 +117,9 @@ if(APPLE)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -fvisibility=default")
 
 	set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PREFIX "")
+	set(MACOSX_PLUGIN_GUI_IDENTIFIER "${MACOS_BUNDLEID}")
+	set(MACOSX_PLUGIN_BUNDLE_VERSION "${CMAKE_PROJECT_VERSION}")
+	set(MACOSX_PLUGIN_SHORT_VERSION_STRING "1")
 
 	configure_file(installer/installer-macOS.pkgproj.in installer-macOS.generated.pkgproj)
 endif()
