@@ -6,7 +6,7 @@ if which packagesbuild; then
 	exit 0
 fi
 
-packages_url='http://s.sudre.free.fr/Software/files/Packages.dmg'
+packages_url='http://www.nagater.net/obs-studio/Packages.dmg'
 packages_hash='6afdd25386295974dad8f078b8f1e41cabebd08e72d970bf92f707c7e48b16c9'
 
 for ((retry=5; retry>0; retry--)); do
