@@ -206,7 +206,6 @@ jobs:
             28)
               cmake_opt=(
                 -D MACOSX_PLUGIN_BUNDLE_TYPE=BNDL
-                -D OBS_BUNDLE_CODESIGN_IDENTITY='${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}'
               )
               ;;
           esac
