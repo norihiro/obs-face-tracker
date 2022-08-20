@@ -252,16 +252,12 @@ jobs:
               ;;
             28)
               files=(
-                release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
                 $(find release/${PLUGIN_NAME}.plugin/ -name '*.dylib')
               )
               ;;
           esac
           for dylib in "${files[@]}"; do
-            codesign --remove-signature "$dylib" || true
-          done
-          for dylib in "${files[@]}"; do
-            codesign --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
+            codesign --force --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
           done
 
       - name: Package
