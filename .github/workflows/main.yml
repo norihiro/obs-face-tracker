@@ -232,7 +232,7 @@ jobs:
             28)
               files=(
                 release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
-                $(ls release/${PLUGIN_NAME}.plugin/*/*.dylib || :)
+                $(find release/${PLUGIN_NAME}.plugin/ -name '*.dylib')
               )
               ;;
           esac
