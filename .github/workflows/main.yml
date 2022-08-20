@@ -218,10 +218,6 @@ jobs:
         run: |
           . ci/ci_includes.generated.sh
           set -ex
-          for dylib in release/${PLUGIN_NAME}*/lib/*.dylib; do
-            test -f "$dylib" || continue
-            codesign --remove-signature "$dylib"
-          done
           case ${{ matrix.obs }} in
             27)
               files=(
@@ -237,7 +233,7 @@ jobs:
               ;;
           esac
           for dylib in "${files[@]}"; do
-            codesign --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
+            codesign --force --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
           done
 
       - name: Package
