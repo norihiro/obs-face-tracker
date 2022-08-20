@@ -252,6 +252,7 @@ jobs:
               ;;
             28)
               codesign --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
+              codesign --verify --verbose release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
               files=(
                 $(find release/${PLUGIN_NAME}.plugin/ -name '*.dylib')
               )
@@ -259,6 +260,7 @@ jobs:
           esac
           for dylib in "${files[@]}"; do
             codesign --force --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
+            codesign --verify --verbose "$dylib"
           done
 
       - name: Package
