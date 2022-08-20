@@ -222,7 +222,7 @@ jobs:
             27)
               files=(
                 release/${PLUGIN_NAME}/bin/${PLUGIN_NAME}.so
-                $(ls release/${PLUGIN_NAME}/*/*.dylib || :)
+                $(find release/${PLUGIN_NAME}/ -name '*.dylib')
               )
               ;;
             28)
