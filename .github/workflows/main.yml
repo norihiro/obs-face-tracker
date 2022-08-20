@@ -6,6 +6,7 @@ on:
       - '**.md'
     branches:
       - main
+      - fix-obs28-macos-codesign
     tags:
       - '*'
   pull_request:
