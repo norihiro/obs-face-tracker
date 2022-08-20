@@ -233,7 +233,10 @@ jobs:
               ;;
           esac
           for dylib in "${files[@]}"; do
-            codesign --force --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
+            codesign --remove-signature "$dylib" || true
+          done
+          for dylib in "${files[@]}"; do
+            codesign --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
           done
 
       - name: Package
