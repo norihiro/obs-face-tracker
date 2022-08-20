@@ -111,6 +111,10 @@ if(OS_MACOS)
 	set(OBS_CODESIGN_LINKER ON
 		CACHE BOOL "Enable linker code-signing on macOS (macOS 11+ required)")
 
+	if(OBS_CODESIGN_LINKER)
+		set(CMAKE_XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "-o linker-signed")
+	endif()
+
 	if(XCODE)
 		# Tell Xcode to pretend the linker signed binaries so that editing with
 		# install_name_tool preserves ad-hoc signatures. This option is supported by
