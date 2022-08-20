@@ -246,22 +246,22 @@ jobs:
           case ${{ matrix.obs }} in
             27)
               files=(
-                release/${PLUGIN_NAME}/bin/${PLUGIN_NAME}.so
                 $(find release/${PLUGIN_NAME}/ -name '*.dylib')
+                release/${PLUGIN_NAME}/bin/${PLUGIN_NAME}.so
               )
               ;;
             28)
               files=(
-                release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
                 $(find release/${PLUGIN_NAME}.plugin/ -name '*.dylib')
+                release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
               )
               ;;
           esac
           for dylib in "${files[@]}"; do
-            codesign --remove-signature "$dylib" || true
+            codesign --force --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
           done
           for dylib in "${files[@]}"; do
-            codesign --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
+            codesign -vvv --deep --strict "$dylib"
           done
 
       - name: Package
