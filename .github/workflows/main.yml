@@ -34,6 +34,19 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Restore ccache
+        id: ccache-cache
+        uses: actions/cache@v2.1.7
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: linux-obs${{ matrix.obs }}-${{ matrix.ubuntu }}-ccache
+
+      - name: Setup ccache
+        run: |
+          sudo apt install ccache
+          ccache --set-config=cache_dir="${{ github.workspace }}/.ccache"
+          ccache --set-config=compression=true
+
       - name: Download obs-studio development environment
         id: obsdeps
         uses: norihiro/obs-studio-devel-action@v1-beta
@@ -118,6 +131,18 @@ jobs:
             echo '::set-output name=haveNotarizationUser::false'
           fi
           echo '::endgroup::'
+          echo '::group::Set up ccache'
+          brew install ccache
+          ccache --set-config=cache_dir="${{ github.workspace }}/.ccache"
+          ccache --set-config=compression=true
+          echo '::endgroup::'
+
+      - name: Restore ccache
+        id: ccache-cache
+        uses: actions/cache@v2.1.7
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: macos-obs${{ matrix.obs }}-${{ matrix.arch }}-ccache
 
       - name: Install Apple Developer Certificate
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
