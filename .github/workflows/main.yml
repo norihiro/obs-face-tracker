@@ -69,13 +69,27 @@ jobs:
           OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
           mkdir build
           cd build
+          case ${{ matrix.obs }} in
+            27)
+              cmake_opt=(
+                -D CMAKE_INSTALL_LIBDIR=/usr/lib/
+                -D CPACK_DEBIAN_PACKAGE_DEPENDS='obs-studio (>= 27.0.0), obs-studio (<< 28.0.0~)'
+              )
+              ;;
+            28)
+              cmake_opt=(
+                -D CPACK_DEBIAN_PACKAGE_DEPENDS='obs-studio (>= 28.0.0)'
+              )
+              ;;
+          esac
           cmake .. \
             -D QT_VERSION=$OBS_QT_VERSION_MAJOR \
             -D CMAKE_INSTALL_PREFIX=/usr \
             -D CMAKE_BUILD_TYPE=RelWithDebInfo \
-            -D LINUX_PORTABLE=OFF -D CMAKE_INSTALL_LIBDIR=/usr/lib/ \
+            -D LINUX_PORTABLE=OFF \
             -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON \
-            -D PKG_SUFFIX=-obs${{ matrix.obs }}-${{ matrix.ubuntu }}-x86_64
+            -D PKG_SUFFIX=-obs${{ matrix.obs }}-${{ matrix.ubuntu }}-x86_64 \
+            "${cmake_opt[@]}"
           make -j4
           make package
           echo "FILE_NAME=$(find $PWD -name '*.deb' | head -n 1)" >> $GITHUB_ENV
@@ -89,7 +103,11 @@ jobs:
           . ci/ci_includes.generated.sh
           set -ex
           sudo apt install '${{ env.FILE_NAME }}'
-          ldd /usr/lib/obs-plugins/${PLUGIN_NAME}.so > ldd.out
+          case ${{ matrix.obs }} in
+            27) plugins_dir=/usr/lib/obs-plugins ;;
+            28) plugins_dir=/usr/lib/x86_64-linux-gnu/obs-plugins ;;
+          esac
+          ldd $plugins_dir/${PLUGIN_NAME}.so > ldd.out
           if grep not.found ldd.out ; then
             echo "Error: unresolved shared object." >&2
             exit 1
