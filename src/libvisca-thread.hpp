@@ -12,7 +12,9 @@ class libvisca_thread : public ptz_backend
 	struct _VISCA_camera *camera;
 	struct obs_data *data;
 	volatile bool data_changed;
+	volatile bool preset_changed;
 	volatile long pan_rsvd, tilt_rsvd, zoom_rsvd;
+	volatile int preset_rsvd;
 	volatile long zoom_got;
 
 	static void *thread_main(void *);
@@ -30,5 +32,9 @@ public:
 		os_atomic_set_long(&tilt_rsvd, tilt);
 	}
 	void set_zoom_speed(int zoom) override { os_atomic_set_long(&zoom_rsvd, zoom); }
+	void recall_preset(int preset) override {
+		preset_rsvd = preset;
+		os_atomic_set_bool(&preset_changed, true);
+	}
 	int get_zoom() override { return os_atomic_load_long(&zoom_got); }
 };

@@ -21,5 +21,6 @@ public:
 	void tick() override;
 	void set_pantilt_speed(int pan, int tilt) override;
 	void set_zoom_speed(int zoom) override;
+	void recall_preset(int preset) override;
 	int get_zoom() override;
 };

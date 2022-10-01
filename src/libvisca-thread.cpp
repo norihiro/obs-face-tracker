@@ -154,6 +154,12 @@ void libvisca_thread::thread_loop()
 			ptz_changed = true;
 		}
 
+		if (os_atomic_load_bool(&preset_changed)) {
+			os_sleep_ms(48);
+			VISCA_memory_recall(iface, camera, preset_rsvd);
+			os_sleep_ms(48);
+		}
+
 		uint16_t zoom_cur = 0;
 		if (VISCA_get_zoom_value(iface, camera, &zoom_cur) == VISCA_SUCCESS) {
 			os_atomic_set_long(&zoom_got, (long)zoom_cur);

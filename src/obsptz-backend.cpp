@@ -105,6 +105,21 @@ void obsptz_backend::set_zoom_speed(int zoom)
 	prev_zoom = zoom;
 }
 
+void obsptz_backend::recall_preset(int preset)
+{
+	proc_handler_t *ph = get_ptz_ph();
+	if (!ph)
+		return;
+
+	CALLDATA_FIXED_DECL(cd, 128);
+	calldata_set_int(&cd, "device_id", device_id);
+	calldata_set_int(&cd, "preset_id", preset);
+	proc_handler_call(ph, "ptz_preset_recall", &cd);
+
+	uint64_t ns = os_gettime_ns();
+	available_ns = std::max(available_ns, ns) + (500*1000*1000);
+}
+
 int obsptz_backend::get_zoom()
 {
 	// TODO: implement

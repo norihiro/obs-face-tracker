@@ -19,5 +19,6 @@ public:
 	virtual void tick() {}
 	virtual void set_pantilt_speed(int pan, int tilt) = 0;
 	virtual void set_zoom_speed(int zoom) = 0;
+	virtual void recall_preset(int preset) = 0;
 	virtual int get_zoom() = 0;
 };
