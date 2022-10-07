@@ -29,6 +29,10 @@ struct face_tracker_ptz
 	float f_att_int;
 	int u[3];
 	int ptz_query[3];
+	uint64_t face_found_last_ns;
+
+	int face_lost_timeout_ms;
+	int face_lost_ptz_preset;
 
 	bool debug_faces;
 	bool debug_notrack;
