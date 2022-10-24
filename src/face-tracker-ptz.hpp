@@ -30,9 +30,11 @@ struct face_tracker_ptz
 	int u[3];
 	int ptz_query[3];
 	uint64_t face_found_last_ns;
+	int face_lost_preset_sent;
 
-	int face_lost_timeout_ms;
+	int face_lost_preset_timeout_ms;
 	int face_lost_ptz_preset;
+	int face_lost_zoomout_timeout_ms;
 
 	bool debug_faces;
 	bool debug_notrack;

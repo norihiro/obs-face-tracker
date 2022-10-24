@@ -113,7 +113,7 @@ After the face is lost, integral term will be attenuated by this time. The dimen
 
 Make an action if the face has been lost.
 
-### Timeout until action
+### Timeout until recalling memory
 This is a timeout in seconds until the action will be triggered.
 
 ### Recall memory
@@ -121,6 +121,10 @@ Recall a memory (or preset) that is configured in your PTZ camera.
 Set `-1` to disable. The default is `-1`.
 
 Please be careful to use this option as the PTZ camera might change not only pan, tilt, and zoom but also other settings such as focus, and white balance shutter speed.
+
+### Timeout until zoom-out
+Zoom-out if the face is lost and specified time has passed.
+Set `0` to disable.
 
 ## Output
 This property group configure how to connect to the PTZ camera.

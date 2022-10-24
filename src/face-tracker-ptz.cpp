@@ -204,8 +204,9 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	float Tatt_int = (float)obs_data_get_double(settings, "Tatt_int");
 	s->f_att_int = Tatt_int > 0.0f ? 1.0f / Tatt_int : 1e3;
 
-	s->face_lost_timeout_ms = (int)(obs_data_get_double(settings, "face_lost_timeout") * 1e3);
+	s->face_lost_preset_timeout_ms = (int)(obs_data_get_double(settings, "face_lost_preset_timeout") * 1e3);
 	s->face_lost_ptz_preset = (int)obs_data_get_int(settings, "face_lost_ptz_preset");
+	s->face_lost_zoomout_timeout_ms = (int)(obs_data_get_double(settings, "face_lost_zoomout_timeout") * 1e3);
 
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
@@ -419,10 +420,12 @@ static obs_properties_t *ftptz_properties(void *data)
 	{
 		obs_properties_t *pp = obs_properties_create();
 		obs_property_t *p;
-		p = obs_properties_add_float(pp, "face_lost_timeout", "Timeout until action", 0.1, 60.0, 0.1);
+		p = obs_properties_add_float(pp, "face_lost_preset_timeout", "Timeout until recalling memory", 0.1, 60.0, 0.1);
 		obs_property_float_set_suffix(p, " s");
 		obs_properties_add_int(pp, "face_lost_ptz_preset", "Recall memory (-1 for disable)", -1, 15, 1);
 		obs_properties_add_group(props, "facelost", obs_module_text("Face lost behavior"), OBS_GROUP_NORMAL, pp);
+		p = obs_properties_add_float(pp, "face_lost_zoomout_timeout", "Timeout until zoom-out", 0.1, 60.0, 0.1);
+		obs_property_float_set_suffix(p, " s");
 	}
 
 	{
@@ -486,8 +489,9 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "Tdlpf_z", 6.0);
 	obs_data_set_default_double(settings, "Tatt_int", 2.0);
 
-	obs_data_set_default_double(settings, "face_lost_timeout", 5.0);
+	obs_data_set_default_double(settings, "face_lost_preset_timeout", 5.0);
 	obs_data_set_default_int(settings, "face_lost_ptz_preset", -1);
+	obs_data_set_default_double(settings, "face_lost_zoomout_timeout", 4.0);
 
 	obs_data_t *presets = obs_data_create();
 	obs_data_set_default_obj(settings, "presets", presets);
@@ -707,8 +711,10 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 				s->u[0], s->u[1], s->u[2] );
 	}
 
-	if (s->face_found)
+	if (s->face_found) {
 		s->face_found_last_ns = obs_get_video_frame_time();
+		s->face_lost_preset_sent = 0;
+	}
 }
 
 static void ftf_activate(void *data)
@@ -733,16 +739,19 @@ static bool send_ptz_cmd_recall_if_timeout(struct face_tracker_ptz *s)
 	if (!s->ftm->dev || !s->ftm->can_send_ptz_cmd())
 		return false;
 
-	if (s->face_lost_ptz_preset < 0)
-		return false;
-
 	if (!s->face_found_last_ns)
 		return false;
 
-	if (s->face_found_last_ns + s->face_lost_timeout_ms * 1000000ULL > obs_get_video_frame_time())
+	if (s->face_lost_ptz_preset < 0)
 		return false;
 
-	s->face_found_last_ns = 0;
+	if (s->face_lost_preset_sent >= 2)
+		return false;
+
+	if (s->face_found_last_ns + s->face_lost_preset_timeout_ms * 1000000ULL > obs_get_video_frame_time())
+		return false;
+
+	s->face_lost_preset_sent++;
 	s->ftm->dev->recall_preset(s->face_lost_ptz_preset); // [0, 15] for VISCA
 
 	return true;
@@ -750,8 +759,17 @@ static bool send_ptz_cmd_recall_if_timeout(struct face_tracker_ptz *s)
 
 static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 {
+	if (s->is_paused)
+		s->face_found_last_ns = 0;
+
 	if (send_ptz_cmd_recall_if_timeout(s))
 		return;
+
+	if (s->face_lost_zoomout_timeout_ms > 0 && s->face_found_last_ns &&
+	    s->face_found_last_ns + s->face_lost_zoomout_timeout_ms * 1000000ULL < obs_get_video_frame_time()) {
+		blog(LOG_INFO, "face-lost condition, zooming-out");
+		s->u[2] = 1.0f;
+	}
 
 	for (int i=0; i<2 && s->ftm->dev && s->ftm->can_send_ptz_cmd(); i++) {
 		if (s->ftm->ptz_last_cmd != ptz_cmd_state_pantilt) {
