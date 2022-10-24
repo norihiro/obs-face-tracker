@@ -291,7 +291,7 @@ static inline void make_tracker_rects(
 
 		float score = trackers[i].rect.score * trackers[i].att;
 
-		if (trackers[i].rect.score<=0.0f || isnan(score))
+		if (score<=0.0f || isnan(score))
 			continue;
 
 		if (tracker_rects.size() <= n)
@@ -313,6 +313,7 @@ void face_tracker_manager::tick(float second)
 	if (reset_requested) {
 		for (int i=trackers.size()-1; i>=0; i--)
 			trackers[i].att = 0.0f;
+		detect_rects.clear();
 		reset_requested = false;
 	}
 
