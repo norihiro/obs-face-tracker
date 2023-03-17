@@ -51,21 +51,21 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
 configure_file(
-    src/plugin-macros.h.in
-    ../src/plugin-macros.generated.h
+	src/plugin-macros.h.in
+	plugin-macros.generated.h
 )
 configure_file(
-    installer/installer-Windows.iss.in
-    ../installer/installer-Windows.generated.iss
+	installer/installer-Windows.iss.in
+	installer-Windows.generated.iss
 )
 
 configure_file(
-    ci/ci_includes.sh.in
-    ../ci/ci_includes.generated.sh
+	ci/ci_includes.sh.in
+	ci/ci_includes.generated.sh
 )
 configure_file(
-    ci/ci_includes.cmd.in
-    ../ci/ci_includes.generated.cmd
+	ci/ci_includes.cmd.in
+	ci/ci_includes.generated.cmd
 )
 
 set(PLUGIN_SOURCES
@@ -116,6 +116,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	OBS::obs-frontend-api
 	dlib
 	${plugin_additional_libs}
+)
+
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+	${CMAKE_CURRENT_BINARY_DIR}
 )
 
 if(OS_WINDOWS)

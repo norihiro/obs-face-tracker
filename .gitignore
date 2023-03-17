@@ -8,6 +8,3 @@
 
 .vscode
 .idea
-
-# ignore generated files
-*.generated.*
