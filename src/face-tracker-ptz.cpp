@@ -767,7 +767,6 @@ static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 
 	if (s->face_lost_zoomout_timeout_ms > 0 && s->face_found_last_ns &&
 	    s->face_found_last_ns + s->face_lost_zoomout_timeout_ms * 1000000ULL < obs_get_video_frame_time()) {
-		blog(LOG_INFO, "face-lost condition, zooming-out");
 		s->u[2] = 1.0f;
 	}
 
