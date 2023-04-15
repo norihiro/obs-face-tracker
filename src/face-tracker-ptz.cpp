@@ -7,6 +7,7 @@
 #include "texture-object.h"
 #include <algorithm>
 #include <graphics/matrix4.h>
+#include <media-io/video-scaler.h>
 #include "helper.hpp"
 #include "face-tracker-ptz.hpp"
 #include "face-tracker-preset.h"
@@ -303,6 +304,9 @@ static void ftptz_destroy(void *data)
 	bfree(s->debug_data_tracker_last);
 	bfree(s->debug_data_error_last);
 	bfree(s->debug_data_control_last);
+
+	video_scaler_destroy(s->scaler);
+	bfree(s->scaler_buffer);
 
 	bfree(s);
 }
@@ -884,8 +888,91 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 	}
 }
 
+static inline bool is_rgb_format(enum video_format format)
+{
+	switch (format) {
+	case VIDEO_FORMAT_BGRX:
+	case VIDEO_FORMAT_BGRA:
+	case VIDEO_FORMAT_BGR3:
+	case VIDEO_FORMAT_RGBA:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static inline bool operator != (const struct video_scale_info &a, const struct video_scale_info &b)
+{
+	if (a.format != b.format)
+		return true;
+	if (a.width != b.width)
+		return true;
+	if (a.height != b.height)
+		return true;
+	if (a.range != b.range)
+		return true;
+	// ignore colorspace
+	return false;
+}
+
+static bool scale_set_texture(struct face_tracker_ptz *s, texture_object *cvtex, struct obs_source_frame *frame)
+{
+	const struct video_scale_info scaler_src_info = {
+		frame->format,
+		frame->width,
+		frame->height,
+		frame->full_range ? VIDEO_RANGE_FULL : VIDEO_RANGE_PARTIAL,
+		VIDEO_CS_DEFAULT,
+	};
+	const struct video_scale_info scaler_dst_info = {
+		VIDEO_FORMAT_BGRX,
+		(uint32_t)(frame->width / s->ftm->scale),
+		(uint32_t)(frame->height / s->ftm->scale),
+		scaler_src_info.range,
+		VIDEO_CS_DEFAULT,
+	};
+	uint32_t dst_linesize = (scaler_dst_info.width * 4 + 31) / 32 * 32;
+
+	if (!s->scaler || scaler_src_info != s->scaler_src_info || scaler_dst_info != s->scaler_dst_info) {
+		blog(LOG_DEBUG, "creating video-scaler: width=%u height=%u scale=%f -> %ux%u", frame->width, frame->height, s->ftm->scale, scaler_dst_info.width, scaler_dst_info.height);
+
+		video_scaler_destroy(s->scaler);
+		s->scaler = NULL;
+
+		int ret = video_scaler_create(&s->scaler, &scaler_dst_info, &scaler_src_info, VIDEO_SCALE_FAST_BILINEAR);
+		if (ret != VIDEO_SCALER_SUCCESS) {
+			blog(LOG_ERROR, "video_scaler_create failed %d", ret);
+			return false;
+		}
+
+		s->scaler_src_info = scaler_src_info;
+		s->scaler_dst_info = scaler_dst_info;
+		bfree(s->scaler_buffer);
+		s->scaler_buffer = (uint8_t *)bmalloc(dst_linesize * scaler_dst_info.height);
+	}
+
+	struct obs_source_frame scaled_frame;
+	memset(&scaled_frame, 0, sizeof(scaled_frame));
+	scaled_frame.data[0] = s->scaler_buffer;
+	scaled_frame.linesize[0] = dst_linesize;
+	scaled_frame.width = scaler_dst_info.width;
+	scaled_frame.height = scaler_dst_info.height;
+	scaled_frame.format = scaler_dst_info.format;
+
+	if (!video_scaler_scale(s->scaler, scaled_frame.data, scaled_frame.linesize, frame->data, frame->linesize)) {
+		blog(LOG_ERROR, "video_scaler_scale failed");
+		return NULL;
+	}
+
+	cvtex->set_texture_obsframe_scale(&scaled_frame, 1);
+	return true;
+}
+
 static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source_frame *frame)
 {
+	if (!frame)
+		return NULL;
+
 	auto *s = (struct face_tracker_ptz*)data;
 
 	s->known_width = frame->width;
@@ -894,11 +981,17 @@ static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source
 	s->ftm->cvtex_cache = new texture_object();
 	s->ftm->cvtex_cache->scale = s->ftm->scale;
 	s->ftm->cvtex_cache->tick = s->ftm->tick_cnt;
-	s->ftm->cvtex_cache->set_texture_obsframe_scale(frame, s->ftm->scale);
 	s->ftm->crop_cur.x0 = 0;
 	s->ftm->crop_cur.y0 = 0;
 	s->ftm->crop_cur.x1 = frame->width;
 	s->ftm->crop_cur.y1 = frame->height;
+
+	if (is_rgb_format(frame->format)) {
+		s->ftm->cvtex_cache->set_texture_obsframe_scale(frame, s->ftm->scale);
+	} else {
+		scale_set_texture(s, s->ftm->cvtex_cache, frame);
+	}
+
 	s->rendered = true;
 
 	s->ftm->post_render();

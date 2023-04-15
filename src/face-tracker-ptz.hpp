@@ -12,6 +12,11 @@ struct face_tracker_ptz
 	bool rendered;
 	bool is_active;
 
+	video_scaler_t *scaler;
+	uint8_t *scaler_buffer;
+	struct video_scale_info scaler_src_info;
+	struct video_scale_info scaler_dst_info;
+
 	f3 detect_err;
 	bool face_found, face_found_last;
 
