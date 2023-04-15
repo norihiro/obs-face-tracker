@@ -1,7 +1,7 @@
 #include <obs-module.h>
 #include "plugin-macros.generated.h"
 #include "face-tracker-manager.hpp"
-#include "face-detector-dlib.h"
+#include "face-detector-dlib-hog.h"
 #include "face-tracker-dlib.h"
 #include "texture-object.h"
 #include "helper.hpp"
@@ -21,8 +21,7 @@ face_tracker_manager::face_tracker_manager()
 	crop_cur.x0 = crop_cur.x1 = crop_cur.y0 = crop_cur.y1 = 0.0f;
 	tick_cnt = detect_tick = next_tick_stage_to_detector = 0;
 	detector_in_progress = false;
-	detect = new face_detector_dlib();
-	detect->start();
+	detect = NULL;
 }
 
 face_tracker_manager::~face_tracker_manager()
@@ -41,9 +40,11 @@ face_tracker_manager::~face_tracker_manager()
 			t.tracker = NULL;
 		}
 	}
-	detect->stop();
+	if (detect) {
+		detect->stop();
+		delete detect;
+	}
 	bfree(landmark_detection_data);
-	delete detect;
 }
 
 inline void face_tracker_manager::retire_tracker(int ix)
@@ -161,7 +162,7 @@ inline void face_tracker_manager::copy_detector_to_tracker()
 
 inline void face_tracker_manager::stage_to_detector()
 {
-	if (detect->trylock())
+	if (!detect || detect->trylock())
 		return;
 
 	// get previous results
@@ -332,6 +333,28 @@ void face_tracker_manager::post_render()
 	stage_to_trackers();
 }
 
+static void update_detector(face_tracker_manager *ftm, enum face_tracker_manager::detector_engine_e detector_engine)
+{
+	if (ftm->detect) {
+		ftm->detect->stop();
+		delete ftm->detect;
+		ftm->detect = NULL;
+	}
+
+	switch (detector_engine) {
+	case face_tracker_manager::engine_dlib_hog:
+		ftm->detect = new face_detector_dlib_hog();
+		break;
+	default:
+		blog(LOG_ERROR, "unknown detector_engine %d", (int)detector_engine);
+	}
+
+	ftm->detector_engine = detector_engine;
+
+	if (ftm->detect)
+		ftm->detect->start();
+}
+
 void face_tracker_manager::update(obs_data_t *settings)
 {
 	upsize_l = obs_data_get_double(settings, "upsize_l");
@@ -339,6 +362,9 @@ void face_tracker_manager::update(obs_data_t *settings)
 	upsize_t = obs_data_get_double(settings, "upsize_t");
 	upsize_b = obs_data_get_double(settings, "upsize_b");
 	scale = obs_data_get_double(settings, "scale");
+	auto _detector_engine = (enum detector_engine_e)obs_data_get_int(settings, "detector_engine");
+	if (_detector_engine != detector_engine)
+		update_detector(this, _detector_engine);
 	detector_crop_l = obs_data_get_int(settings, "detector_crop_l");
 	detector_crop_r = obs_data_get_int(settings, "detector_crop_r");
 	detector_crop_t = obs_data_get_int(settings, "detector_crop_t");

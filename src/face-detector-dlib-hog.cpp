@@ -2,7 +2,7 @@
 #include <util/platform.h>
 #include <util/threading.h>
 #include "plugin-macros.generated.h"
-#include "face-detector-dlib.h"
+#include "face-detector-dlib-hog.h"
 #include "texture-object.h"
 
 #include <dlib/image_processing/frontal_face_detector.h>
@@ -27,17 +27,17 @@ struct face_detector_dlib_private_s
 	}
 };
 
-face_detector_dlib::face_detector_dlib()
+face_detector_dlib_hog::face_detector_dlib_hog()
 {
 	p = new face_detector_dlib_private_s;
 }
 
-face_detector_dlib::~face_detector_dlib()
+face_detector_dlib_hog::~face_detector_dlib_hog()
 {
 	delete p;
 }
 
-void face_detector_dlib::set_texture(std::shared_ptr<texture_object> &tex, int crop_l, int crop_r, int crop_t, int crop_b)
+void face_detector_dlib_hog::set_texture(std::shared_ptr<texture_object> &tex, int crop_l, int crop_r, int crop_t, int crop_b)
 {
 	p->tex = tex;
 	p->crop_l = crop_l;
@@ -46,7 +46,7 @@ void face_detector_dlib::set_texture(std::shared_ptr<texture_object> &tex, int c
 	p->crop_b = crop_b;
 }
 
-void face_detector_dlib::detect_main()
+void face_detector_dlib_hog::detect_main()
 {
 	if (!p->tex)
 		return;
@@ -102,7 +102,7 @@ void face_detector_dlib::detect_main()
 	p->tex.reset();
 }
 
-void face_detector_dlib::get_faces(std::vector<struct rect_s> &rects)
+void face_detector_dlib_hog::get_faces(std::vector<struct rect_s> &rects)
 {
 	rects = p->rects;
 }

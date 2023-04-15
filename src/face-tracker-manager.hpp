@@ -6,6 +6,11 @@
 class face_tracker_manager
 {
 	public:
+		enum detector_engine_e {
+			engine_dlib_hog = 0,
+			engine_uninitialized = -1,
+		};
+
 		struct tracker_rect_s {
 			rect_s rect;
 			rectf_s crop_rect;
@@ -37,6 +42,7 @@ class face_tracker_manager
 		volatile float scale;
 		volatile bool reset_requested;
 		float tracking_threshold;
+		enum detector_engine_e detector_engine = engine_uninitialized;
 		int detector_crop_l, detector_crop_r, detector_crop_t, detector_crop_b;
 		char *landmark_detection_data;
 
