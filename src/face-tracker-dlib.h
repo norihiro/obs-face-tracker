@@ -13,7 +13,7 @@ class face_tracker_dlib : public face_tracker_base
 		face_tracker_dlib();
 		virtual ~face_tracker_dlib();
 
-		void set_texture(texture_object *) override;
+		void set_texture(std::shared_ptr<texture_object> &) override;
 		void set_position(const rect_s &rect) override;
 		void set_upsize_info(const rectf_s &upsize) override;
 		void set_landmark_detection(const char *data_file_path) override;

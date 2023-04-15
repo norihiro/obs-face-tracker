@@ -180,7 +180,7 @@ inline void face_tracker_manager::stage_to_detector()
 		return;
 	}
 
-	if (class texture_object *cvtex = get_cvtex()) {
+	if (auto cvtex = get_cvtex()) {
 		detect->set_texture(cvtex,
 				detector_crop_l, detector_crop_r,
 				detector_crop_t, detector_crop_b );
@@ -209,8 +209,6 @@ inline void face_tracker_manager::stage_to_detector()
 		if (!landmark_detection_data)
 			t.landmark.clear();
 		trackers.push_back(t);
-
-		cvtex->release();
 	}
 
 	detect->unlock();
@@ -218,11 +216,10 @@ inline void face_tracker_manager::stage_to_detector()
 
 inline int face_tracker_manager::stage_surface_to_tracker(struct tracker_inst_s &t)
 {
-	if (class texture_object *cvtex = get_cvtex()) {
+	if (auto cvtex = get_cvtex()) {
 		t.tracker->set_texture(cvtex);
 		t.crop_tracker = crop_cur;
 		t.tracker->signal();
-		cvtex->release();
 	}
 	else
 		return 1;

@@ -18,7 +18,6 @@ struct texture_object_private_s
 
 texture_object::texture_object()
 {
-	ref = 1;
 	data = new texture_object_private_s;
 	data->leak_test = bmalloc(1);
 }

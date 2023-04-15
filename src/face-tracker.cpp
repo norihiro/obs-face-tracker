@@ -15,7 +15,7 @@
 
 static inline void scale_texture(struct face_tracker_filter *s, float scale);
 static inline int stage_to_surface(struct face_tracker_filter *s, float scale);
-static inline class texture_object *surface_to_cvtex(struct face_tracker_filter *s, float scale);
+static inline std::shared_ptr<texture_object> surface_to_cvtex(struct face_tracker_filter *s, float scale);
 
 class ft_manager_for_ftf : public face_tracker_manager
 {
@@ -36,7 +36,7 @@ class ft_manager_for_ftf : public face_tracker_manager
 		{
 		}
 
-		class texture_object *get_cvtex() override
+		std::shared_ptr<texture_object> get_cvtex() override
 		{
 			if (scale<1.0f) scale = 1.0f;
 			scale_texture(ctx, scale);
@@ -731,30 +731,30 @@ static inline int stage_to_surface(struct face_tracker_filter *s, float scale)
 	return 0;
 }
 
-static inline class texture_object *surface_to_cvtex(struct face_tracker_filter *s, float scale)
+static inline std::shared_ptr<texture_object> surface_to_cvtex(struct face_tracker_filter *s, float scale)
 {
-	texture_object *cvtex = NULL;
 	uint8_t *video_data = NULL;
 	uint32_t video_linesize;
-	if (gs_stagesurface_map(s->stagesurface, &video_data, &video_linesize)) {
-		uint32_t width = gs_stagesurface_get_width(s->stagesurface);
-		uint32_t height = gs_stagesurface_get_height(s->stagesurface);
+	if (!gs_stagesurface_map(s->stagesurface, &video_data, &video_linesize))
+		return NULL;
 
-		cvtex = new texture_object();
-		cvtex->scale = scale;
-		cvtex->tick = s->ftm->tick_cnt;
+	uint32_t width = gs_stagesurface_get_width(s->stagesurface);
+	uint32_t height = gs_stagesurface_get_height(s->stagesurface);
 
-		struct obs_source_frame frame;
-		memset(&frame, 0, sizeof(frame));
-		frame.data[0] = video_data;
-		frame.linesize[0] = video_linesize;
-		frame.width = width;
-		frame.height = height;
-		frame.format = VIDEO_FORMAT_BGRA;
-		cvtex->set_texture_obsframe_scale(&frame, 1);
+	std::shared_ptr<texture_object> cvtex(new texture_object);
+	cvtex.get()->scale = scale;
+	cvtex.get()->tick = s->ftm->tick_cnt;
 
-		gs_stagesurface_unmap(s->stagesurface);
-	}
+	struct obs_source_frame frame;
+	memset(&frame, 0, sizeof(frame));
+	frame.data[0] = video_data;
+	frame.linesize[0] = video_linesize;
+	frame.width = width;
+	frame.height = height;
+	frame.format = VIDEO_FORMAT_BGRA;
+	cvtex.get()->set_texture_obsframe_scale(&frame, 1);
+
+	gs_stagesurface_unmap(s->stagesurface);
 
 	return cvtex;
 }

@@ -69,7 +69,7 @@ class face_tracker_manager
 		static void get_defaults(obs_data_t *settings);
 
 	protected:
-		virtual class texture_object *get_cvtex() = 0;
+		virtual std::shared_ptr<texture_object> get_cvtex() = 0;
 
 	private:
 		inline void retire_tracker(int ix);

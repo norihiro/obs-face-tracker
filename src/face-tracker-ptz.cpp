@@ -34,7 +34,7 @@ class ft_manager_for_ftptz : public face_tracker_manager
 {
 	public:
 		struct face_tracker_ptz *ctx;
-		class texture_object *cvtex_cache;
+		std::shared_ptr<texture_object> cvtex_cache;
 		enum ptz_cmd_state_e ptz_last_cmd;
 		class ptz_backend *dev;
 
@@ -63,21 +63,11 @@ class ft_manager_for_ftptz : public face_tracker_manager
 
 		~ft_manager_for_ftptz()
 		{
-			release_cvtex();
 			release_dev();
 		}
 
-		inline void release_cvtex()
+		std::shared_ptr<texture_object> get_cvtex() override
 		{
-			if (cvtex_cache)
-				cvtex_cache->release();
-			cvtex_cache = NULL;
-		}
-
-		class texture_object *get_cvtex() override
-		{
-			if (cvtex_cache)
-				cvtex_cache->addref();
 			return cvtex_cache;
 		};
 };
@@ -832,7 +822,7 @@ static void ftptz_tick(void *data, float second)
 
 static inline void render_target(struct face_tracker_ptz *s, obs_source_t *, obs_source_t *)
 {
-	s->ftm->release_cvtex();
+	s->ftm->cvtex_cache.reset();
 }
 
 static inline void calculate_error(struct face_tracker_ptz *s)
@@ -915,7 +905,7 @@ static inline bool operator != (const struct video_scale_info &a, const struct v
 	return false;
 }
 
-static bool scale_set_texture(struct face_tracker_ptz *s, texture_object *cvtex, struct obs_source_frame *frame)
+static bool scale_set_texture(struct face_tracker_ptz *s, std::shared_ptr<texture_object> &cvtex, struct obs_source_frame *frame)
 {
 	const struct video_scale_info scaler_src_info = {
 		frame->format,
@@ -964,7 +954,7 @@ static bool scale_set_texture(struct face_tracker_ptz *s, texture_object *cvtex,
 		return NULL;
 	}
 
-	cvtex->set_texture_obsframe_scale(&scaled_frame, 1);
+	cvtex.get()->set_texture_obsframe_scale(&scaled_frame, 1);
 	return true;
 }
 
@@ -975,22 +965,23 @@ static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source
 
 	auto *s = (struct face_tracker_ptz*)data;
 
+	std::shared_ptr<texture_object> cvtex(new texture_object());
+	cvtex.get()->scale = s->ftm->scale;
+	cvtex.get()->tick = s->ftm->tick_cnt;
+
+	if (is_rgb_format(frame->format)) {
+		cvtex.get()->set_texture_obsframe_scale(frame, s->ftm->scale);
+	} else {
+		scale_set_texture(s, cvtex, frame);
+	}
+
 	s->known_width = frame->width;
 	s->known_height = frame->height;
-	s->ftm->release_cvtex();
-	s->ftm->cvtex_cache = new texture_object();
-	s->ftm->cvtex_cache->scale = s->ftm->scale;
-	s->ftm->cvtex_cache->tick = s->ftm->tick_cnt;
+	s->ftm->cvtex_cache.swap(cvtex);
 	s->ftm->crop_cur.x0 = 0;
 	s->ftm->crop_cur.y0 = 0;
 	s->ftm->crop_cur.x1 = frame->width;
 	s->ftm->crop_cur.y1 = frame->height;
-
-	if (is_rgb_format(frame->format)) {
-		s->ftm->cvtex_cache->set_texture_obsframe_scale(frame, s->ftm->scale);
-	} else {
-		scale_set_texture(s, s->ftm->cvtex_cache, frame);
-	}
 
 	s->rendered = true;
 

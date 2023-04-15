@@ -11,7 +11,7 @@
 
 struct face_tracker_dlib_private_s
 {
-	texture_object *tex;
+	std::shared_ptr<texture_object> tex;
 	rect_s rect;
 	dlib::correlation_tracker *tracker;
 	int tracker_nc, tracker_nr;
@@ -48,14 +48,11 @@ face_tracker_dlib::~face_tracker_dlib()
 {
 	bfree(p->landmark_detection_data);
 	if (p->tracker) delete p->tracker;
-	if (p->tex) p->tex->release();
 	delete p;
 }
 
-void face_tracker_dlib::set_texture(class texture_object *tex)
+void face_tracker_dlib::set_texture(std::shared_ptr<texture_object> &tex)
 {
-	if (p->tex) p->tex->release();
-	tex->addref();
 	p->tex = tex;
 	p->n_track = 0;
 }
@@ -166,8 +163,7 @@ void face_tracker_dlib::track_main()
 	}
 	p->last_ns = ns;
 
-	if (p->tex) p->tex->release();
-	p->tex = NULL;
+	p->tex.reset();
 }
 
 bool face_tracker_dlib::get_face(struct rect_s &rect)

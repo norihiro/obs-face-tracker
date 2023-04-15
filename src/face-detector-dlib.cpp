@@ -11,34 +11,34 @@
 
 struct face_detector_dlib_private_s
 {
-	texture_object *tex;
+	std::shared_ptr<texture_object> tex;
 	std::vector<rect_s> rects;
 	dlib::frontal_face_detector *detector;
 	int crop_l = 0, crop_r = 0, crop_t = 0, crop_b = 0;
 	int n_error = 0;
 	face_detector_dlib_private_s()
 	{
-		tex = NULL;
+		detector = NULL;
+	}
+	~face_detector_dlib_private_s()
+	{
+		if (detector)
+			delete detector;
 	}
 };
 
 face_detector_dlib::face_detector_dlib()
 {
 	p = new face_detector_dlib_private_s;
-	p->detector = NULL;
 }
 
 face_detector_dlib::~face_detector_dlib()
 {
-	if (p->detector) delete p->detector;
-	if (p->tex) p->tex->release();
 	delete p;
 }
 
-void face_detector_dlib::set_texture(texture_object *tex, int crop_l, int crop_r, int crop_t, int crop_b)
+void face_detector_dlib::set_texture(std::shared_ptr<texture_object> &tex, int crop_l, int crop_r, int crop_t, int crop_b)
 {
-	if (p->tex) p->tex->release();
-	tex->addref();
 	p->tex = tex;
 	p->crop_l = crop_l;
 	p->crop_r = crop_r;
@@ -99,8 +99,7 @@ void face_detector_dlib::detect_main()
 		r.score = 1.0; // TODO: implement me
 	}
 
-	if (p->tex) p->tex->release();
-	p->tex = NULL;
+	p->tex.reset();
 }
 
 void face_detector_dlib::get_faces(std::vector<struct rect_s> &rects)

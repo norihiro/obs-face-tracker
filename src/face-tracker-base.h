@@ -28,7 +28,7 @@ class face_tracker_base
 		int unlock() { return pthread_mutex_unlock(&mutex); }
 		int signal() { return pthread_cond_signal(&cond); }
 
-		virtual void set_texture(class texture_object *) = 0;
+		virtual void set_texture(std::shared_ptr<texture_object> &) = 0;
 		virtual void set_position(const rect_s &rect) = 0;
 		virtual void set_upsize_info(const rectf_s &upsize) = 0;
 		virtual void set_landmark_detection(const char *data_file_path) = 0;
