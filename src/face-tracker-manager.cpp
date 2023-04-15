@@ -13,6 +13,9 @@
 #define debug_detect(fmt, ...)
 #define debug_track_thread(fmt, ...) // blog(LOG_INFO, fmt, __VA_ARGS__)
 
+#define DIR_DLIB_CNN "dlib_cnn_model"
+#define DIR_DLIB_LANDMARK "dlib_face_landmark_model"
+
 face_tracker_manager::face_tracker_manager()
 {
 	upsize_l = upsize_r = upsize_t = upsize_b = 0.0f;
@@ -400,6 +403,8 @@ static bool tracking_th_en_modified(obs_properties_t *props, obs_property_t *, o
 void face_tracker_manager::get_properties(obs_properties_t *pp)
 {
 	obs_property_t *p;
+	std::string data_path = obs_get_module_data_path(obs_current_module());
+
 	obs_properties_add_float(pp, "upsize_l", obs_module_text("Left"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "upsize_r", obs_module_text("Right"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "upsize_t", obs_module_text("Top"), -0.4, 4.0, 0.2);
@@ -410,7 +415,7 @@ void face_tracker_manager::get_properties(obs_properties_t *pp)
 	obs_property_list_add_int(p, obs_module_text("Detector.dlib.hog"), (int)engine_dlib_hog);
 	obs_property_list_add_int(p, obs_module_text("Detector.dlib.cnn"), (int)engine_dlib_cnn);
 	obs_properties_add_path(pp, "detector_dlib_cnn_model", obs_module_text("Dlib CNN model"),
-			OBS_PATH_FILE, "Data Files (*.dat);;" "All Files (*.*)", obs_get_module_data_path(obs_current_module()) );
+			OBS_PATH_FILE, "Data Files (*.dat);;" "All Files (*.*)", (data_path + "/" DIR_DLIB_CNN).c_str() );
 	obs_properties_add_int(pp, "detector_crop_l", obs_module_text("Crop left for detector"), 0, 1920, 1);
 	obs_properties_add_int(pp, "detector_crop_r", obs_module_text("Crop right for detector"), 0, 1920, 1);
 	obs_properties_add_int(pp, "detector_crop_t", obs_module_text("Crop top for detector"), 0, 1080, 1);
@@ -420,7 +425,7 @@ void face_tracker_manager::get_properties(obs_properties_t *pp)
 			OBS_PATH_FILE,
 			"Data Files (*.dat);;"
 			"All Files (*.*)",
-			obs_get_module_data_path(obs_current_module()) );
+			(data_path + "/" DIR_DLIB_LANDMARK).c_str() );
 	obs_property_set_long_description(p, obs_module_text(
 				"You can get the shape_predictor_68_face_landmarks.dat file from: "
 				"http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2" ));
@@ -440,7 +445,14 @@ void face_tracker_manager::get_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "tracking_th_en", true);
 	obs_data_set_default_double(settings, "tracking_th_dB", -80.0);
 
-	if (char *f = obs_module_file("shape_predictor_5_face_landmarks.dat")) {
+	if (char *f = obs_module_file(DIR_DLIB_CNN "/mmod_human_face_detector.dat")) {
+		obs_data_set_default_string(settings, "detector_dlib_cnn_model", f);
+		bfree(f);
+	} else {
+		blog(LOG_ERROR, "mmod_human_face_detector.dat is not found in the data directory.");
+	}
+
+	if (char *f = obs_module_file(DIR_DLIB_LANDMARK "/shape_predictor_5_face_landmarks.dat")) {
 		obs_data_set_default_string(settings, "landmark_detection_data", f);
 		bfree(f);
 	}

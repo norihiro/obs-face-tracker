@@ -57,7 +57,9 @@ jobs:
       - name: Download dlib-models
         run: |
           git clone --depth 1 https://github.com/davisking/dlib-models
-          bunzip2 < dlib-models/shape_predictor_5_face_landmarks.dat.bz2 > data/shape_predictor_5_face_landmarks.dat
+          mkdir data/{dlib_cnn_model,dlib_face_landmark_model}
+          bunzip2 < dlib-models/mmod_human_face_detector.dat.bz2 > data/dlib_cnn_model/mmod_human_face_detector.dat
+          bunzip2 < dlib-models/shape_predictor_5_face_landmarks.dat.bz2 > data/dlib_face_landmark_model/shape_predictor_5_face_landmarks.dat
           cp dlib/LICENSE.txt data/LICENSE-dlib
           cp dlib-models/LICENSE data/LICENSE-dlib-models
 
@@ -203,7 +205,9 @@ jobs:
       - name: Download dlib-models
         run: |
           git clone --depth 1 https://github.com/davisking/dlib-models
-          bunzip2 < dlib-models/shape_predictor_5_face_landmarks.dat.bz2 > data/shape_predictor_5_face_landmarks.dat
+          mkdir data/{dlib_cnn_model,dlib_face_landmark_model}
+          bunzip2 < dlib-models/mmod_human_face_detector.dat.bz2 > data/dlib_cnn_model/mmod_human_face_detector.dat
+          bunzip2 < dlib-models/shape_predictor_5_face_landmarks.dat.bz2 > data/dlib_face_landmark_model/shape_predictor_5_face_landmarks.dat
           cp dlib/LICENSE.txt data/LICENSE-dlib
           cp dlib-models/LICENSE data/LICENSE-dlib-models
 
@@ -350,7 +354,9 @@ jobs:
         run: |
           set -ex
           git clone --depth 1 https://github.com/davisking/dlib-models
-          7z x dlib-models/shape_predictor_5_face_landmarks.dat.bz2 -so > data/shape_predictor_5_face_landmarks.dat
+          mkdir data/{dlib_cnn_model,dlib_face_landmark_model}
+          7z x dlib-models/mmod_human_face_detector.dat.bz2 -so > data/dlib_cnn_model/mmod_human_face_detector.dat
+          7z x dlib-models/shape_predictor_5_face_landmarks.dat.bz2 -so > data/dlib_face_landmark_model/shape_predictor_5_face_landmarks.dat
           cp dlib/LICENSE.txt data/LICENSE-dlib
           cp dlib-models/LICENSE data/LICENSE-dlib-models
 
