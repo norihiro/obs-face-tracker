@@ -2,6 +2,7 @@
 #include "plugin-macros.generated.h"
 #include "face-tracker-manager.hpp"
 #include "face-detector-dlib-hog.h"
+#include "face-detector-dlib-cnn.h"
 #include "face-tracker-dlib.h"
 #include "texture-object.h"
 #include "helper.hpp"
@@ -185,6 +186,10 @@ inline void face_tracker_manager::stage_to_detector()
 		detect->set_texture(cvtex,
 				detector_crop_l, detector_crop_r,
 				detector_crop_t, detector_crop_b );
+		if (detector_engine == engine_dlib_cnn) {
+			if (auto *d = dynamic_cast<face_detector_dlib_cnn*>(detect))
+				d->set_model(detector_dlib_cnn_model.c_str());
+		}
 		detect->signal();
 		detector_in_progress = true;
 		detect_tick = tick_cnt;
@@ -345,6 +350,9 @@ static void update_detector(face_tracker_manager *ftm, enum face_tracker_manager
 	case face_tracker_manager::engine_dlib_hog:
 		ftm->detect = new face_detector_dlib_hog();
 		break;
+	case face_tracker_manager::engine_dlib_cnn:
+		ftm->detect = new face_detector_dlib_cnn();
+		break;
 	default:
 		blog(LOG_ERROR, "unknown detector_engine %d", (int)detector_engine);
 	}
@@ -365,6 +373,7 @@ void face_tracker_manager::update(obs_data_t *settings)
 	auto _detector_engine = (enum detector_engine_e)obs_data_get_int(settings, "detector_engine");
 	if (_detector_engine != detector_engine)
 		update_detector(this, _detector_engine);
+	detector_dlib_cnn_model = obs_data_get_string(settings, "detector_dlib_cnn_model");
 	detector_crop_l = obs_data_get_int(settings, "detector_crop_l");
 	detector_crop_r = obs_data_get_int(settings, "detector_crop_r");
 	detector_crop_t = obs_data_get_int(settings, "detector_crop_t");
@@ -396,6 +405,12 @@ void face_tracker_manager::get_properties(obs_properties_t *pp)
 	obs_properties_add_float(pp, "upsize_t", obs_module_text("Top"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "upsize_b", obs_module_text("Bottom"), -0.4, 4.0, 0.2);
 	obs_properties_add_float(pp, "scale", obs_module_text("Scale image"), 1.0, 16.0, 1.0);
+	p = obs_properties_add_list(pp, "detector_engine", obs_module_text("Detector"),
+			OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, obs_module_text("Detector.dlib.hog"), (int)engine_dlib_hog);
+	obs_property_list_add_int(p, obs_module_text("Detector.dlib.cnn"), (int)engine_dlib_cnn);
+	obs_properties_add_path(pp, "detector_dlib_cnn_model", obs_module_text("Dlib CNN model"),
+			OBS_PATH_FILE, "Data Files (*.dat);;" "All Files (*.*)", obs_get_module_data_path(obs_current_module()) );
 	obs_properties_add_int(pp, "detector_crop_l", obs_module_text("Crop left for detector"), 0, 1920, 1);
 	obs_properties_add_int(pp, "detector_crop_r", obs_module_text("Crop right for detector"), 0, 1920, 1);
 	obs_properties_add_int(pp, "detector_crop_t", obs_module_text("Crop top for detector"), 0, 1080, 1);

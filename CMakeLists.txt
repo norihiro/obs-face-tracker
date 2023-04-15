@@ -72,6 +72,7 @@ set(PLUGIN_SOURCES
 	src/face-tracker-monitor.cpp
 	src/face-detector-base.cpp
 	src/face-detector-dlib-hog.cpp
+	src/face-detector-dlib-cnn.cpp
 	src/face-tracker-base.cpp
 	src/face-tracker-dlib.cpp
 	src/texture-object.cpp

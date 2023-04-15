@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <string>
 #include "face-tracker-base.h"
 
 class face_tracker_manager
@@ -8,6 +9,7 @@ class face_tracker_manager
 	public:
 		enum detector_engine_e {
 			engine_dlib_hog = 0,
+			engine_dlib_cnn = 1,
 			engine_uninitialized = -1,
 		};
 
@@ -43,6 +45,7 @@ class face_tracker_manager
 		volatile bool reset_requested;
 		float tracking_threshold;
 		enum detector_engine_e detector_engine = engine_uninitialized;
+		std::string detector_dlib_cnn_model;
 		int detector_crop_l, detector_crop_r, detector_crop_t, detector_crop_b;
 		char *landmark_detection_data;
 
@@ -58,6 +61,7 @@ class face_tracker_manager
 		class face_detector_base *detect;
 		int detect_tick;
 
+		// TODO: Just have two pairs
 		std::deque<struct tracker_inst_s> trackers;
 		std::deque<struct tracker_inst_s> trackers_idlepool;
 
