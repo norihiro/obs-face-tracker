@@ -189,6 +189,10 @@ inline void face_tracker_manager::stage_to_detector()
 		detect_tick = tick_cnt;
 
 		struct tracker_inst_s t;
+		t.rect = rect_s{0, 0, 0, 0, 0.0f};
+		t.crop_rect = rectf_s{0.0f, 0.0f, 0.0f, 0.0f};
+		t.att = 0.0f;
+		t.score_first = 0.0f;
 		if (trackers_idlepool.size() > 0) {
 			t.tracker = trackers_idlepool[0].tracker;
 			trackers_idlepool[0].tracker = NULL;
