@@ -13,7 +13,7 @@ public:
 	~texture_object();
 
 	void set_texture_obsframe_scale(const struct obs_source_frame *frame, int scale);
-	const dlib::array2d<dlib::rgb_pixel> &get_dlib_rgb_image();
+	const dlib::matrix<dlib::rgb_pixel> &get_dlib_rgb_image();
 
 public:
 	int tick;

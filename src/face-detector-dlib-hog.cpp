@@ -52,7 +52,7 @@ void face_detector_dlib_hog::detect_main()
 		return;
 	const auto *img = &p->tex->get_dlib_rgb_image();
 	int x0 = 0, y0 = 0;
-	dlib::array2d<dlib::rgb_pixel> img_crop;
+	dlib::matrix<dlib::rgb_pixel> img_crop;
 	if (p->crop_l > 0 || p->crop_r > 0 || p->crop_t > 0 || p->crop_b > 0) {
 		x0 = (int)(p->crop_l / p->tex->scale);
 		int x1 = img->nc() - (int)(p->crop_r / p->tex->scale);
@@ -71,7 +71,7 @@ void face_detector_dlib_hog::detect_main()
 		img_crop.set_size(y1 - y0, x1 - x0);
 		for (int y = y0; y < y1; y++) {
 			for (int x = x0; x < x1; x++) {
-				img_crop[y-y0][x-x0] = (*img)[y][x];
+				img_crop(y-y0, x-x0) = (*img)(y, x);
 			}
 		}
 		img = &img_crop;
