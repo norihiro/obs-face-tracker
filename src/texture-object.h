@@ -17,7 +17,7 @@ public:
 
 	void set_texture_y(uint8_t *data, uint32_t linesize, uint32_t width, uint32_t height);
 	void set_texture_obsframe_scale(const struct obs_source_frame *frame, int scale);
-	const dlib::array2d<unsigned char> &get_dlib_img();
+	const dlib::array2d<dlib::rgb_pixel> &get_dlib_rgb_image();
 
 public:
 	int tick;

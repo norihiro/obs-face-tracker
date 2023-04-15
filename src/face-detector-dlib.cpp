@@ -50,9 +50,9 @@ void face_detector_dlib::detect_main()
 {
 	if (!p->tex)
 		return;
-	const dlib::array2d<unsigned char> *img = &p->tex->get_dlib_img();
+	const auto *img = &p->tex->get_dlib_rgb_image();
 	int x0 = 0, y0 = 0;
-	dlib::array2d<unsigned char> img_crop;
+	dlib::array2d<dlib::rgb_pixel> img_crop;
 	if (p->crop_l > 0 || p->crop_r > 0 || p->crop_t > 0 || p->crop_b > 0) {
 		x0 = (int)(p->crop_l / p->tex->scale);
 		int x1 = img->nc() - (int)(p->crop_r / p->tex->scale);
