@@ -752,7 +752,7 @@ static inline std::shared_ptr<texture_object> surface_to_cvtex(struct face_track
 	frame.width = width;
 	frame.height = height;
 	frame.format = VIDEO_FORMAT_BGRA;
-	cvtex.get()->set_texture_obsframe_scale(&frame, 1);
+	cvtex.get()->set_texture_obsframe(&frame, 1);
 
 	gs_stagesurface_unmap(s->stagesurface);
 

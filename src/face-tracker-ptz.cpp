@@ -954,7 +954,7 @@ static bool scale_set_texture(struct face_tracker_ptz *s, std::shared_ptr<textur
 		return NULL;
 	}
 
-	cvtex.get()->set_texture_obsframe_scale(&scaled_frame, 1);
+	cvtex.get()->set_texture_obsframe(&scaled_frame, 1);
 	return true;
 }
 
@@ -970,7 +970,7 @@ static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source
 	cvtex.get()->tick = s->ftm->tick_cnt;
 
 	if (is_rgb_format(frame->format)) {
-		cvtex.get()->set_texture_obsframe_scale(frame, s->ftm->scale);
+		cvtex.get()->set_texture_obsframe(frame, s->ftm->scale);
 	} else {
 		scale_set_texture(s, cvtex, frame);
 	}

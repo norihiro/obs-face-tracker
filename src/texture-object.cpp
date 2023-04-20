@@ -12,19 +12,19 @@ static uint32_t formats_found = 0;
 
 struct texture_object_private_s
 {
-	dlib::matrix<dlib::rgb_pixel> dlib_rgb_image;
-	void *leak_test;
+	struct obs_source_frame *obs_frame = NULL;
+	int scale = 0;
 };
 
 texture_object::texture_object()
 {
 	data = new texture_object_private_s;
-	data->leak_test = bmalloc(1);
+	data->obs_frame = NULL;
 }
 
 texture_object::~texture_object()
 {
-	bfree(data->leak_test);
+	obs_source_frame_destroy(data->obs_frame);
 	delete data;
 }
 
@@ -57,30 +57,57 @@ static void obsframe2dlib_rgbx(dlib::matrix<dlib::rgb_pixel> &img, const struct 
 	}
 }
 
-void texture_object::set_texture_obsframe_scale(const struct obs_source_frame *frame, int scale)
+static bool need_allocate_frame(const struct obs_source_frame *dst, const struct obs_source_frame *src)
 {
+	if (!dst)
+		return true;
+
+	if (dst->format != src->format)
+		return true;
+
+	if (dst->width != src->width || dst->height != src->height)
+		return true;
+
+	return false;
+}
+
+void texture_object::set_texture_obsframe(const struct obs_source_frame *frame, int scale)
+{
+	if (need_allocate_frame(data->obs_frame, frame)) {
+		obs_source_frame_destroy(data->obs_frame);
+		data->obs_frame = obs_source_frame_create(frame->format, frame->width, frame->height);
+	}
+
+	obs_source_frame_copy(data->obs_frame, frame);
+	data->scale = scale;
+}
+
+bool texture_object::get_dlib_rgb_image(dlib::matrix<dlib::rgb_pixel> &img) const
+{
+	if (!data->obs_frame)
+		return false;
+
+	const auto *frame = data->obs_frame;
+	const int scale = data->scale;
 	if (TEST_FORMAT(frame->format))
 		blog(LOG_INFO, "received frame format=%d", frame->format);
-	data->dlib_rgb_image.set_size(frame->height/scale, frame->width/scale);
+	img.set_size(frame->height / scale, frame->width / scale);
 	switch(frame->format) {
 		case VIDEO_FORMAT_BGRX:
 		case VIDEO_FORMAT_BGRA:
-			obsframe2dlib_bgrx(data->dlib_rgb_image, frame, scale);
+			obsframe2dlib_bgrx(img, frame, scale);
 			break;
 		case VIDEO_FORMAT_BGR3:
-			obsframe2dlib_bgrx(data->dlib_rgb_image, frame, scale, 3);
+			obsframe2dlib_bgrx(img, frame, scale, 3);
 			break;
 		case VIDEO_FORMAT_RGBA:
-			obsframe2dlib_rgbx(data->dlib_rgb_image, frame, scale);
+			obsframe2dlib_rgbx(img, frame, scale);
 			break;
 		default:
 			if (TEST_FORMAT(frame->format))
 				blog(LOG_ERROR, "Frame format %d has to be RGB", (int)frame->format);
 	}
 	SET_FORMAT(frame->format);
-}
 
-const dlib::matrix<dlib::rgb_pixel> &texture_object::get_dlib_rgb_image()
-{
-	return data->dlib_rgb_image;
+	return true;
 }

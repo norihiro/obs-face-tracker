@@ -50,18 +50,22 @@ void face_detector_dlib_hog::detect_main()
 {
 	if (!p->tex)
 		return;
-	const auto *img = &p->tex->get_dlib_rgb_image();
+
+	dlib::matrix<dlib::rgb_pixel> img;
+	if (!p->tex->get_dlib_rgb_image(img))
+		return;
+
 	int x0 = 0, y0 = 0;
-	dlib::matrix<dlib::rgb_pixel> img_crop;
 	if (p->crop_l > 0 || p->crop_r > 0 || p->crop_t > 0 || p->crop_b > 0) {
+		dlib::matrix<dlib::rgb_pixel> img_crop;
 		x0 = (int)(p->crop_l / p->tex->scale);
-		int x1 = img->nc() - (int)(p->crop_r / p->tex->scale);
+		int x1 = img.nc() - (int)(p->crop_r / p->tex->scale);
 		y0 = (int)(p->crop_t / p->tex->scale);
-		int y1 = img->nr() - (int)(p->crop_b / p->tex->scale);
+		int y1 = img.nr() - (int)(p->crop_b / p->tex->scale);
 		if (x1 - x0 < 80 || y1 - y0 < 80) {
 			if (p->n_error++ < MAX_ERROR)
 				blog(LOG_ERROR, "too small image: %dx%d cropped left=%d right=%d top=%d bottom=%d",
-						(int)img->nc(), (int)img->nr(),
+						(int)img.nc(), (int)img.nr(),
 						p->crop_l, p->crop_r, p->crop_t, p->crop_b );
 			return;
 		}
@@ -71,14 +75,14 @@ void face_detector_dlib_hog::detect_main()
 		img_crop.set_size(y1 - y0, x1 - x0);
 		for (int y = y0; y < y1; y++) {
 			for (int x = x0; x < x1; x++) {
-				img_crop(y-y0, x-x0) = (*img)(y, x);
+				img_crop(y-y0, x-x0) = img(y, x);
 			}
 		}
-		img = &img_crop;
+		img = img_crop;
 	}
-	if (img->nc()<80 || img->nr()<80) {
+	if (img.nc()<80 || img.nr()<80) {
 		if (p->n_error++ < MAX_ERROR)
-			blog(LOG_ERROR, "too small image: %dx%d", (int)img->nc(), (int)img->nr());
+			blog(LOG_ERROR, "too small image: %dx%d", (int)img.nc(), (int)img.nr());
 		return;
 	}
 	else if (p->n_error) {
@@ -88,7 +92,7 @@ void face_detector_dlib_hog::detect_main()
 	if (!p->detector)
 		p->detector = new dlib::frontal_face_detector(dlib::get_frontal_face_detector());
 
-	std::vector<dlib::rectangle> dets = (*p->detector)(*img);
+	std::vector<dlib::rectangle> dets = (*p->detector)(img);
 	p->rects.resize(dets.size());
 	for (size_t i=0; i<dets.size(); i++) {
 		rect_s &r = p->rects[i];

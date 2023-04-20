@@ -102,7 +102,10 @@ void face_tracker_dlib::track_main()
 		if (!p->tracker)
 			p->tracker = new dlib::correlation_tracker();
 
-		auto &img = p->tex->get_dlib_rgb_image();
+		dlib::matrix<dlib::rgb_pixel> img;
+		if (!p->tex->get_dlib_rgb_image(img))
+			return;
+
 		dlib::rectangle r (p->rect.x0, p->rect.y0, p->rect.x1, p->rect.y1);
 		p->tracker->start_track(img, r);
 		p->tracker_nc = img.nc();
@@ -118,7 +121,10 @@ void face_tracker_dlib::track_main()
 		p->rect.score = 0.0f;
 	}
 	else {
-		auto &img = p->tex->get_dlib_rgb_image();
+		dlib::matrix<dlib::rgb_pixel> img;
+		if (!p->tex->get_dlib_rgb_image(img))
+			return;
+
 		if (img.nc() != p->tracker_nc || img.nr() != p->tracker_nr) {
 			blog(LOG_ERROR, "face_tracker_dlib::track_main: cannot run correlation-tracker with different image size %dx%d, expected %dx%d",
 					(int)img.nc(), (int)img.nr(),
@@ -157,7 +163,7 @@ void face_tracker_dlib::track_main()
 					internal_division(r.left(), r.right(), p->upsize.x0 + 1.0f, p->upsize.x1),
 					internal_division(r.top(), r.bottom(), p->upsize.y0 + 1.0f, p->upsize.y1) );
 
-			p->shape = p->sp(p->tex->get_dlib_rgb_image(), r_face);
+			p->shape = p->sp(img, r_face);
 			p->last_scale = p->tex->scale;
 		}
 	}
