@@ -56,6 +56,10 @@ jobs:
 
       - name: Download dlib-models
         run: |
+          set -ex
+          mkdir data/dlib_hog_model
+          curl -LO https://github.com/norihiro/obs-face-tracker/releases/download/0.7.0-hogdata/frontal_face_detector.dat.bz2
+          bunzip2 < frontal_face_detector.dat.bz2 > data/dlib_hog_model/frontal_face_detector.dat
           git clone --depth 1 https://github.com/davisking/dlib-models
           mkdir data/{dlib_cnn_model,dlib_face_landmark_model}
           bunzip2 < dlib-models/mmod_human_face_detector.dat.bz2 > data/dlib_cnn_model/mmod_human_face_detector.dat
@@ -204,6 +208,10 @@ jobs:
 
       - name: Download dlib-models
         run: |
+          set -ex
+          mkdir data/dlib_hog_model
+          curl -LO https://github.com/norihiro/obs-face-tracker/releases/download/0.7.0-hogdata/frontal_face_detector.dat.bz2
+          bunzip2 < frontal_face_detector.dat.bz2 > data/dlib_hog_model/frontal_face_detector.dat
           git clone --depth 1 https://github.com/davisking/dlib-models
           mkdir data/{dlib_cnn_model,dlib_face_landmark_model}
           bunzip2 < dlib-models/mmod_human_face_detector.dat.bz2 > data/dlib_cnn_model/mmod_human_face_detector.dat
@@ -353,6 +361,9 @@ jobs:
         shell: bash
         run: |
           set -ex
+          mkdir data/dlib_hog_model
+          curl -LO https://github.com/norihiro/obs-face-tracker/releases/download/0.7.0-hogdata/frontal_face_detector.dat.bz2
+          bunzip2 < frontal_face_detector.dat.bz2 > data/dlib_hog_model/frontal_face_detector.dat
           git clone --depth 1 https://github.com/davisking/dlib-models
           mkdir data/{dlib_cnn_model,dlib_face_landmark_model}
           7z x dlib-models/mmod_human_face_detector.dat.bz2 -so > data/dlib_cnn_model/mmod_human_face_detector.dat
