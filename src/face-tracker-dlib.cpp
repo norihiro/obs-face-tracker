@@ -27,6 +27,7 @@ struct face_tracker_dlib_private_s
 	rectf_s upsize;
 	char *landmark_detection_data;
 	bool landmark_detection_data_updated;
+	bool sp_available = false;
 
 	face_tracker_dlib_private_s()
 	{
@@ -151,7 +152,9 @@ void face_tracker_dlib::track_main()
 				p->landmark_detection_data_updated = false;
 				blog(LOG_INFO, "loading file %s", p->landmark_detection_data);
 				try {
+					p->sp_available = false;
 					dlib::deserialize(p->landmark_detection_data) >> p->sp;
+					p->sp_available = true;
 				} catch (...) {
 					blog(LOG_ERROR, "Failed to load file %s", p->landmark_detection_data);
 				}
@@ -163,7 +166,8 @@ void face_tracker_dlib::track_main()
 					internal_division(r.left(), r.right(), p->upsize.x0 + 1.0f, p->upsize.x1),
 					internal_division(r.top(), r.bottom(), p->upsize.y0 + 1.0f, p->upsize.y1) );
 
-			p->shape = p->sp(img, r_face);
+			if (p->sp_available)
+				p->shape = p->sp(img, r_face);
 			p->last_scale = p->tex->scale;
 		}
 	}
