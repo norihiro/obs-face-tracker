@@ -45,6 +45,7 @@ class face_tracker_manager
 		volatile bool reset_requested;
 		float tracking_threshold;
 		enum detector_engine_e detector_engine = engine_uninitialized;
+		std::string detector_dlib_hog_model;
 		std::string detector_dlib_cnn_model;
 		int detector_crop_l, detector_crop_r, detector_crop_t, detector_crop_b;
 		char *landmark_detection_data;

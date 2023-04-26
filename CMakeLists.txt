@@ -11,6 +11,7 @@ option(WITH_PTZ_TCP "Enable to connect PTZ camera through TCP socket" ON)
 option(ENABLE_MONITOR_USER "Enable monitor source for user" OFF)
 option(ENABLE_DEBUG_DATA "Enable property to save error and control data" OFF)
 option(WITH_DOCK "Enable dock" ON)
+option(ENABLE_DATAGEN "Enable generating data" OFF)
 
 set(CMAKE_PREFIX_PATH "${QTDIR}")
 set(CMAKE_AUTOMOC ON)
@@ -139,3 +140,12 @@ endif()
 setup_plugin_target(${CMAKE_PROJECT_NAME})
 
 configure_file(installer/installer-macOS.pkgproj.in installer-macOS.generated.pkgproj)
+
+if(ENABLE_DATAGEN)
+	add_executable(face-detector-dlib-hog-datagen
+		src/face-detector-dlib-hog-datagen.cpp
+	)
+	target_link_libraries(face-detector-dlib-hog-datagen
+		dlib
+	)
+endif()

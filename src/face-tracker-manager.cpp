@@ -13,6 +13,7 @@
 #define debug_detect(fmt, ...)
 #define debug_track_thread(fmt, ...) // blog(LOG_INFO, fmt, __VA_ARGS__)
 
+#define DIR_DLIB_HOG "dlib_hog_model"
 #define DIR_DLIB_CNN "dlib_cnn_model"
 #define DIR_DLIB_LANDMARK "dlib_face_landmark_model"
 
@@ -189,7 +190,11 @@ inline void face_tracker_manager::stage_to_detector()
 		detect->set_texture(cvtex,
 				detector_crop_l, detector_crop_r,
 				detector_crop_t, detector_crop_b );
-		if (detector_engine == engine_dlib_cnn) {
+		if (detector_engine == engine_dlib_hog) {
+			if (auto *d = dynamic_cast<face_detector_dlib_hog*>(detect))
+				d->set_model(detector_dlib_hog_model.c_str());
+		}
+		else if (detector_engine == engine_dlib_cnn) {
 			if (auto *d = dynamic_cast<face_detector_dlib_cnn*>(detect))
 				d->set_model(detector_dlib_cnn_model.c_str());
 		}
@@ -376,6 +381,7 @@ void face_tracker_manager::update(obs_data_t *settings)
 	auto _detector_engine = (enum detector_engine_e)obs_data_get_int(settings, "detector_engine");
 	if (_detector_engine != detector_engine)
 		update_detector(this, _detector_engine);
+	detector_dlib_hog_model = obs_data_get_string(settings, "detector_dlib_hog_model");
 	detector_dlib_cnn_model = obs_data_get_string(settings, "detector_dlib_cnn_model");
 	detector_crop_l = obs_data_get_int(settings, "detector_crop_l");
 	detector_crop_r = obs_data_get_int(settings, "detector_crop_r");
@@ -414,6 +420,8 @@ void face_tracker_manager::get_properties(obs_properties_t *pp)
 			OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, obs_module_text("Detector.dlib.hog"), (int)engine_dlib_hog);
 	obs_property_list_add_int(p, obs_module_text("Detector.dlib.cnn"), (int)engine_dlib_cnn);
+	obs_properties_add_path(pp, "detector_dlib_hog_model", obs_module_text("Dlib HOG model"),
+			OBS_PATH_FILE, "Data Files (*.dat);;" "All Files (*.*)", (data_path + "/" DIR_DLIB_CNN).c_str() );
 	obs_properties_add_path(pp, "detector_dlib_cnn_model", obs_module_text("Dlib CNN model"),
 			OBS_PATH_FILE, "Data Files (*.dat);;" "All Files (*.*)", (data_path + "/" DIR_DLIB_CNN).c_str() );
 	obs_properties_add_int(pp, "detector_crop_l", obs_module_text("Crop left for detector"), 0, 1920, 1);
@@ -444,6 +452,13 @@ void face_tracker_manager::get_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "scale", 2.0);
 	obs_data_set_default_bool(settings, "tracking_th_en", true);
 	obs_data_set_default_double(settings, "tracking_th_dB", -80.0);
+
+	if (char *f = obs_module_file(DIR_DLIB_HOG "/frontal_face_detector.dat")) {
+		obs_data_set_default_string(settings, "detector_dlib_hog_model", f);
+		bfree(f);
+	} else {
+		blog(LOG_ERROR, "frontal_face_detector.dat is not found in the data directory.");
+	}
 
 	if (char *f = obs_module_file(DIR_DLIB_CNN "/mmod_human_face_detector.dat")) {
 		obs_data_set_default_string(settings, "detector_dlib_cnn_model", f);

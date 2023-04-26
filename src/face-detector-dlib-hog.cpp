@@ -13,17 +13,17 @@ struct face_detector_dlib_private_s
 {
 	std::shared_ptr<texture_object> tex;
 	std::vector<rect_s> rects;
-	dlib::frontal_face_detector *detector;
+	dlib::frontal_face_detector detector;
+	bool detector_loaded = false;
+	bool has_error = false;
+	std::string model_filename;
 	int crop_l = 0, crop_r = 0, crop_t = 0, crop_b = 0;
 	int n_error = 0;
 	face_detector_dlib_private_s()
 	{
-		detector = NULL;
 	}
 	~face_detector_dlib_private_s()
 	{
-		if (detector)
-			delete detector;
 	}
 };
 
@@ -89,18 +89,30 @@ void face_detector_dlib_hog::detect_main()
 		p->n_error--;
 	}
 
-	if (!p->detector)
-		p->detector = new dlib::frontal_face_detector(dlib::get_frontal_face_detector());
+	if (!p->detector_loaded) {
+		p->detector_loaded = true;
+		try {
+			blog(LOG_INFO, "loading file '%s'", p->model_filename.c_str());
+			dlib::deserialize(p->model_filename.c_str()) >> p->detector;
+			p->has_error = false;
+		}
+		catch(...) {
+			blog(LOG_ERROR, "failed to load file '%s'", p->model_filename.c_str());
+			p->has_error = true;
+		}
+	}
 
-	std::vector<dlib::rectangle> dets = (*p->detector)(img);
-	p->rects.resize(dets.size());
-	for (size_t i=0; i<dets.size(); i++) {
-		rect_s &r = p->rects[i];
-		r.x0 = (dets[i].left() + x0) * p->tex->scale;
-		r.y0 = (dets[i].top() + y0) * p->tex->scale;
-		r.x1 = (dets[i].right() + x0) * p->tex->scale;
-		r.y1 = (dets[i].bottom() + y0) * p->tex->scale;
-		r.score = 1.0; // TODO: implement me
+	if (!p->has_error) {
+		std::vector<dlib::rectangle> dets = p->detector(img);
+		p->rects.resize(dets.size());
+		for (size_t i=0; i<dets.size(); i++) {
+			rect_s &r = p->rects[i];
+			r.x0 = (dets[i].left() + x0) * p->tex->scale;
+			r.y0 = (dets[i].top() + y0) * p->tex->scale;
+			r.x1 = (dets[i].right() + x0) * p->tex->scale;
+			r.y1 = (dets[i].bottom() + y0) * p->tex->scale;
+			r.score = 1.0; // TODO: implement me
+		}
 	}
 
 	p->tex.reset();
@@ -109,4 +121,12 @@ void face_detector_dlib_hog::detect_main()
 void face_detector_dlib_hog::get_faces(std::vector<struct rect_s> &rects)
 {
 	rects = p->rects;
+}
+
+void face_detector_dlib_hog::set_model(const char *filename)
+{
+	if (p->model_filename != filename) {
+		p->model_filename = filename;
+		p->detector_loaded = false;
+	}
 }
