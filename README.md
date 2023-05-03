@@ -84,7 +84,7 @@ Build step would be as below, assuming you have OBS Studio successfully built at
 ```
 git clone https://github.com/norihiro/obs-face-tracker.git
 cd obs-face-tracker
-git clone https://github.com/davisking/dlib.git
+git submodule update --init
 mkdir build && cd build
 cmake ^
 -DLibObs_DIR="%OBSPath%\build64\libobs" ^
