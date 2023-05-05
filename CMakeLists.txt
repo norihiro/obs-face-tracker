@@ -42,6 +42,7 @@ set(DLIB_PNG_SUPPORT OFF)
 set(DLIB_GIF_SUPPORT OFF)
 set(DLIB_JPEG_SUPPORT OFF)
 set(DLIB_LINK_WITH_SQLITE3 OFF)
+set(DLIB_WEBP_SUPPORT OFF)
 add_subdirectory(dlib)
 
 configure_file(
