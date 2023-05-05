@@ -5,7 +5,7 @@ on:
     paths-ignore:
       - '**.md'
     branches:
-      - main
+      - '*'
     tags:
       - '*'
   pull_request:
