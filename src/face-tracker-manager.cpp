@@ -318,7 +318,7 @@ void face_tracker_manager::tick(float second)
 	}
 
 	if (detect_tick==tick_cnt)
-		next_tick_stage_to_detector = tick_cnt + (int)(2.0f/second); // detect for each _ second(s).
+		next_tick_stage_to_detector = tick_cnt + (int)(0.5f/second); // detect for each _ second(s).
 
 	tick_cnt += 1;
 
