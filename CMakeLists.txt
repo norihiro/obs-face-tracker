@@ -129,6 +129,7 @@ endif()
 
 if(OS_LINUX)
 	target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wextra)
+	target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-Wl,-z,defs")
 endif()
 
 if(APPLE)
