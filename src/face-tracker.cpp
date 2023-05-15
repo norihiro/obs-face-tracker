@@ -13,11 +13,9 @@
 #include "face-tracker-manager.hpp"
 #include "source_list.h"
 
-static gs_effect_t *effect_ft = NULL;
-
 static inline void scale_texture(struct face_tracker_filter *s, float scale);
 static inline int stage_to_surface(struct face_tracker_filter *s, float scale);
-static inline class texture_object *surface_to_cvtex(struct face_tracker_filter *s, float scale);
+static inline std::shared_ptr<texture_object> surface_to_cvtex(struct face_tracker_filter *s, float scale);
 
 class ft_manager_for_ftf : public face_tracker_manager
 {
@@ -38,7 +36,7 @@ class ft_manager_for_ftf : public face_tracker_manager
 		{
 		}
 
-		class texture_object *get_cvtex() override
+		std::shared_ptr<texture_object> get_cvtex() override
 		{
 			if (scale<1.0f) scale = 1.0f;
 			scale_texture(ctx, scale);
@@ -134,16 +132,6 @@ static void *ftf_create(obs_data_t *settings, obs_source_t *context)
 	s->ftm->scale = 2.0f;
 	s->hotkey_pause = OBS_INVALID_HOTKEY_PAIR_ID;
 	s->hotkey_reset = OBS_INVALID_HOTKEY_ID;
-
-	obs_enter_graphics();
-	if (!effect_ft) {
-		char *f = obs_module_file("face-tracker.effect");
-		effect_ft = gs_effect_create_from_file(f, NULL);
-		if (!effect_ft)
-			blog(LOG_ERROR, "Cannot load '%s' (face-tracker.effect)", f);
-		bfree(f);
-	}
-	obs_leave_graphics();
 
 	obs_source_update(context, settings);
 
@@ -700,7 +688,7 @@ static inline void draw_sprite_crop(float width, float height, float x0, float y
 static inline void scale_texture(struct face_tracker_filter *s, float scale)
 {
 	if (!s->texrender_scaled)
-		s->texrender_scaled = gs_texrender_create(GS_R8, GS_ZS_NONE);
+		s->texrender_scaled = gs_texrender_create(GS_BGRA, GS_ZS_NONE);
 	const uint32_t cx = s->known_width / scale, cy = s->known_height / scale;
 	gs_texrender_reset(s->texrender_scaled);
 	gs_blend_state_push();
@@ -708,10 +696,11 @@ static inline void scale_texture(struct face_tracker_filter *s, float scale)
 	if (gs_texrender_begin(s->texrender_scaled, cx, cy)) {
 		gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -100.0f, 100.0f);
 		gs_texture_t *tex = gs_texrender_get_texture(s->texrender);
-		if (tex && effect_ft) {
-			gs_eparam_t *image = gs_effect_get_param_by_name(effect_ft, "image");
+		auto effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
+		if (tex && effect) {
+			gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
 			gs_effect_set_texture(image, tex);
-			while (gs_effect_loop(effect_ft, "DrawY"))
+			while (gs_effect_loop(effect, "Draw"))
 				draw_sprite_crop(cx, cy, 0, 0, 1, 1);
 		}
 		gs_texrender_end(s->texrender_scaled);
@@ -734,7 +723,7 @@ static inline int stage_to_surface(struct face_tracker_filter *s, float scale)
 			width != gs_stagesurface_get_width(s->stagesurface) ||
 			height != gs_stagesurface_get_height(s->stagesurface) ) {
 		gs_stagesurface_destroy(s->stagesurface);
-		s->stagesurface = gs_stagesurface_create(width, height, GS_R8);
+		s->stagesurface = gs_stagesurface_create(width, height, GS_BGRA);
 	}
 
 	gs_stage_texture(s->stagesurface, tex);
@@ -742,22 +731,30 @@ static inline int stage_to_surface(struct face_tracker_filter *s, float scale)
 	return 0;
 }
 
-static inline class texture_object *surface_to_cvtex(struct face_tracker_filter *s, float scale)
+static inline std::shared_ptr<texture_object> surface_to_cvtex(struct face_tracker_filter *s, float scale)
 {
-	texture_object *cvtex = NULL;
 	uint8_t *video_data = NULL;
 	uint32_t video_linesize;
-	if (gs_stagesurface_map(s->stagesurface, &video_data, &video_linesize)) {
-		uint32_t width = gs_stagesurface_get_width(s->stagesurface);
-		uint32_t height = gs_stagesurface_get_height(s->stagesurface);
+	if (!gs_stagesurface_map(s->stagesurface, &video_data, &video_linesize))
+		return NULL;
 
-		cvtex = new texture_object();
-		cvtex->scale = scale;
-		cvtex->tick = s->ftm->tick_cnt;
-		cvtex->set_texture_y(video_data, video_linesize, width, height);
+	uint32_t width = gs_stagesurface_get_width(s->stagesurface);
+	uint32_t height = gs_stagesurface_get_height(s->stagesurface);
 
-		gs_stagesurface_unmap(s->stagesurface);
-	}
+	std::shared_ptr<texture_object> cvtex(new texture_object);
+	cvtex.get()->scale = scale;
+	cvtex.get()->tick = s->ftm->tick_cnt;
+
+	struct obs_source_frame frame;
+	memset(&frame, 0, sizeof(frame));
+	frame.data[0] = video_data;
+	frame.linesize[0] = video_linesize;
+	frame.width = width;
+	frame.height = height;
+	frame.format = VIDEO_FORMAT_BGRA;
+	cvtex.get()->set_texture_obsframe(&frame, 1);
+
+	gs_stagesurface_unmap(s->stagesurface);
 
 	return cvtex;
 }

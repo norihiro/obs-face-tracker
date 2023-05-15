@@ -11,7 +11,7 @@
 
 struct face_tracker_dlib_private_s
 {
-	texture_object *tex;
+	std::shared_ptr<texture_object> tex;
 	rect_s rect;
 	dlib::correlation_tracker *tracker;
 	int tracker_nc, tracker_nr;
@@ -27,6 +27,7 @@ struct face_tracker_dlib_private_s
 	rectf_s upsize;
 	char *landmark_detection_data;
 	bool landmark_detection_data_updated;
+	bool sp_available = false;
 
 	face_tracker_dlib_private_s()
 	{
@@ -48,14 +49,11 @@ face_tracker_dlib::~face_tracker_dlib()
 {
 	bfree(p->landmark_detection_data);
 	if (p->tracker) delete p->tracker;
-	if (p->tex) p->tex->release();
 	delete p;
 }
 
-void face_tracker_dlib::set_texture(class texture_object *tex)
+void face_tracker_dlib::set_texture(std::shared_ptr<texture_object> &tex)
 {
-	if (p->tex) p->tex->release();
-	tex->addref();
 	p->tex = tex;
 	p->n_track = 0;
 }
@@ -105,7 +103,10 @@ void face_tracker_dlib::track_main()
 		if (!p->tracker)
 			p->tracker = new dlib::correlation_tracker();
 
-		auto &img = p->tex->get_dlib_img();
+		dlib::matrix<dlib::rgb_pixel> img;
+		if (!p->tex->get_dlib_rgb_image(img))
+			return;
+
 		dlib::rectangle r (p->rect.x0, p->rect.y0, p->rect.x1, p->rect.y1);
 		p->tracker->start_track(img, r);
 		p->tracker_nc = img.nc();
@@ -121,7 +122,10 @@ void face_tracker_dlib::track_main()
 		p->rect.score = 0.0f;
 	}
 	else {
-		auto &img = p->tex->get_dlib_img();
+		dlib::matrix<dlib::rgb_pixel> img;
+		if (!p->tex->get_dlib_rgb_image(img))
+			return;
+
 		if (img.nc() != p->tracker_nc || img.nr() != p->tracker_nr) {
 			blog(LOG_ERROR, "face_tracker_dlib::track_main: cannot run correlation-tracker with different image size %dx%d, expected %dx%d",
 					(int)img.nc(), (int)img.nr(),
@@ -148,7 +152,9 @@ void face_tracker_dlib::track_main()
 				p->landmark_detection_data_updated = false;
 				blog(LOG_INFO, "loading file %s", p->landmark_detection_data);
 				try {
+					p->sp_available = false;
 					dlib::deserialize(p->landmark_detection_data) >> p->sp;
+					p->sp_available = true;
 				} catch (...) {
 					blog(LOG_ERROR, "Failed to load file %s", p->landmark_detection_data);
 				}
@@ -160,14 +166,14 @@ void face_tracker_dlib::track_main()
 					internal_division(r.left(), r.right(), p->upsize.x0 + 1.0f, p->upsize.x1),
 					internal_division(r.top(), r.bottom(), p->upsize.y0 + 1.0f, p->upsize.y1) );
 
-			p->shape = p->sp(p->tex->get_dlib_img(), r_face);
+			if (p->sp_available)
+				p->shape = p->sp(img, r_face);
 			p->last_scale = p->tex->scale;
 		}
 	}
 	p->last_ns = ns;
 
-	if (p->tex) p->tex->release();
-	p->tex = NULL;
+	p->tex.reset();
 }
 
 bool face_tracker_dlib::get_face(struct rect_s &rect)

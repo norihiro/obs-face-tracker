@@ -12,135 +12,102 @@ static uint32_t formats_found = 0;
 
 struct texture_object_private_s
 {
-	// TODO: allocate RGB image. According to the example for landmark detection, dlib accept RGB image. It should be more accurate.
-	dlib::array2d<unsigned char> dlib_img;
-	void *leak_test;
+	struct obs_source_frame *obs_frame = NULL;
+	int scale = 0;
 };
 
 texture_object::texture_object()
 {
-	ref = 1;
 	data = new texture_object_private_s;
-	data->leak_test = bmalloc(1);
+	data->obs_frame = NULL;
 }
 
 texture_object::~texture_object()
 {
-	bfree(data->leak_test);
+	obs_source_frame_destroy(data->obs_frame);
 	delete data;
 }
 
-void texture_object::set_texture_y(uint8_t *data_, uint32_t linesize, uint32_t width, uint32_t height)
-{
-	data->dlib_img.set_size(height, width);
-	for (uint32_t i=0; i<height; i++) {
-		auto row = data->dlib_img[i];
-		uint8_t *line = data_+i*linesize;
-		for (uint32_t j=0; j<width; j++)
-			row[j] = line[j];
-	}
-}
-
-static void obsframe2dlib_bgrx(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale, int size=4)
+static void obsframe2dlib_bgrx(dlib::matrix<dlib::rgb_pixel> &img, const struct obs_source_frame *frame, int scale, int size=4)
 {
 	const int nr = img.nr();
 	const int nc = img.nc();
 	const int inc = size * scale;
 	for (int i=0; i<nr; i++) {
-		auto row = img[i];
 		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
 		for (int j=0, js=0; j<nc; j++, js+=inc) {
-			int r = line[js+2];
-			int g = line[js+1];
-			int b = line[js+0];
-			row[j] = (+306*r +601*g +117*b)/1024; // BT.601
+			img(i,j).red = line[js+2];
+			img(i,j).green = line[js+1];
+			img(i,j).blue = line[js+0];
 		}
 	}
 }
 
-static void obsframe2dlib_rgbx(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale)
+static void obsframe2dlib_rgbx(dlib::matrix<dlib::rgb_pixel> &img, const struct obs_source_frame *frame, int scale)
 {
 	const int nr = img.nr();
 	const int nc = img.nc();
 	for (int i=0; i<nr; i++) {
-		auto row = img[i];
 		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
 		for (int j=0, js=0; j<nc; j++, js+=4*scale) {
-			int r = line[js+0];
-			int g = line[js+1];
-			int b = line[js+2];
-			row[j] = (+306*r +601*g +117*b)/1024; // BT.601
+			img(i,j).red = line[js+0];
+			img(i,j).green = line[js+1];
+			img(i,j).blue = line[js+2];
 		}
 	}
 }
 
-static void obsframe2dlib_packed_y2(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale, int offset)
+static bool need_allocate_frame(const struct obs_source_frame *dst, const struct obs_source_frame *src)
 {
-	const int nr = img.nr();
-	const int nc = img.nc();
-	for (int i=0; i<nr; i++) {
-		auto row = img[i];
-		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i + offset;
-		for (int j=0, js=0; j<nc; j++, js+=2*scale) {
-			row[j] = line[js];
-		}
-	}
+	if (!dst)
+		return true;
+
+	if (dst->format != src->format)
+		return true;
+
+	if (dst->width != src->width || dst->height != src->height)
+		return true;
+
+	return false;
 }
 
-static void obsframe2dlib_y(dlib::array2d<unsigned char> &img, const struct obs_source_frame *frame, int scale)
+void texture_object::set_texture_obsframe(const struct obs_source_frame *frame, int scale)
 {
-	const int nr = img.nr();
-	const int nc = img.nc();
-	for (int i=0; i<nr; i++) {
-		auto row = img[i];
-		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
-		for (int j=0, js=0; j<nc; j++, js+=scale) {
-			row[j] = line[js];
-		}
+	if (need_allocate_frame(data->obs_frame, frame)) {
+		obs_source_frame_destroy(data->obs_frame);
+		data->obs_frame = obs_source_frame_create(frame->format, frame->width, frame->height);
 	}
+
+	obs_source_frame_copy(data->obs_frame, frame);
+	data->scale = scale;
 }
 
-void texture_object::set_texture_obsframe_scale(const struct obs_source_frame *frame, int scale)
+bool texture_object::get_dlib_rgb_image(dlib::matrix<dlib::rgb_pixel> &img) const
 {
+	if (!data->obs_frame)
+		return false;
+
+	const auto *frame = data->obs_frame;
+	const int scale = data->scale;
 	if (TEST_FORMAT(frame->format))
 		blog(LOG_INFO, "received frame format=%d", frame->format);
-	data->dlib_img.set_size(frame->height/scale, frame->width/scale);
+	img.set_size(frame->height / scale, frame->width / scale);
 	switch(frame->format) {
 		case VIDEO_FORMAT_BGRX:
 		case VIDEO_FORMAT_BGRA:
-			obsframe2dlib_bgrx(data->dlib_img, frame, scale);
+			obsframe2dlib_bgrx(img, frame, scale);
 			break;
 		case VIDEO_FORMAT_BGR3:
-			obsframe2dlib_bgrx(data->dlib_img, frame, scale, 3);
+			obsframe2dlib_bgrx(img, frame, scale, 3);
 			break;
 		case VIDEO_FORMAT_RGBA:
-			obsframe2dlib_rgbx(data->dlib_img, frame, scale);
-			break;
-		case VIDEO_FORMAT_YVYU:
-		case VIDEO_FORMAT_YUY2:
-			obsframe2dlib_packed_y2(data->dlib_img, frame, scale, 0);
-			break;
-		case VIDEO_FORMAT_UYVY:
-			obsframe2dlib_packed_y2(data->dlib_img, frame, scale, 1);
-			break;
-		case VIDEO_FORMAT_I420:
-		case VIDEO_FORMAT_I422:
-		case VIDEO_FORMAT_I444:
-		case VIDEO_FORMAT_I40A:
-		case VIDEO_FORMAT_I42A:
-		case VIDEO_FORMAT_YUVA:
-		case VIDEO_FORMAT_Y800:
-		case VIDEO_FORMAT_NV12:
-			obsframe2dlib_y(data->dlib_img, frame, scale);
+			obsframe2dlib_rgbx(img, frame, scale);
 			break;
 		default:
 			if (TEST_FORMAT(frame->format))
-				blog(LOG_ERROR, "unsupported frame format %d. Check enum video_format in obs-studio/libobs/media-io/video-io.h for the format code.", (int)frame->format);
+				blog(LOG_ERROR, "Frame format %d has to be RGB", (int)frame->format);
 	}
 	SET_FORMAT(frame->format);
-}
 
-const dlib::array2d<unsigned char> &texture_object::get_dlib_img()
-{
-	return data->dlib_img;
+	return true;
 }

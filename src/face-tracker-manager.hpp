@@ -1,11 +1,18 @@
 #pragma once
 
 #include <deque>
+#include <string>
 #include "face-tracker-base.h"
 
 class face_tracker_manager
 {
 	public:
+		enum detector_engine_e {
+			engine_dlib_hog = 0,
+			engine_dlib_cnn = 1,
+			engine_uninitialized = -1,
+		};
+
 		struct tracker_rect_s {
 			rect_s rect;
 			rectf_s crop_rect;
@@ -37,6 +44,9 @@ class face_tracker_manager
 		volatile float scale;
 		volatile bool reset_requested;
 		float tracking_threshold;
+		enum detector_engine_e detector_engine = engine_uninitialized;
+		std::string detector_dlib_hog_model;
+		std::string detector_dlib_cnn_model;
 		int detector_crop_l, detector_crop_r, detector_crop_t, detector_crop_b;
 		char *landmark_detection_data;
 
@@ -52,6 +62,7 @@ class face_tracker_manager
 		class face_detector_base *detect;
 		int detect_tick;
 
+		// TODO: Just have two pairs
 		std::deque<struct tracker_inst_s> trackers;
 		std::deque<struct tracker_inst_s> trackers_idlepool;
 
@@ -69,7 +80,7 @@ class face_tracker_manager
 		static void get_defaults(obs_data_t *settings);
 
 	protected:
-		virtual class texture_object *get_cvtex() = 0;
+		virtual std::shared_ptr<texture_object> get_cvtex() = 0;
 
 	private:
 		inline void retire_tracker(int ix);
