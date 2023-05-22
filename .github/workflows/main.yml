@@ -12,7 +12,7 @@ on:
     paths-ignore:
       - '**.md'
     branches:
-      - main
+      - '*'
 
 env:
   artifactName: ${{ contains(github.ref_name, '/') && 'artifact' || github.ref_name }}
