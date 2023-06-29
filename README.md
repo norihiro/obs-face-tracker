@@ -48,6 +48,7 @@ for current limitations of PTZ control feature.
 
 This plugin requires [dlib](http://dlib.net/) to be built.
 The `dlib` should be extracted under `obs-face-tracker` so that it will be linked statically.
+I modified `dlib` so that `openblasp` won't be linked but `openblas`.
 
 For macOS,
 install openblas and configure the path.
@@ -57,8 +58,7 @@ export OPENBLAS_HOME=/usr/local/opt/openblas/
 ```
 
 For Linux and macOS,
-expand `obs-face-tracker` outside `obs-studio` and expand `dlib` under `obs-face-tracker`.
-Then, apply patch file to `dlib` so that dlib won't try to link `openblasp` but `openblas`.
+expand `obs-face-tracker` outside `obs-studio` and build.
 ```
 d0="$PWD"
 git clone https://github.com/obsproject/obs-studio.git
@@ -79,22 +79,7 @@ cmake .. \
 make
 ```
 
-For Windows,
-Build step would be as below, assuming you have OBS Studio successfully built at `%OBSPath%\build64`,
-```
-git clone https://github.com/norihiro/obs-face-tracker.git
-cd obs-face-tracker
-git submodule update --init
-mkdir build && cd build
-cmake ^
--DLibObs_DIR="%OBSPath%\build64\libobs" ^
--DLIBOBS_INCLUDE_DIR="%OBSPath%\libobs" ^
--DLIBOBS_LIB="%OBSPath%\build64\libobs\%build_config%\obs.lib" ^
--DPTHREAD_LIBS="%OBSPath%\build64\deps\w32-pthreads\%build_config%\w32-pthreads.lib" ^
--DOBS_FRONTEND_LIB="%OBSPath%\build64\UI\obs-frontend-api\%build_config%\obs-frontend-api.lib" ..
-make
-```
-For full build flow, see `azure-pipelines.yml`.
+For Windows, see `.github/workflows/main.yml`.
 
 ## Known issues
 This plugin is heavily under development. So far these issues are under investigation.
