@@ -81,6 +81,55 @@ make
 
 For Windows, see `.github/workflows/main.yml`.
 
+## Preparing data file
+
+You need to prepare a model file.
+
+### HOG model file
+Once you have built on Linux or macOS, you will find an executable file `face-detector-dlib-hog-datagen`.
+
+Assuming your current directory is `obs-face-tracker`, run it like this.
+```shell
+mkdir data/dlib_hog_model/
+./build/face-detector-dlib-hog-datagen > ./data/dlib_hog_model/frontal_face_detector.dat
+```
+
+### CNN model file
+The CNN model file `mmod_human_face_detector.dat.bz2` can be downloaded from [dlib-models](https://github.com/davisking/dlib-models/).
+
+Assuming your current directory is `obs-face-tracker`, run commands like below.
+```shell
+mkdir data/dlib_cnn_model/
+git clone --depth 1 https://github.com/davisking/dlib-models
+bunzip2 < dlib-models/mmod_human_face_detector.dat.bz2 > data/dlib_cnn_model/mmod_human_face_detector.dat
+```
+
+### 5-point face landmark model file
+The 5-point face landmark model file `shape_predictor_5_face_landmarks.dat.bz2` can be downloaded from [dlib-models](https://github.com/davisking/dlib-models/).
+
+Assuming your current directory is `obs-face-tracker`, run commands like below.
+```shell
+mkdir data/dlib_face_landmark_model/
+git clone --depth 1 https://github.com/davisking/dlib-models
+bunzip2 < dlib-models/shape_predictor_5_face_landmarks.dat.bz2 > data/dlib_face_landmark_model/shape_predictor_5_face_landmarks.dat
+```
+
+### 68-point face landmark model file
+> [!NOTE]
+> The 68-point face landmark model is a non-free license.
+. Check [README](https://github.com/davisking/dlib-models/#shape_predictor_68_face_landmarksdatbz2) for the restriction.
+
+If you want to use the 68-point face landmark model file `shape_predictor_68_face_landmarks.dat.bz2`, run commands like below.
+```shell
+mkdir data/dlib_face_landmark_model/
+git clone --depth 1 https://github.com/davisking/dlib-models
+bunzip2 < dlib-models/shape_predictor_68_face_landmarks.dat.bz2 > data/dlib_face_landmark_model/shape_predictor_68_face_landmarks.dat
+```
+
+### Installing the model files
+Once you have prepared the model files under `data` directory,
+run `cd build && make install` so that the data file will be installed.
+
 ## Known issues
 This plugin is heavily under development. So far these issues are under investigation.
 - Memory usage is gradually increasing when continuously detecting faces.
