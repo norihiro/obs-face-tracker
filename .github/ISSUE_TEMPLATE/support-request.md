@@ -8,11 +8,11 @@ assignees: ''
 ---
 
 **Source/filter types**
-<!-- Select the type(s) you have a problem on. -->
-- [ ] Face Tracker (source)
-- [ ] Face Tracker (filter)
-- [ ] Face Tracker PTZ (a filter to control PTZ camera)
-- [ ] Face Tracker Monitor
+<!-- Select applicable source/filter type(s) of this plugin. Uncomment items below -->
+<!-- - Face Tracker (source) -->
+<!-- - Face Tracker (filter) -->
+<!-- - Face Tracker PTZ (a filter to control PTZ camera) -->
+<!-- - Face Tracker Monitor -->
 
 **Describe your problem**
 <!-- A clear and concise description of what the problem is. -->
