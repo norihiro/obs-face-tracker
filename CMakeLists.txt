@@ -14,8 +14,6 @@ option(WITH_DOCK "Enable dock" ON)
 option(ENABLE_DATAGEN "Enable generating data" OFF)
 
 set(CMAKE_PREFIX_PATH "${QTDIR}")
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -47,6 +45,9 @@ set(DLIB_LINK_WITH_SQLITE3 OFF)
 set(DLIB_WEBP_SUPPORT OFF)
 set(DLIB_TEST_COMPILE_ALL_SOURCE_CPP OFF)
 add_subdirectory(dlib)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
 
 configure_file(
     src/plugin-macros.h.in
