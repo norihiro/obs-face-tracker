@@ -1014,12 +1014,14 @@ static void emit_state_changed(struct face_tracker_filter *s)
 }
 
 extern "C"
-void register_face_tracker_filter()
+void register_face_tracker_filter(bool hide_filter, bool hide_source)
 {
 	struct obs_source_info info = {};
 	info.id = "face_tracker_filter";
 	info.type = OBS_SOURCE_TYPE_FILTER;
 	info.output_flags = OBS_SOURCE_VIDEO;
+	if (hide_filter)
+		info.output_flags |= OBS_SOURCE_CAP_DISABLED;
 	info.get_name = ftf_get_name;
 	info.create = ftf_create;
 	info.destroy = ftf_destroy;
@@ -1037,6 +1039,8 @@ void register_face_tracker_filter()
 	info.id = "face_tracker_source";
 	info.type = OBS_SOURCE_TYPE_INPUT;
 	info.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_DO_NOT_DUPLICATE;
+	if (hide_source)
+		info.output_flags |= OBS_SOURCE_CAP_DISABLED;
 	info.create = fts_create;
 	info.update = fts_update;
 	info.get_properties = fts_properties;

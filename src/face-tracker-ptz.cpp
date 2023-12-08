@@ -1089,12 +1089,14 @@ static void emit_state_changed(struct face_tracker_ptz *s)
 }
 
 extern "C"
-void register_face_tracker_ptz()
+void register_face_tracker_ptz(bool hide_ptz)
 {
 	struct obs_source_info info = {};
 	info.id = "face_tracker_ptz";
 	info.type = OBS_SOURCE_TYPE_FILTER;
 	info.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_ASYNC;
+	if (hide_ptz)
+		info.output_flags = OBS_SOURCE_CAP_DISABLED;
 	info.get_name = ftptz_get_name;
 	info.create = ftptz_create;
 	info.destroy = ftptz_destroy;
