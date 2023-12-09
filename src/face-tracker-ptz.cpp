@@ -1014,23 +1014,15 @@ static void draw_frame_info(struct face_tracker_ptz *s, bool landmark_only = fal
 
 		if (draw_ref) {
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
-			gs_render_start(false);
-			const float srwhr2 = sqrtf((float)s->known_width * s->known_height) * 0.5f;
-			const float rcx = (float)s->known_width*(0.5f + s->track_x);
-			const float rcy = (float)s->known_height*(0.5f - s->track_y);
-			gs_vertex2f(rcx-srwhr2*s->track_z, rcy);
-			gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
-			gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
-			gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
-			gs_render_stop(GS_LINES);
-
-			if (s->ftm->landmark_detection_data) {
-				gs_render_start(false);
-				float r = srwhr2 * s->track_z;
-				for (int i=0; i<=32; i++)
-					gs_vertex2f(rcx + r * sinf(M_PI * i / 8), rcy + r * cosf(M_PI * i / 8));
-				gs_render_stop(GS_LINESTRIP);
-			}
+			render_reference_line r;
+			float srwh = sqrtf((float)s->known_width * s->known_height);
+			r.rcx = (float)s->known_width*(0.5f + s->track_x);
+			r.rcy = (float)s->known_height*(0.5f - s->track_y);
+			r.r = srwh * 0.5f * s->track_z;
+			r.has_landmark = !!s->ftm->landmark_detection_data;
+			r.e_deadband = s->e_deadband * r.gmwh;
+			r.e_nonlinear = s->e_nonlinear * r.gmwh;
+			r.render();
 		}
 	}
 }

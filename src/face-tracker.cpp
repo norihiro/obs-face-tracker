@@ -843,32 +843,16 @@ static inline void draw_frame_info(struct face_tracker_filter *s, bool debug_not
 		}
 		if (debug_notrack && draw_ref) {
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
+			const float srwh = sqrtf((float)s->known_width * s->known_height);
 			const rectf_s &r = s->ftm->crop_cur;
-			gs_render_start(false);
-			gs_vertex2f(r.x0, r.y0);
-			gs_vertex2f(r.x0, r.y1);
-			gs_vertex2f(r.x0, r.y1);
-			gs_vertex2f(r.x1, r.y1);
-			gs_vertex2f(r.x1, r.y1);
-			gs_vertex2f(r.x1, r.y0);
-			gs_vertex2f(r.x1, r.y0);
-			gs_vertex2f(r.x0, r.y0);
-			const float srwhr2 = sqrtf((r.x1-r.x0) * (r.y1-r.y0)) * 0.5f;
-			const float rcx = (r.x0+r.x1)*0.5f + (r.x1-r.x0)*s->track_x;
-			const float rcy = (r.y0+r.y1)*0.5f - (r.y1-r.y0)*s->track_y;
-			gs_vertex2f(rcx-srwhr2*s->track_z, rcy);
-			gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
-			gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
-			gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
-			gs_render_stop(GS_LINES);
-
-			if (s->ftm->landmark_detection_data) {
-				gs_render_start(false);
-				float r = srwhr2 * s->track_z;
-				for (int i=0; i<=32; i++)
-					gs_vertex2f(rcx + r * sinf(M_PI * i / 8), rcy + r * cosf(M_PI * i / 8));
-				gs_render_stop(GS_LINESTRIP);
-			}
+			render_reference_line render;
+			render.rcx = (r.x0+r.x1)*0.5f + (r.x1-r.x0)*s->track_x;
+			render.rcy = (r.y0+r.y1)*0.5f - (r.y1-r.y0)*s->track_y;
+			render.r = sqrtf((r.x1-r.x0) * (r.y1-r.y0)) * 0.5f * s->track_z;
+			render.has_landmark = !!s->ftm->landmark_detection_data;
+			render.e_deadband = s->e_deadband * srwh;
+			render.e_nonlinear = s->e_nonlinear * srwh;
+			render.render();
 		}
 	}
 
