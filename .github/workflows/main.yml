@@ -144,15 +144,15 @@ jobs:
           if [[ '${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}' != '' && \
                 '${{ secrets.MACOS_SIGNING_INSTALLER_IDENTITY }}' != '' && \
                 '${{ secrets.MACOS_SIGNING_CERT }}' != '' ]]; then
-            echo '::set-output name=haveCodesignIdent::true'
+            echo "haveCodesignIdent=true" >> $GITHUB_OUTPUT
           else
-            echo '::set-output name=haveCodesignIdent::false'
+            echo "haveCodesignIdent=false" >> $GITHUB_OUTPUT
           fi
           if [[ '${{ secrets.MACOS_NOTARIZATION_USERNAME }}' != '' && \
                 '${{ secrets.MACOS_NOTARIZATION_PASSWORD }}' != '' ]]; then
-            echo '::set-output name=haveNotarizationUser::true'
+            echo "haveNotarizationUser=true" >> $GITHUB_OUTPUT
           else
-            echo '::set-output name=haveNotarizationUser::false'
+            echo "haveNotarizationUser=false" >> $GITHUB_OUTPUT
           fi
           echo '::endgroup::'
           echo '::group::Set up ccache'
