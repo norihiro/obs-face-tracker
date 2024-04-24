@@ -1,0 +1,81 @@
+name: Plugin Build on Docker
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+    branches:
+      - main
+    tags:
+      - '*'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+    branches:
+      - main
+
+env:
+  artifactName: ${{ contains(github.ref_name, '/') && 'docker-artifact' || github.ref_name }}-rpm
+
+jobs:
+  docker_build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - fedora39
+          - fedora40
+    defaults:
+      run:
+        shell: bash
+    env:
+      target: ${{ matrix.target }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Generate container directory
+        run: |
+          cp -a .github/containers/fedora-template .github/containers/$target
+          releasever="$(cut -b 7- <<< "$target")"
+          sed -i "s/%releasever%/$releasever/g" .github/containers/$target/*
+
+      - name: Restore docker from cache
+        id: docker-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ github.workspace }}/docker-cache
+          key: docker-cache-${{ matrix.target }}-${{ hashFiles(format('.github/containers/{0}/Dockerfile', matrix.target)) }}
+
+      - name: Build environment
+        if: ${{ steps.docker-cache.outputs.cache-hit != 'true' }}
+        run: |
+          docker build -t obs-plugin-build/$target .github/containers/$target
+          mkdir -p docker-cache
+          docker save obs-plugin-build/$target | gzip > docker-cache/obs-plugin-build-$target.tar.gz
+
+      - name: Save docker to cache
+        uses: actions/cache/save@v4
+        if: ${{ steps.docker-cache.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ github.workspace }}/docker-cache
+          key: docker-cache-${{ matrix.target }}-${{ hashFiles(format('.github/containers/{0}/Dockerfile', matrix.target)) }}
+
+      - name: Extract cached environment
+        if: ${{ steps.docker-cache.outputs.cache-hit == 'true' }}
+        run: |
+          zcat docker-cache/obs-plugin-build-$target.tar.gz | docker load
+
+      - name: Build package
+        run: .github/containers/$target/build.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.artifactName }}-${{ matrix.target }}
+          path: '${{ env.FILE_NAME }}'
