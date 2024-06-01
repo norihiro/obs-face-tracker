@@ -58,7 +58,6 @@ err:
 
 FTWidget::FTWidget(struct face_tracker_dock_s *data_, QWidget *parent)
 	: QWidget(parent)
-	, eventFilter(BuildEventFilter())
 {
 	face_tracker_dock_addref((data = data_));
 	setAttribute(Qt::WA_PaintOnScreen);
@@ -69,37 +68,11 @@ FTWidget::FTWidget(struct face_tracker_dock_s *data_, QWidget *parent)
 	setAttribute(Qt::WA_NativeWindow);
 
 	setMouseTracking(true);
-	QObject::installEventFilter(eventFilter.get());
 }
 
 FTWidget::~FTWidget()
 {
-	removeEventFilter(eventFilter.get());
 	face_tracker_dock_release(data);
-}
-
-OBSEventFilter *FTWidget::BuildEventFilter()
-{
-	return new OBSEventFilter([this](QObject *obj, QEvent *event) {
-		UNUSED_PARAMETER(obj);
-
-		switch (event->type()) {
-		case QEvent::MouseButtonPress:
-		case QEvent::MouseButtonRelease:
-		case QEvent::MouseButtonDblClick:
-			return this->HandleMouseClickEvent(
-				static_cast<QMouseEvent *>(event));
-		case QEvent::MouseMove:
-			return this->HandleMouseMoveEvent(
-				static_cast<QMouseEvent *>(event));
-
-		case QEvent::Wheel:
-			return this->HandleMouseWheelEvent(
-				static_cast<QWheelEvent *>(event));
-		default:
-			return false;
-		}
-	});
 }
 
 void FTWidget::CreateDisplay()
@@ -167,124 +140,4 @@ void FTWidget::setShown(bool shown)
 		obs_display_destroy(data->disp);
 		data->disp = NULL;
 	}
-}
-
-#define INTERACT_KEEP_SOURCE (1<<30)
-
-static int TranslateQtKeyboardEventModifiers(QInputEvent *event,
-					     bool mouseEvent)
-{
-	int obsModifiers = INTERACT_NONE;
-
-	if (event->modifiers().testFlag(Qt::ShiftModifier))
-		obsModifiers |= INTERACT_SHIFT_KEY;
-	if (event->modifiers().testFlag(Qt::AltModifier))
-		obsModifiers |= INTERACT_ALT_KEY;
-#ifdef __APPLE__
-	// Mac: Meta = Control, Control = Command
-	if (event->modifiers().testFlag(Qt::ControlModifier))
-		obsModifiers |= INTERACT_COMMAND_KEY;
-	if (event->modifiers().testFlag(Qt::MetaModifier))
-		obsModifiers |= INTERACT_CONTROL_KEY;
-#else
-	// Handle windows key? Can a browser even trap that key?
-	if (event->modifiers().testFlag(Qt::ControlModifier))
-		obsModifiers |= INTERACT_CONTROL_KEY;
-#endif
-
-	if (!mouseEvent) {
-		if (event->modifiers().testFlag(Qt::KeypadModifier))
-			obsModifiers |= INTERACT_IS_KEY_PAD;
-	}
-
-	return obsModifiers;
-}
-
-static int TranslateQtMouseEventModifiers(QMouseEvent *event)
-{
-	int modifiers = TranslateQtKeyboardEventModifiers(event, true);
-
-	if (event->buttons().testFlag(Qt::LeftButton))
-		modifiers |= INTERACT_MOUSE_LEFT;
-	if (event->buttons().testFlag(Qt::MiddleButton))
-		modifiers |= INTERACT_MOUSE_MIDDLE;
-	if (event->buttons().testFlag(Qt::RightButton))
-		modifiers |= INTERACT_MOUSE_RIGHT;
-
-	return modifiers;
-}
-
-bool FTWidget::HandleMouseClickEvent(QMouseEvent *event)
-{
-	bool mouseUp = event->type() == QEvent::MouseButtonRelease;
-	int clickCount = 1;
-	if (event->type() == QEvent::MouseButtonDblClick)
-		clickCount = 2;
-
-	struct obs_mouse_event mouseEvent = {};
-
-	mouseEvent.modifiers = TranslateQtMouseEventModifiers(event);
-
-	int32_t button = 0;
-
-	switch (event->button()) {
-	case Qt::LeftButton:
-		button = MOUSE_LEFT;
-		if (mouseUp) mouseEvent.modifiers |= INTERACT_KEEP_SOURCE; // Not to change i_mouse if released outside
-		break;
-	case Qt::MiddleButton:
-		button = MOUSE_MIDDLE;
-		break;
-	case Qt::RightButton:
-		button = MOUSE_RIGHT;
-		break;
-	default:
-		blog(LOG_WARNING, "unknown button type %d", event->button());
-		return false;
-	}
-
-	return true;
-}
-
-bool FTWidget::HandleMouseMoveEvent(QMouseEvent *event)
-{
-	struct obs_mouse_event mouseEvent = {};
-
-	bool mouseLeave = event->type() == QEvent::Leave;
-
-	if (!mouseLeave)
-		mouseEvent.modifiers = TranslateQtMouseEventModifiers(event);
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-	QPointF qtPos = event->position() * devicePixelRatio();
-#else
-	QPointF qtPos = event->localPos();
-#endif
-
-	return true;
-}
-
-bool FTWidget::HandleMouseWheelEvent(QWheelEvent *event)
-{
-	struct obs_mouse_event mouseEvent = {};
-
-	mouseEvent.modifiers = TranslateQtKeyboardEventModifiers(event, true);
-
-	int xDelta = 0;
-	int yDelta = 0;
-
-	const QPoint angleDelta = event->angleDelta();
-	if (!event->pixelDelta().isNull()) {
-		if (angleDelta.x())
-			xDelta = event->pixelDelta().x();
-		else
-			yDelta = event->pixelDelta().y();
-	} else {
-		if (angleDelta.x())
-			xDelta = angleDelta.x();
-		else
-			yDelta = angleDelta.y();
-	}
-
-	return true;
 }
