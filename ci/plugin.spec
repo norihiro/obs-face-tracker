@@ -9,6 +9,7 @@ Requires: obs-studio >= @OBS_VERSION@
 BuildRequires: cmake, gcc, gcc-c++
 BuildRequires: obs-studio-devel
 BuildRequires: qt6-qtbase-devel qt6-qtbase-private-devel
+BuildRequires: dlib-devel
 
 %description
 This plugin tracks face of a person by detecting and tracking a face.
@@ -22,7 +23,7 @@ under tracking, the frame will be cropped.
 %autosetup -p1
 
 %build
-%{cmake} -DLINUX_PORTABLE=OFF -DLINUX_RPATH=OFF -DQT_VERSION=6
+%{cmake} -DLINUX_PORTABLE=OFF -DLINUX_RPATH=OFF -DQT_VERSION=6 -DWITH_DLIB_SUBMODULE=OFF
 %{cmake_build}
 
 %install
