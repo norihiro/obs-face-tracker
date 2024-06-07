@@ -6,12 +6,18 @@ License: GPLv3+
 
 Source0: %{name}-%{version}.tar.bz2
 Source1: %{name}-%{version}-libvisca.tar.bz2
+Source2: %{name}-%{version}-dlib-models.tar.bz2
 Requires: obs-studio >= @OBS_VERSION@
 BuildRequires: cmake, gcc, gcc-c++
 BuildRequires: obs-studio-devel
 BuildRequires: qt6-qtbase-devel qt6-qtbase-private-devel
 BuildRequires: dlib-devel ffmpeg-free-devel sqlite-devel blas-devel lapack-devel
 # dlib-devel requires /usr/include/ffmpeg so that install ffmpeg-free-devel
+
+%package data
+Summary: Model file for %{name}
+BuildArch: noarch
+License: Nonfree
 
 %description
 This plugin tracks face of a person by detecting and tracking a face.
@@ -21,9 +27,13 @@ the source is periodically taken to face detection algorithm. Once a face is
 found, the face is tracked. Based on the location and the size of the face
 under tracking, the frame will be cropped.
 
+%description data
+Model files for @PLUGIN_NAME_FEDORA@.
+
 %prep
 %autosetup -p1
 %setup -T -D -a 1
+%setup -T -D -a 2
 
 %build
 %{cmake} \
@@ -38,4 +48,7 @@ under tracking, the frame will be cropped.
 
 %files
 %{_libdir}/obs-plugins/@PLUGIN_NAME@.so
-%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/
+%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/locale/
+
+%files data
+%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/*dlib*
