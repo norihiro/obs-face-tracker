@@ -17,6 +17,11 @@ BuildRequires: dlib-devel ffmpeg-free-devel sqlite-devel blas-devel lapack-devel
 %package data
 Summary: Model file for %{name}
 BuildArch: noarch
+License: CC0-1.0
+
+%package data-nonfree
+Summary: Non-free model file for %{name}
+BuildArch: noarch
 License: Nonfree
 
 %description
@@ -29,6 +34,11 @@ under tracking, the frame will be cropped.
 
 %description data
 Model files for @PLUGIN_NAME_FEDORA@.
+The model files came from https://github.com/davisking/dlib-models/.
+
+%description data-nonfree
+Non-free model files for @PLUGIN_NAME_FEDORA@.
+The model file came from https://github.com/davisking/dlib-models/.
 
 %prep
 %autosetup -p1
@@ -46,9 +56,26 @@ Model files for @PLUGIN_NAME_FEDORA@.
 %install
 %{cmake_install}
 
+mkdir -p %{buildroot}/%{_datadir}/licenses/%{name}/
+mkdir -p %{buildroot}/%{_datadir}/licenses/%{name}-data/
+mkdir -p %{buildroot}/%{_datadir}/licenses/%{name}-data-nonfree/
+cp LICENSE %{buildroot}/%{_datadir}/licenses/%{name}/
+mv %{buildroot}/%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/LICENSE-dlib %{buildroot}/%{_datadir}/licenses/%{name}/
+mv %{buildroot}/%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/LICENSE-dlib-models %{buildroot}/%{_datadir}/licenses/%{name}-data/
+mv %{buildroot}/%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/LICENSE-shape_predictor_68_face_landmarks %{buildroot}/%{_datadir}/licenses/%{name}-data-nonfree/
+
 %files
 %{_libdir}/obs-plugins/@PLUGIN_NAME@.so
 %{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/locale/
+%{_datadir}/licenses/%{name}/*
 
 %files data
-%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/*dlib*
+%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/dlib_cnn_model
+%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/dlib_face_landmark_model/shape_predictor_5_face_landmarks.dat
+%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/dlib_hog_model
+%{_datadir}/licenses/%{name}-data/*
+
+%files data-nonfree
+%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/dlib_face_landmark_model/shape_predictor_68_face_landmarks.dat
+%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/dlib_face_landmark_model/shape_predictor_68_face_landmarks_GTX.dat
+%{_datadir}/licenses/%{name}-data-nonfree/*

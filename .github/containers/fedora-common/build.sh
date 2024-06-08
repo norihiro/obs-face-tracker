@@ -41,7 +41,7 @@ sed \
 	< ci/plugin.spec \
 	> $rpmbuild/SPECS/$PLUGIN_NAME_FEDORA.spec
 
-DESTDIR='dlib-models-data/' ci/download-dlib-models.sh
+DESTDIR='dlib-models-data/' ci/download-dlib-models.sh --nonfree
 
 git archive --format=tar --prefix=$PLUGIN_NAME_FEDORA-$VERSION/ HEAD | bzip2 > $rpmbuild/SOURCES/$PLUGIN_NAME_FEDORA-$VERSION.tar.bz2
 (cd libvisca && git archive --format=tar --prefix=libvisca/ HEAD) | bzip2 > $rpmbuild/SOURCES/$PLUGIN_NAME_FEDORA-$VERSION-libvisca.tar.bz2
