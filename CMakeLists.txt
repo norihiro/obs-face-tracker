@@ -161,6 +161,9 @@ if(ENABLE_DATAGEN)
 	add_executable(face-detector-dlib-hog-datagen
 		src/face-detector-dlib-hog-datagen.cpp
 	)
+	target_include_directories(face-detector-dlib-hog-datagen PRIVATE
+		${CMAKE_CURRENT_BINARY_DIR}
+	)
 	target_link_libraries(face-detector-dlib-hog-datagen
 		dlib
 	)
