@@ -92,6 +92,7 @@ set(PLUGIN_SOURCES
 	src/helper.cpp
 	src/ptz-backend.cpp
 	src/obsptz-backend.cpp
+	src/ptz-http-backend.cpp
 	src/dummy-backend.cpp
 )
 
