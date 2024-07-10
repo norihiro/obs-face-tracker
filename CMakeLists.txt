@@ -134,6 +134,7 @@ if(OS_WINDOWS)
 		add_definitions(/MP /d2FH4-)
 		add_definitions("-D_USE_MATH_DEFINES")
 		add_definitions("-D_CRT_SECURE_NO_WARNINGS") # to avoid a warning for `fopen`
+		add_definitions("-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR") # TODO: Remove once requiring OBS 30.2 or later.
 	endif()
 
 	target_link_libraries(${CMAKE_PROJECT_NAME} OBS::w32-pthreads)
