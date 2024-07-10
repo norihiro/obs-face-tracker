@@ -113,7 +113,7 @@ jobs:
           ls /usr/share/obs/obs-plugins/${PLUGIN_NAME}/
 
   macos_build:
-    runs-on: macos-11
+    runs-on: macos-13
     strategy:
       fail-fast: false
       matrix:
