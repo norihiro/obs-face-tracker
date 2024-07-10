@@ -23,6 +23,7 @@ libvisca_thread::libvisca_thread()
 	zoom_got = 0;
 	pthread_mutex_init(&mutex, 0);
 
+	pthread_t thread;
 	pthread_create(&thread, NULL, libvisca_thread::thread_main, (void*)this);
 	pthread_detach(thread);
 }

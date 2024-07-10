@@ -7,7 +7,6 @@
 class libvisca_thread : public ptz_backend
 {
 	pthread_mutex_t mutex;
-	pthread_t thread;
 	struct _VISCA_interface *iface;
 	struct _VISCA_camera *camera;
 	struct obs_data *data;
