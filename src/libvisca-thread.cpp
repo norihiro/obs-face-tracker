@@ -155,7 +155,7 @@ void libvisca_thread::thread_loop()
 			ptz_changed = true;
 		}
 
-		if (os_atomic_load_bool(&preset_changed)) {
+		if (os_atomic_set_bool(&preset_changed, false)) {
 			os_sleep_ms(48);
 			VISCA_memory_recall(iface, camera, preset_rsvd);
 			os_sleep_ms(48);
