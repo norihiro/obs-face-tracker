@@ -11,6 +11,8 @@
 
 #define debug(...) blog(LOG_INFO, __VA_ARGS__)
 
+#define TH_FAIL 4
+
 libvisca_thread::libvisca_thread()
 {
 	debug("libvisca_thread::libvisca_thread");
@@ -83,53 +85,77 @@ void *libvisca_thread::thread_main(void *data)
 	return NULL;
 }
 
-static inline void send_pantilt(struct _VISCA_interface *iface, struct _VISCA_camera *camera, int pan, int tilt)
+static inline bool send_pantilt(struct _VISCA_interface *iface, struct _VISCA_camera *camera, int pan, int tilt, int retry=0)
 {
 	debug("send_pantilt moving pan=%d tilt=%d", pan, tilt);
 	int pan_a = abs(pan);
 	int tilt_a = abs(tilt);
 	if (pan_a>127) pan_a = 127;
 	if (tilt_a>127) tilt_a = 127;
+
+	uint32_t res = VISCA_SUCCESS;
 	if      (tilt<0 && pan<0) // 1=up, 1=left
-		VISCA_set_pantilt_upleft(iface, camera, pan_a, tilt_a);
+		res = VISCA_set_pantilt_upleft(iface, camera, pan_a, tilt_a);
 	else if (tilt<0 && pan==0) // 1=up
-		VISCA_set_pantilt_up(iface, camera, pan_a, tilt_a);
+		res = VISCA_set_pantilt_up(iface, camera, pan_a, tilt_a);
 	else if (tilt<0 && pan>0) // 1=up, 2=right
-		VISCA_set_pantilt_upright(iface, camera, pan_a, tilt_a);
+		res = VISCA_set_pantilt_upright(iface, camera, pan_a, tilt_a);
 	else if (tilt==0 && pan<0) // 1=left
-		VISCA_set_pantilt_left(iface, camera, pan_a, tilt_a);
+		res = VISCA_set_pantilt_left(iface, camera, pan_a, tilt_a);
 	else if (tilt==0 && pan==0)
-		VISCA_set_pantilt_stop(iface, camera, pan_a, tilt_a);
+		res = VISCA_set_pantilt_stop(iface, camera, pan_a, tilt_a);
 	else if (tilt==0 && pan>0) // 2=right
-		VISCA_set_pantilt_right(iface, camera, pan_a, tilt_a);
+		res = VISCA_set_pantilt_right(iface, camera, pan_a, tilt_a);
 	else if (tilt>0 && pan<0) // 2=down, 1=left
-		VISCA_set_pantilt_downleft(iface, camera, pan_a, tilt_a);
+		res = VISCA_set_pantilt_downleft(iface, camera, pan_a, tilt_a);
 	else if (tilt>0 && pan==0) // 2=down
-		VISCA_set_pantilt_down(iface, camera, pan_a, tilt_a);
+		res = VISCA_set_pantilt_down(iface, camera, pan_a, tilt_a);
 	else if (tilt>0 && pan>0)
-		VISCA_set_pantilt_downright(iface, camera, pan_a, tilt_a);
+		res = VISCA_set_pantilt_downright(iface, camera, pan_a, tilt_a);
+
+	if (res != VISCA_SUCCESS)
+		return false;
+
+	if (iface->type == VISCA_RESPONSE_ERROR && retry < 3) {
+		blog(LOG_INFO, "send_pantilt(%d, %d): retrying (%d)", pan, tilt, retry);
+		return send_pantilt(iface, camera, pan, tilt, retry + 1);
+	}
+
+	return true;
 }
 
-static inline void send_zoom(struct _VISCA_interface *iface, struct _VISCA_camera *camera, int zoom)
+static inline bool send_zoom(struct _VISCA_interface *iface, struct _VISCA_camera *camera, int zoom, int retry=0)
 {
 	debug("send_zoom moving zoom=%d", zoom);
+	uint32_t res;
 	int zoom_a = std::abs(zoom);
 	if (zoom_a > 7) zoom_a = 7;
 	// zoom>0 : wide
 	if (zoom>0)
-		VISCA_set_zoom_wide_speed(iface, camera, zoom_a);
+		res = VISCA_set_zoom_wide_speed(iface, camera, zoom_a);
 	else if (zoom<0)
-		VISCA_set_zoom_tele_speed(iface, camera, zoom_a);
+		res = VISCA_set_zoom_tele_speed(iface, camera, zoom_a);
 	else
-		VISCA_set_zoom_stop(iface, camera);
+		res = VISCA_set_zoom_stop(iface, camera);
+
+	if (res != VISCA_SUCCESS)
+		return false;
+
+	if (iface->type == VISCA_RESPONSE_ERROR && retry < 3) {
+		blog(LOG_INFO, "send_zoom(%d): retrying (%d)", zoom, retry);
+		return send_zoom(iface, camera, zoom, retry + 1);
+	}
+
+	return true;
 }
 
 void libvisca_thread::thread_loop()
 {
 	int pan_prev=INT_MIN, tilt_prev=INT_MIN, zoom_prev=INT_MIN;
+	int n_fail = 0;
 
 	while (get_ref() > 1) {
-		if (data_changed) {
+		if (data_changed || n_fail > TH_FAIL) {
 			thread_connect();
 			pan_prev=INT_MIN;
 			tilt_prev=INT_MIN;
@@ -144,27 +170,41 @@ void libvisca_thread::thread_loop()
 		int zoom = os_atomic_load_long(&zoom_rsvd);
 		bool ptz_changed = false;
 		if (pan!=pan_prev || tilt!=tilt_prev) {
-			send_pantilt(iface, camera, pan, tilt);
-			pan_prev = pan;
-			tilt_prev = tilt;
-			ptz_changed = true;
+			if (send_pantilt(iface, camera, pan, tilt)) {
+				pan_prev = pan;
+				tilt_prev = tilt;
+				ptz_changed = true;
+				n_fail = 0;
+			}
+			else {
+				n_fail++;
+			}
 		}
 		if (zoom!=zoom_prev) {
-			send_zoom(iface, camera, zoom);
-			zoom_prev = zoom;
-			ptz_changed = true;
+			if (send_zoom(iface, camera, zoom)) {
+				zoom_prev = zoom;
+				ptz_changed = true;
+				n_fail = 0;
+			}
+			else {
+				n_fail++;
+			}
 		}
 
 		if (os_atomic_set_bool(&preset_changed, false)) {
 			os_sleep_ms(48);
+			debug("libvisca_thread::thread_loop recall preset=%d", (int)preset_rsvd);
 			VISCA_memory_recall(iface, camera, preset_rsvd);
 			os_sleep_ms(48);
 		}
 
-		uint16_t zoom_cur = 0;
-		if (VISCA_get_zoom_value(iface, camera, &zoom_cur) == VISCA_SUCCESS) {
-			os_atomic_set_long(&zoom_got, (long)zoom_cur);
-			debug("libvisca_thread::thread_loop got zoom=%d", (int)zoom_cur);
+		if (zoom != 0) {
+			uint16_t zoom_cur = 0;
+			if (VISCA_get_zoom_value(iface, camera, &zoom_cur) == VISCA_SUCCESS) {
+				if (zoom_cur != zoom_got)
+					debug("libvisca_thread::thread_loop got zoom=%d", (int)zoom_cur);
+				os_atomic_set_long(&zoom_got, (long)zoom_cur);
+			}
 		}
 
 		if (!ptz_changed)
