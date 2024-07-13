@@ -60,6 +60,8 @@ void face_tracker_dlib::set_texture(std::shared_ptr<texture_object> &tex)
 
 void face_tracker_dlib::set_position(const rect_s &rect)
 {
+	if (!p->tex)
+		return;
 	p->rect.x0 = rect.x0 / p->tex->scale;
 	p->rect.y0 = rect.y0 / p->tex->scale;
 	p->rect.x1 = rect.x1 / p->tex->scale;
