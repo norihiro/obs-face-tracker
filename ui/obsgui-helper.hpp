@@ -19,7 +19,10 @@ bool QTToGSWindow(QWindow *window, gs_window &gswindow)
 #else
 #ifdef ENABLE_WAYLAND
 	switch (obs_get_nix_platform()) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 	case OBS_NIX_PLATFORM_X11_GLX:
+#pragma GCC diagnostic pop
 	case OBS_NIX_PLATFORM_X11_EGL:
 #endif // ENABLE_WAYLAND
 		gswindow.id = window->winId();

@@ -820,11 +820,6 @@ static void ftptz_tick(void *data, float second)
 	}
 }
 
-static inline void render_target(struct face_tracker_ptz *s, obs_source_t *, obs_source_t *)
-{
-	s->ftm->cvtex_cache.reset();
-}
-
 static inline void calculate_error(struct face_tracker_ptz *s)
 {
 	f3 e_tot(0.0f, 0.0f, 0.0f);

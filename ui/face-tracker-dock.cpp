@@ -576,7 +576,7 @@ void ft_docks_release()
 	docks = NULL;
 }
 
-void FTDock::default_properties(obs_data_t *props)
+void FTDock::default_properties(obs_data_t *)
 {
 }
 
