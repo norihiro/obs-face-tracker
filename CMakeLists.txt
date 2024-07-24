@@ -142,7 +142,14 @@ if(OS_WINDOWS)
 endif()
 
 if(OS_LINUX)
-	target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wextra)
+	target_compile_options(${CMAKE_PROJECT_NAME}
+		PRIVATE
+		-Wall
+		-Wextra
+		-Wunused-function
+		-Werror
+		-Wno-error=deprecated-declarations # TODO: Replace obs_frontend_add_dock with the new API.
+	)
 	target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-Wl,-z,defs")
 endif()
 
