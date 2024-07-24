@@ -9,7 +9,7 @@
 #include "libvisca-thread.hpp"
 #include "libvisca.h"
 
-#define debug(...) blog(LOG_INFO, __VA_ARGS__)
+#define debug(...) // blog(LOG_INFO, __VA_ARGS__)
 
 #define TH_FAIL 4
 
@@ -201,8 +201,9 @@ void libvisca_thread::thread_loop()
 		if (zoom != 0) {
 			uint16_t zoom_cur = 0;
 			if (VISCA_get_zoom_value(iface, camera, &zoom_cur) == VISCA_SUCCESS) {
-				if (zoom_cur != zoom_got)
+				if (zoom_cur != zoom_got) {
 					debug("libvisca_thread::thread_loop got zoom=%d", (int)zoom_cur);
+				}
 				os_atomic_set_long(&zoom_got, (long)zoom_cur);
 			}
 		}
