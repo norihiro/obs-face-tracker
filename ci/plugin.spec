@@ -12,6 +12,7 @@ BuildRequires: cmake, gcc, gcc-c++
 BuildRequires: obs-studio-devel
 BuildRequires: qt6-qtbase-devel qt6-qtbase-private-devel
 BuildRequires: dlib-devel ffmpeg-free-devel sqlite-devel blas-devel lapack-devel
+BuildRequires: flexiblas-devel
 # dlib-devel requires /usr/include/ffmpeg so that install ffmpeg-free-devel
 
 %package data
