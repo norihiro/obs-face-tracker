@@ -33,6 +33,8 @@ These properties upsize (or downsize) the recognized face by multiple of the wid
 
 The motivation is that the face recognition returns a rectangle that is smaller than the actual face.
 
+The properties will be saved to and recalled from presets.
+
 ### Scale image
 The frame will be scaled before sending into face detection and tracking algorithm.
 Default is `2`.
@@ -72,9 +74,13 @@ This property set the target zoom amount in multiple of the screen size.
 If set to `1.0`, face size and screen size is same.
 Smaller value results smaller face, i.e. less zoom.
 
+The property will be saved to and recalled from presets.
+
 ### X, Y
 This property set the location where the center of the face is placed.
 `0` indicates the center, `+/-0.5` will result the center of the face is located at the edge.
+
+The properties will be saved to and recalled from presets.
 
 ## Tracking response
 
@@ -86,19 +92,27 @@ Larger value will result faster response.
 Since the gain of the PTZ camera depends on the manufactures and models,
 you need to adjust Kp for your camera.
 
+The properties will be saved to and recalled from presets.
+
 ### Ki (X, Y, Z)
 This is an integral constant. The dimension is inverse time and the unit is s<sup>-1</sup>.
 Larger value results in more tracking of slow movement.
+
+The properties will be saved to and recalled from presets. (version 0.7.3 and later)
 
 ### Td (X, Y, Z)
 This is a derivative constant. The dimension is time and the unit is s.
 0 will result in no derivative term.
 Larger value will make tracking faster when the subject starts to move.
 
+The properties will be saved to and recalled from presets.
+
 ### LPF for Td (X, Y, Z)
 This is an inverse of the cut-off frequency for the low-pass filter (LPF), which affects the derivative term of the PID control element. The dimension is time and the unit is s.
 The LPF will reduce noise of face detection and small movement of the subject.
 This property is shared for X and Y axises.
+
+The properties will be saved to and recalled from presets.
 
 ### Dead band nonlinear band (X, Y, Z)
 These parameters make dead bands and nonlinear bands for the error signal that goes to PID control element.
@@ -106,8 +120,12 @@ The unit is a percentage of the average of source width and height.
 If the error signal is within the dead band, error signal is forced to zero to avoid small move to be tracked.
 The nonlinear band makes smooth connection from the dead band to the linear range.
 
+The properties will be saved to and recalled from presets.
+
 ### Attenuation time for lost face
 After the face is lost, integral term will be attenuated by this time. The dimension is time and the unit is s.
+
+The property will be saved to and recalled from presets.
 
 ## Face lost behavior
 

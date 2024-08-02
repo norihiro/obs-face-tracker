@@ -33,6 +33,8 @@ These properties upsize (or downsize) the recognized face by multiple of the wid
 
 The motivation is that the face recognition returns a rectangle that is smaller than the actual face.
 
+The properties will be saved to and recalled from presets.
+
 ### Scale image
 The frame will be scaled before sending into face detection and tracking algorithm.
 Default is `2`.
@@ -78,12 +80,18 @@ This property set the target zoom amount in multiple of the screen size.
 If set to `1.0`, face size and screen size is same.
 Smaller value results smaller face, i.e. less zoom.
 
+The property will be saved to and recalled from presets.
+
 ### X, Y
 This property set the location where the center of the face is placed.
 `0` indicates the center, `+/-0.5` will result the center of the face is located at the edge.
 
+The properties will be saved to and recalled from presets.
+
 ### Scale max
 This property set the maximum of the zoom.
+
+The property will be saved to and recalled from presets.
 
 ## Tracking response
 
@@ -93,18 +101,26 @@ The tracking system has a PID control element + integrator.
 This is a proportional constant. The dimension is inverse time and the unit is s<sup>-1</sup>.
 Larger value will result faster response.
 
+The property will be saved to and recalled from presets.
+
 ### Ki
 This is a integral constant. The dimension is inverse time and the unit is s<sup>-1</sup>.
 Larger value results more tracking of slow move.
+
+The property will be saved to and recalled from presets.
 
 ### Td
 This is a derivative constant. The dimension is time and the unit is s.
 0 will result no derivative term.
 Larger value will make faster tracking when the subject start to move.
 
+The property will be saved to and recalled from presets.
+
 ### LPF for Td
 This is an inverse of the cut-off frequency for the low-pass filter (LPF), which affects the derivative term of PID control element. The dimension is time and the unit is s.
 The LPF will reduce noise of face detection and small move of the subject.
+
+The property will be saved to and recalled from presets.
 
 ### Attenuation (Z)
 This is another proportional constant that affects only the zoom factor.
@@ -115,6 +131,8 @@ These parameters make dead bands and nonlinear bands for the error signal that g
 The unit is a percentage of the average of source width and height.
 If the error signal is within the dead band, error signal is forced to zero to avoid small move to be tracked.
 The nonlinear band makes smooth connection from the dead band to the linear range.
+
+The properties will be saved to and recalled from presets.
 
 ## Source and output
 
