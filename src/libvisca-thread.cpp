@@ -25,6 +25,7 @@ libvisca_thread::libvisca_thread()
 	zoom_got = 0;
 	pthread_mutex_init(&mutex, 0);
 
+	add_ref(); // release inside thread_main
 	pthread_t thread;
 	pthread_create(&thread, NULL, libvisca_thread::thread_main, (void*)this);
 	pthread_detach(thread);
@@ -79,9 +80,13 @@ void libvisca_thread::thread_connect()
 void *libvisca_thread::thread_main(void *data)
 {
 	auto *visca = (libvisca_thread*)data;
-	visca->add_ref();
+
+	// add_ref() was called just before creating this thread.
+
 	visca->thread_loop();
+
 	visca->release();
+
 	return NULL;
 }
 
