@@ -4,6 +4,7 @@
 #include <obs.hpp>
 #include <util/util.hpp>
 #include <util/platform.h>
+#include <curl/curl.h>
 #include "plugin-macros.generated.h"
 #include "ptz-http-backend.hpp"
 
@@ -185,7 +186,26 @@ void *ptz_http_backend::thread_main(void *data)
 static void call_url(const char *method, const char *url, const char *payload)
 {
 	blog(LOG_INFO, "call_url(method='%s', url='%s', payload='%s')", method, url, payload);
-	// TODO: Implement
+
+	CURL *const c = curl_easy_init();
+	if (!c)
+		return;
+
+	curl_easy_setopt(c, CURLOPT_URL, url);
+
+	// TODO: Implement method, payload, etc.
+
+	char error[CURL_ERROR_SIZE];
+	curl_easy_setopt(c, CURLOPT_ERRORBUFFER, error);
+
+	CURLcode code = curl_easy_perform(c);
+	if (code != CURLE_OK) {
+		blog(LOG_WARNING, "Failed method='%s' url='%s' %s",
+				method, url,
+				strlen(error) ? error : curl_easy_strerror(code));
+	}
+
+	curl_easy_cleanup(c);
 }
 
 static bool send_ptz(obs_data_t *user_data, obs_data_t *camera_settings)

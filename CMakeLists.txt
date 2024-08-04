@@ -36,6 +36,7 @@ find_package(libobs REQUIRED)
 find_package(obs-frontend-api REQUIRED)
 include(cmake/ObsPluginHelpers.cmake)
 find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui)
+find_package(CURL REQUIRED)
 
 if (WITH_DLIB_SUBMODULE)
 	set(CMAKE_POSITION_INDEPENDENT_CODE True)
@@ -123,6 +124,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	OBS::libobs
 	OBS::obs-frontend-api
 	dlib
+	CURL::libcurl
 	${plugin_additional_libs}
 )
 
@@ -137,6 +139,7 @@ if(OS_WINDOWS)
 		add_definitions("-D_USE_MATH_DEFINES")
 		add_definitions("-D_CRT_SECURE_NO_WARNINGS") # to avoid a warning for `fopen`
 		add_definitions("-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR") # TODO: Remove once requiring OBS 30.2 or later.
+		target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
 	endif()
 
 	target_link_libraries(${CMAKE_PROJECT_NAME} OBS::w32-pthreads)
