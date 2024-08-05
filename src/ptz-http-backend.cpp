@@ -125,9 +125,6 @@ bool control_change_s::update(float u, obs_data_t *control_function, const char 
 			is_int = true;
 			u_int = u_int_next;
 
-			blog(LOG_INFO, "control_change_s::update: k1=%f k0=%f u=%f max=%d u_int=%d",
-					k1, k0, u, max, u_int_next);
-
 			return true;
 		}
 		return false;
@@ -183,9 +180,32 @@ void *ptz_http_backend::thread_main(void *data)
 	return NULL;
 }
 
-static void call_url(const char *method, const char *url, const char *payload)
+struct read_cb_data
 {
-	blog(LOG_INFO, "call_url(method='%s', url='%s', payload='%s')", method, url, payload);
+	const char *data;
+	size_t size;
+};
+
+static size_t read_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	auto *ctx = static_cast<struct read_cb_data*>(userdata);
+	size_t ret = std::min(nmemb, ctx->size / size);
+
+	memcpy(ptr, ctx->data, ret * size);
+	ctx->data += ret * size;
+	ctx->size -= ret * size;
+
+	return ret;
+}
+
+static void call_url(obs_data_t *data, const char *method, const char *url, const char *payload)
+{
+	blog(LOG_DEBUG, "call_url(method='%s', url='%s', payload='%s')", method, url, payload);
+
+	struct read_cb_data read_cb_data = {
+		.data = payload,
+		.size = strlen(payload),
+	};
 
 	CURL *const c = curl_easy_init();
 	if (!c)
@@ -193,7 +213,23 @@ static void call_url(const char *method, const char *url, const char *payload)
 
 	curl_easy_setopt(c, CURLOPT_URL, url);
 
-	// TODO: Implement method, payload, etc.
+	const char *user = obs_data_get_string(data, "user");
+	const char *passwd = obs_data_get_string(data, "passwd");
+	if (user && passwd && *user && *passwd) {
+		curl_easy_setopt(c, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+		std::string up = user;
+		up += ":";
+		up += passwd;
+		curl_easy_setopt(c, CURLOPT_USERPWD, up.c_str());
+	}
+
+	if (strcmp(method, "PUT") == 0) {
+		curl_easy_setopt(c, CURLOPT_UPLOAD, 1L);
+		curl_easy_setopt(c, CURLOPT_INFILESIZE_LARGE, (curl_off_t)read_cb_data.size);
+
+		curl_easy_setopt(c, CURLOPT_READFUNCTION, read_cb);
+		curl_easy_setopt(c, CURLOPT_READDATA, &read_cb_data);
+	}
 
 	char error[CURL_ERROR_SIZE];
 	curl_easy_setopt(c, CURLOPT_ERRORBUFFER, error);
@@ -219,10 +255,7 @@ static bool send_ptz(obs_data_t *user_data, obs_data_t *camera_settings)
 	std::string url = replace_placeholder(url_t, user_data);
 	std::string payload = replace_placeholder(payload_t, user_data);
 
-	blog(LOG_INFO, "send_ptz: url_t='%s' url='%s' payload_t='%s' payload='%s'",
-			url_t, url.c_str(), payload_t, payload.c_str());
-
-	call_url(method, url.c_str(), payload.c_str());
+	call_url(user_data, method, url.c_str(), payload.c_str());
 
 	return true;
 }
@@ -248,24 +281,10 @@ void ptz_http_backend::thread_loop()
 
 	while (get_ref() > 1) {
 		if (data->data_changed.exchange(false)) {
-			blog(LOG_INFO, "%s: data_changed was true", __func__);
-
 			{
 				std::lock_guard<std::mutex> lock(data->mutex);
 				/* Assuming `data->user_data` won't be touched by the other thread. */
 				user_data = data->user_data.Get();
-				blog(LOG_INFO, "got user_data=%p", user_data.Get());
-			}
-
-			for (obs_data_item_t *item = obs_data_first(user_data); item; obs_data_item_next(&item)) {
-				const char *name = obs_data_item_get_name(item);
-				switch (obs_data_item_gettype(item)) {
-					case OBS_DATA_STRING:
-						blog(LOG_INFO, "ptz_http_backend::thread_loop: name='%s' value='%s'", name, obs_data_item_get_string(item));
-						break;
-					default:
-						blog(LOG_INFO, "ptz_http_backend::thread_loop: name='%s'", name);
-				}
 			}
 
 			const char *ptz_http_id_new = obs_data_get_string(user_data, "id");
@@ -281,14 +300,10 @@ void ptz_http_backend::thread_loop()
 
 				camera_settings = obs_data_get_obj(camera, "settings");
 				control_function = obs_data_get_obj(camera, "control-function");
-
-				blog(LOG_INFO, "loaded camera model '%s' %p %p", ptz_http_id_new, camera_settings.Get(), control_function.Get());
 			}
 		}
 
 		if (!user_data || !ptz_http_id || !camera_settings || !control_function) {
-			blog(LOG_INFO, "%s: user_data=%p ptz_http_id=%p camera_settings=%p control_function=%p",
-					__func__, user_data.Get(), ptz_http_id.Get(), camera_settings.Get(), control_function.Get());
 			os_sleep_ms(500);
 			continue;
 		}
@@ -313,18 +328,6 @@ void ptz_http_backend::thread_loop()
 
 void ptz_http_backend::set_config(struct obs_data *user_data)
 {
-	blog(LOG_INFO, "%s: got user_data=%p", __func__, user_data);
-	for (obs_data_item_t *item = obs_data_first(user_data); item; obs_data_item_next(&item)) {
-		const char *name = obs_data_item_get_name(item);
-		switch (obs_data_item_gettype(item)) {
-		case OBS_DATA_STRING:
-			blog(LOG_INFO, "ptz_http_backend::set_config: name='%s' value='%s'", name, obs_data_item_get_string(item));
-			break;
-		default:
-			blog(LOG_INFO, "ptz_http_backend::set_config: name='%s'", name);
-		}
-	}
-
 	std::lock_guard<std::mutex> lock(data->mutex);
 	data->user_data = user_data;
 	data->data_changed = true;
@@ -337,7 +340,7 @@ void ptz_http_backend::set_pantiltzoom_speed(float pan, float tilt, float zoom)
 	data->z_next = zoom;
 }
 
-static void remove_id_specific_props(obs_properties_t *group)
+static bool remove_id_specific_props(obs_properties_t *group)
 {
 	std::vector<const char *> names;
 
@@ -347,24 +350,34 @@ static void remove_id_specific_props(obs_properties_t *group)
 			continue;
 		if (strcmp(name, "ptz.http.id") == 0)
 			continue;
+		if (strcmp(name, "ptz.http.host") == 0)
+			continue;
+		if (strcmp(name, "ptz.http.user") == 0)
+			continue;
+		if (strcmp(name, "ptz.http.passwd") == 0)
+			continue;
 		names.push_back(name);
 	}
 
 	for (const char *name : names) {
 		obs_properties_remove_by_name(group, name);
 	}
+
+	return names.size() > 0;
 }
 
-static void add_id_specific_props(obs_properties_t *group, const char *ptz_http_id)
+static bool add_id_specific_props(obs_properties_t *group, const char *ptz_http_id)
 {
 	if (!ptz_http_id)
-		return;
+		return false;
 
 	OBSDataAutoRelease camera = get_camera_model(ptz_http_id);
 	if (!camera) {
 		blog(LOG_ERROR, "Cannot find camera model '%s'", ptz_http_id);
-		return;
+		return false;
 	}
+
+	bool modified = false;
 
 	OBSDataAutoRelease properties = obs_data_get_obj(camera, "properties");
 	for (obs_data_item_t *item = obs_data_first(properties); item; obs_data_item_next(&item)) {
@@ -393,21 +406,26 @@ static void add_id_specific_props(obs_properties_t *group, const char *ptz_http_
 			continue;
 		}
 
+		modified = true;
+
 		if (long_description)
 			obs_property_set_long_description(prop, long_description);
 	}
+
+	return modified;
 }
 
 static bool id_modified(obs_properties_t *props, obs_property_t *, obs_data_t *settings)
 {
+	bool modified = false;
 	obs_property_t *group_prop = obs_properties_get(props, "output");
 	obs_properties_t *group = obs_property_group_content(group_prop);
 
-	remove_id_specific_props(group);
+	modified |= remove_id_specific_props(group);
 
-	add_id_specific_props(group, obs_data_get_string(settings, "ptz.http.id"));
+	modified |= add_id_specific_props(group, obs_data_get_string(settings, "ptz.http.id"));
 
-	return true;
+	return modified;
 }
 
 static void init_ptz_http_id(obs_properties_t *group_output, obs_property_t *prop, obs_data_t *settings)
@@ -437,8 +455,13 @@ bool ptz_http_backend::ptz_type_modified(obs_properties_t *group_output, obs_dat
 			OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	init_ptz_http_id(group_output, prop, settings);
 
-	obs_properties_add_text(group_output, "ptz.http.host", obs_module_text("Host"), OBS_TEXT_DEFAULT);
-	// TODO: Also consider to add basic authentication, if necessary.
+	prop = obs_properties_add_text(group_output, "ptz.http.host", obs_module_text("Prop.ptz.http.host"), OBS_TEXT_DEFAULT);
+	obs_property_set_long_description(prop, obs_module_text("Prop.ptz.http.host.desc"));
+
+	prop = obs_properties_add_text(group_output, "ptz.http.user", obs_module_text("Prop.ptz.http.user"), OBS_TEXT_DEFAULT);
+	obs_property_set_long_description(prop, obs_module_text("Prop.ptz.http.user.desc"));
+
+	obs_properties_add_text(group_output, "ptz.http.passwd", obs_module_text("Prop.ptz.http.passwd"), OBS_TEXT_PASSWORD);
 
 	return true;
 }
