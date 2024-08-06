@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         obs: [28]
-        ubuntu: ['ubuntu-20.04', 'ubuntu-22.04']
+        ubuntu: ['ubuntu-22.04']
     defaults:
       run:
         shell: bash
@@ -49,7 +49,7 @@ jobs:
 
       - name: Download obs-studio development environment
         id: obsdeps
-        uses: norihiro/obs-studio-devel-action@v1-beta
+        uses: norihiro/obs-studio-devel-action@v2
         with:
           obs: ${{ matrix.obs }}
           verbose: true
@@ -66,24 +66,12 @@ jobs:
             libopenblas-dev libopenblas0 \
             || true
           export OPENBLAS_HOME=/lib/x86_64-linux-gnu/
-          OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
-          mkdir build
-          cd build
-          case ${{ matrix.obs }} in
-            28)
-              cmake_opt=(
-                -D CPACK_DEBIAN_PACKAGE_DEPENDS='obs-studio (>= 28)'
-              )
-              ;;
-          esac
-          cmake .. \
-            -D QT_VERSION=$OBS_QT_VERSION_MAJOR \
-            -D CMAKE_INSTALL_PREFIX=/usr \
+          cmake -S . -B build \
             -D CMAKE_BUILD_TYPE=RelWithDebInfo \
-            -D LINUX_PORTABLE=OFF \
             -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON \
             -D PKG_SUFFIX=-obs${{ matrix.obs }}-${{ matrix.ubuntu }}-x86_64 \
-            "${cmake_opt[@]}"
+            ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS }}
+          cd build
           make -j4
           make package
           echo "FILE_NAME=$(find $PWD -name '*.deb' | head -n 1)" >> $GITHUB_ENV
@@ -96,11 +84,8 @@ jobs:
         run: |
           . build/ci/ci_includes.generated.sh
           set -ex
-          sudo apt install '${{ env.FILE_NAME }}'
-          case ${{ matrix.obs }} in
-            28) plugins_dir=/usr/lib/x86_64-linux-gnu/obs-plugins ;;
-          esac
-          ldd $plugins_dir/${PLUGIN_NAME}.so > ldd.out
+          sudo apt install -y '${{ env.FILE_NAME }}'
+          ldd /usr/lib/x86_64-linux-gnu/obs-plugins/${PLUGIN_NAME}.so > ldd.out
           if grep not.found ldd.out ; then
             echo "Error: unresolved shared object." >&2
             exit 1
@@ -175,7 +160,7 @@ jobs:
 
       - name: Download obs-studio development environment
         id: obsdeps
-        uses: norihiro/obs-studio-devel-action@v1-beta
+        uses: norihiro/obs-studio-devel-action@v2
         with:
           path: /tmp/deps-${{ matrix.obs }}-${{ matrix.arch }}
           arch: ${{ matrix.arch }}
@@ -211,28 +196,17 @@ jobs:
           arch=${{ matrix.arch }}
           deps=/tmp/deps-${{ matrix.obs }}-${{ matrix.arch }}
           MACOSX_DEPLOYMENT_TARGET=${{ steps.obsdeps.outputs.MACOSX_DEPLOYMENT_TARGET }}
-          OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
           GIT_TAG=$(git describe --tags --always)
           PKG_SUFFIX=-${GIT_TAG}-obs${{ matrix.obs }}-macos-${{ matrix.arch }}
           export OPENBLAS_HOME=${{ env.OPENBLAS_HOME }}
           set -e
-          case "${{ matrix.obs }}" in
-            28)
-              cmake_opt=(
-                -D MACOSX_PLUGIN_BUNDLE_TYPE=BNDL
-                -D OBS_BUNDLE_CODESIGN_IDENTITY='${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}'
-              )
-              ;;
-          esac
           cmake -S . -B build -G Ninja \
-            -D QT_VERSION=$OBS_QT_VERSION_MAJOR \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_PREFIX_PATH="$PWD/release/" \
             -DCMAKE_OSX_ARCHITECTURES=$arch \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
-            -DCMAKE_FRAMEWORK_PATH="$deps/Frameworks;$deps/lib/cmake;$deps" \
+            -D OBS_BUNDLE_CODESIGN_IDENTITY='${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}' \
             -D PKG_SUFFIX=$PKG_SUFFIX \
-            "${cmake_opt[@]}"
+            ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS }}
           cmake --build build --config RelWithDebInfo
 
       - name: Prepare package
@@ -240,26 +214,18 @@ jobs:
           set -ex
           . build/ci/ci_includes.generated.sh
           cmake --install build --config RelWithDebInfo --prefix=release
-          case ${{ matrix.obs }} in
-            28)
-              (cd release/${PLUGIN_NAME}.plugin/Contents && ../../../ci/macos/change-rpath.sh -obs 28 -lib lib/ MacOS/${PLUGIN_NAME})
-              cp LICENSE release/${PLUGIN_NAME}.plugin/Contents/Resources/LICENSE-$PLUGIN_NAME
-              ;;
-          esac
+          (cd release/${PLUGIN_NAME}.plugin/Contents && ../../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ MacOS/${PLUGIN_NAME})
+          cp LICENSE release/${PLUGIN_NAME}.plugin/Contents/Resources/LICENSE-$PLUGIN_NAME
 
       - name: Codesign
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
           . build/ci/ci_includes.generated.sh
           set -ex
-          case ${{ matrix.obs }} in
-            28)
-              files=(
-                $(find release/${PLUGIN_NAME}.plugin/ -name '*.dylib')
-                release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
-              )
-              ;;
-          esac
+          files=(
+            $(find release/${PLUGIN_NAME}.plugin/ -name '*.dylib')
+            release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
+          )
           for dylib in "${files[@]}"; do
             codesign --force --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
           done
@@ -273,9 +239,7 @@ jobs:
           set -ex
           zipfile=$PWD/package/${PLUGIN_NAME}${PKG_SUFFIX}.zip
           mkdir package
-          case ${{ matrix.obs }} in
-            28) (cd release/ && zip -r $zipfile ${PLUGIN_NAME}.plugin) ;;
-          esac
+          (cd release/ && zip -r $zipfile ${PLUGIN_NAME}.plugin)
           ci/macos/install-packagesbuild.sh
           packagesbuild \
             --build-folder $PWD/package/ \
@@ -325,7 +289,7 @@ jobs:
           submodules: recursive
       - name: Download obs-studio
         id: obsdeps
-        uses: norihiro/obs-studio-devel-action@v1-beta
+        uses: norihiro/obs-studio-devel-action@v2
         with:
           obs: ${{ matrix.obs }}
 
@@ -347,12 +311,9 @@ jobs:
         run: |
           $CmakeArgs = @(
             '-G', "${{ env.visualStudio }}"
-            '-DQT_VERSION=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}'
             '-DCMAKE_SYSTEM_VERSION=10.0.18363.657'
-            "-DCMAKE_INSTALL_PREFIX=$(Resolve-Path -Path "./obs-build-dependencies/plugin-deps-${{ matrix.arch }}")"
-            "-DCMAKE_PREFIX_PATH=$(Resolve-Path -Path "./obs-build-dependencies/plugin-deps-${{ matrix.arch }}")"
           )
-          cmake -S . -B build @CmakeArgs
+          cmake -S . -B build @CmakeArgs ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS_PS }}
           cmake --build build --config RelWithDebInfo -j 4
           cmake --install build --config RelWithDebInfo --prefix "$(Resolve-Path -Path .)/release"
       - name: Package plugin
