@@ -19,6 +19,7 @@ class libvisca_thread : public ptz_backend
 	static void *thread_main(void *);
 	void thread_connect();
 	void thread_loop();
+	float raw2zoomfactor(int);
 
 public:
 	libvisca_thread();
@@ -35,5 +36,15 @@ public:
 		preset_rsvd = preset;
 		os_atomic_set_bool(&preset_changed, true);
 	}
-	int get_zoom() override { return os_atomic_load_long(&zoom_got); }
+	float get_zoom() override { return raw2zoomfactor(os_atomic_load_long(&zoom_got)); }
+
+	inline static bool check_data(obs_data_t *data)
+	{
+		if (!obs_data_get_string(data, "address"))
+			return false;
+		if (obs_data_get_int(data, "port") <= 0)
+			return false;
+		return true;
+	}
+	static bool ptz_type_modified(obs_properties_t *group_output, obs_data_t *settings);
 };

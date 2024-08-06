@@ -120,8 +120,17 @@ void obsptz_backend::recall_preset(int preset)
 	available_ns = std::max(available_ns, ns) + (500*1000*1000);
 }
 
-int obsptz_backend::get_zoom()
+float obsptz_backend::get_zoom()
 {
 	// TODO: implement
-	return 0;
+	return 1.0f;
+}
+
+bool obsptz_backend::ptz_type_modified(obs_properties_t *pp, obs_data_t *)
+{
+	if (obs_properties_get(pp, "ptz.obsptz.device_id"))
+		return false;
+
+	obs_properties_add_int(pp, "ptz.obsptz.device_id", obs_module_text("Device ID"), 0, 99, 1);
+	return true;
 }

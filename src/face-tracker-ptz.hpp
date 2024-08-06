@@ -33,7 +33,8 @@ struct face_tracker_ptz
 	f3 filter_lpf;
 	float f_att_int;
 	int u[3];
-	int ptz_query[3];
+	float u_linear[3];
+	float ptz_query[3];
 	uint64_t face_found_last_ns;
 	int face_lost_preset_sent;
 

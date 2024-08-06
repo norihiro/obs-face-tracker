@@ -22,5 +22,7 @@ public:
 	void set_pantilt_speed(int pan, int tilt) override;
 	void set_zoom_speed(int zoom) override;
 	void recall_preset(int preset) override;
-	int get_zoom() override;
+	float get_zoom() override;
+
+	static bool ptz_type_modified(obs_properties_t *group_output, obs_data_t *settings);
 };

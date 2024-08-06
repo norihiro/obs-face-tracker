@@ -78,88 +78,109 @@ static const char *ftptz_get_name(void *unused)
 	return obs_module_text("Face Tracker PTZ");
 }
 
-static void copy_string(obs_data_t *data, const char *dst, obs_data_t *settings, const char *src)
+struct ptz_backend_type_s
 {
-	obs_data_set_string(data, dst, obs_data_get_string(settings, src));
-}
-
-static void copy_int(obs_data_t *data, const char *dst, obs_data_t *settings, const char *src)
-{
-	obs_data_set_int(data, dst, obs_data_get_int(settings, src));
-}
-
-struct ptz_copy_setting_item_s
-{
-	const char *dst;
-	const char *src;
-	void (*copy)(obs_data_t *, const char *, obs_data_t *, const char *);
+	const char *backend_name;
+	class ptz_backend *(*make_device)(obs_data_t *data);
+	bool (*ptz_type_modified)(obs_properties_t *group_output, obs_data_t *settings);
 };
 
-static void ptz_copy_settings(obs_data_t *data, obs_data_t *settings, const struct ptz_copy_setting_item_s *list)
+template <class backend_class>
+static class ptz_backend *make_device_template(obs_data_t *data)
 {
-	for (int i=0; list[i].dst; i++)
-		list[i].copy(data, list[i].dst, settings, list[i].src);
+	if (!backend_class::check_data(data))
+		return nullptr;
+	auto dev = new backend_class();
+	dev->set_config(data);
+	return dev;
+}
+
+static const struct ptz_backend_type_s backends[] =
+{
+#define BACKEND(name, cls) \
+	{ \
+		.backend_name = name, \
+		.make_device = make_device_template<cls>, \
+		.ptz_type_modified = cls::ptz_type_modified, \
+	}
+	BACKEND("obsptz", obsptz_backend),
+#ifdef WITH_PTZ_TCP
+	BACKEND("visca-over-tcp", libvisca_thread),
+#endif // WITH_PTZ_TCP
+	BACKEND("dummy", dummy_backend),
+	{NULL, NULL, NULL}
+#undef BACKEND
+};
+
+static const struct ptz_backend_type_s *get_backend(const char *ptz_type)
+{
+	if (!ptz_type)
+		return nullptr;
+
+	for (int i = 0; backends[i].backend_name; i++) {
+		if (strcmp(ptz_type, backends[i].backend_name) == 0)
+			return backends + i;
+	}
+
+	return nullptr;
+}
+
+static void copy_data_item(obs_data_t *data, const char *dst_name, obs_data_item_t *src_item)
+{
+	switch (obs_data_item_gettype(src_item)) {
+	case OBS_DATA_STRING:
+		obs_data_set_string(data, dst_name, obs_data_item_get_string(src_item));
+		break;
+	case OBS_DATA_NUMBER:
+		switch (obs_data_item_numtype(src_item)) {
+		case OBS_DATA_NUM_INT:
+			obs_data_set_int(data, dst_name, obs_data_item_get_int(src_item));
+			break;
+		case OBS_DATA_NUM_DOUBLE:
+			obs_data_set_double(data, dst_name, obs_data_item_get_double(src_item));
+			break;
+		case OBS_DATA_NUM_INVALID:
+			break;
+		}
+	       break;
+	case OBS_DATA_BOOLEAN:
+		obs_data_set_bool(data, dst_name, obs_data_item_get_bool(src_item));
+		break;
+	default:
+		blog(LOG_ERROR, "Cannot copy PTZ settings '%s' to '%s'", obs_data_item_get_name(src_item), dst_name);
+	}
 }
 
 static obs_data_t *get_ptz_settings(obs_data_t *settings)
 {
 	obs_data_t *data = obs_data_create();
 
-	const struct ptz_copy_setting_item_s list_generic[] = {
-		{"type", "ptz-type", copy_string},
-		{NULL, NULL, NULL}
-	};
+	std::string prefix = "ptz.";
+	prefix += obs_data_get_string(settings, "ptz-type");
+	prefix += ".";
 
-	const struct ptz_copy_setting_item_s list_obsptz[] = {
-		{"device_id", "ptz-obsptz-device_id", copy_int},
-		{NULL, NULL, NULL}
-	};
-
-	const struct ptz_copy_setting_item_s list_viscaip[] = {
-		{"address", "ptz-viscaip-address", copy_string},
-		{"port", "ptz-viscaip-port", copy_int},
-		{NULL, NULL, NULL}
-	};
-
-	ptz_copy_settings(data, settings, list_generic);
-
-	const char *type = obs_data_get_string(data, "type");
-	if (!strcmp(type, "visca-over-tcp"))
-		ptz_copy_settings(data, settings, list_viscaip);
-	else if (!strcmp(type, "obsptz"))
-		ptz_copy_settings(data, settings, list_obsptz);
+	for (obs_data_item_t *item = obs_data_first(settings); item; obs_data_item_next(&item)) {
+		const char *name = obs_data_item_get_name(item);
+		if (strncmp(name, prefix.c_str(), prefix.size()) != 0)
+			continue;
+		copy_data_item(data, name + prefix.size(), item);
+	}
 
 	return data;
 }
 
-static void make_deice_obsptz(struct face_tracker_ptz *s, obs_data_t *data)
+static void make_device(struct face_tracker_ptz *s, const char *ptz_type, obs_data_t *data)
 {
 	s->ftm->release_dev();
 
-	s->ftm->dev = new obsptz_backend();
-	s->ftm->dev->set_config(data);
-}
+	bfree(s->ptz_type);
+	s->ptz_type = bstrdup(ptz_type);
 
-#ifdef WITH_PTZ_TCP
-static void make_device_libvisca_tcp(struct face_tracker_ptz *s, obs_data_t *data)
-{
-	s->ftm->release_dev();
-
-	if (!obs_data_get_string(data, "address"))
+	auto *b = get_backend(ptz_type);
+	if (!b)
 		return;
-	if (obs_data_get_int(data, "port") <= 0)
-		return;
-	s->ftm->dev = new libvisca_thread();
-	s->ftm->dev->set_config(data);
-}
-#endif // WITH_PTZ_TCP
 
-static void make_device_dummy(struct face_tracker_ptz *s, obs_data_t *data)
-{
-	s->ftm->release_dev();
-
-	s->ftm->dev = new dummy_backend();
-	UNUSED_PARAMETER(data);
+	s->ftm->dev = b->make_device(data);
 }
 
 static void ftptz_update(void *data, obs_data_t *settings)
@@ -211,27 +232,35 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	s->ptz_max_y = obs_data_get_int(settings, "ptz_max_y");
 	s->ptz_max_z = obs_data_get_int(settings, "ptz_max_z");
 
+	static const struct {
+		const char *old_name;
+		const char *new_name;
+	} renames[] = {
+		{ "ptz-obsptz-device_id", "ptz.obsptz.device_id" },
+		{ "ptz-viscaip-address", "ptz.visca-over-tcp.address" },
+		{ "ptz-viscaip-port", "ptz.visca-over-tcp.port" },
+		{ nullptr, nullptr }
+	};
+	for (int i = 0; renames[i].old_name; i++) {
+		if (obs_data_has_user_value(settings, renames[i].new_name))
+			continue;
+		obs_data_item_t *src_item = obs_data_item_byname(settings, renames[i].old_name);
+		if (!src_item)
+			continue;
+
+		if (obs_data_item_has_user_value(src_item))
+			copy_data_item(settings, renames[i].new_name, src_item);
+
+		obs_data_item_remove(&src_item);
+		obs_data_item_release(&src_item);
+	}
+
 	const char *ptz_type = obs_data_get_string(settings, "ptz-type");
 	if (!s->ptz_type || strcmp(ptz_type, s->ptz_type)) {
 		obs_data_t *data = get_ptz_settings(settings);
 
-		if (!strcmp(ptz_type, "obsptz")) {
-			make_deice_obsptz(s, data);
-		}
-#ifdef WITH_PTZ_TCP
-		else if (!strcmp(ptz_type, "visca-over-tcp")) {
-			make_device_libvisca_tcp(s, data);
-		}
-#endif // WITH_PTZ_TCP
-		else if (!strcmp(ptz_type, "dummy")) {
-			make_device_dummy(s, data);
-		}
-		else if (s->ftm->dev) {
-			s->ftm->dev->release();
-			s->ftm->dev = NULL;
-		}
-		bfree(s->ptz_type);
-		s->ptz_type = bstrdup(ptz_type);
+		make_device(s, ptz_type, data);
+
 		obs_data_release(data);
 	}
 	else {
@@ -313,35 +342,29 @@ static bool ftptz_reset_tracking(obs_properties_t *, obs_property_t *, void *dat
 	return true;
 }
 
-static void set_properties_visible(obs_properties_t *props, const char **names, bool visible)
-{
-	for (; *names; names++) {
-		obs_property_t *prop = obs_properties_get(props, *names);
-		if (prop) obs_property_set_visible(prop, visible);
-	}
-}
-
 static bool ptz_type_modified(obs_properties_t *props, obs_property_t *, obs_data_t *settings)
 {
 	const char *ptz_type = obs_data_get_string(settings, "ptz-type");
+	std::string prefix = "ptz.";
+	prefix += ptz_type;
+	prefix += ".";
 
-	const char *props_obsptz[] = {
-		"ptz-obsptz-device_id",
-		NULL
-	};
-	set_properties_visible(props, props_obsptz, !strcmp(ptz_type, "obsptz"));
+	obs_properties_t *group = obs_property_group_content(obs_properties_get(props, "output"));
 
-	const char *props_viscaip[] = {
-		"ptz-viscaip-address",
-		"ptz-viscaip-port",
-		NULL
-	};
-	bool en = false;
-#ifdef WITH_PTZ_TCP
-	if (!strcmp(ptz_type, "visca-over-tcp"))
-		en = true;
-#endif // WITH_PTZ_TCP
-	set_properties_visible(props, props_viscaip, en);
+	for (obs_property_t *prop = obs_properties_first(group); prop; obs_property_next(&prop)) {
+		const char *name = obs_property_name(prop);
+		if (!name || strncmp(name, "ptz.", 4) != 0)
+			continue;
+		bool sel = strncmp(name, prefix.c_str(), prefix.size()) == 0;
+		obs_property_set_visible(prop, sel);
+	}
+
+	auto *b = get_backend(ptz_type);
+	if (b && b->ptz_type_modified) {
+		obs_properties_t *group = obs_property_group_content(obs_properties_get(props, "output"));
+
+		b->ptz_type_modified(group, settings);
+	}
 
 	return true;
 }
@@ -431,9 +454,7 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_property_list_add_string(p, obs_module_text("VISCA over TCP"), "visca-over-tcp");
 #endif // WITH_PTZ_TCP
 		obs_property_set_modified_callback(p, ptz_type_modified);
-		obs_properties_add_int(pp, "ptz-obsptz-device_id", obs_module_text("Device ID"), 0, 99, 1);
-		obs_properties_add_text(pp, "ptz-viscaip-address", obs_module_text("IP address"), OBS_TEXT_DEFAULT);
-		obs_properties_add_int(pp, "ptz-viscaip-port", obs_module_text("Port"), 1, 65535, 1);
+
 		obs_properties_add_int_slider(pp, "ptz_max_x", "Max control (pan)",  0, PTZ_MAX_X, 1);
 		obs_properties_add_int_slider(pp, "ptz_max_y", "Max control (tilt)", 0, PTZ_MAX_Y, 1);
 		obs_properties_add_int_slider(pp, "ptz_max_z", "Max control (zoom)", 0, PTZ_MAX_Z, 1);
@@ -492,16 +513,10 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_release(presets);
 
 	obs_data_set_default_string(settings, "ptz-type", "obsptz");
-	obs_data_set_default_int(settings, "ptz-viscaip-port", 1259);
+	obs_data_set_default_int(settings, "ptz.visca-over-tcp.port", 1259);
 	obs_data_set_default_int(settings, "ptz_max_x", PTZ_MAX_X);
 	obs_data_set_default_int(settings, "ptz_max_y", PTZ_MAX_Y);
 	obs_data_set_default_int(settings, "ptz_max_z", PTZ_MAX_Z);
-}
-
-static inline float raw2zoomfactor(int zoom)
-{
-	// TODO: configurable
-	return expf((float)zoom * (logf(20.0f) / 16384.f));
 }
 
 static inline int pan_flt2raw(float x)
@@ -679,7 +694,7 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 	}
 	s->face_found_last = s->face_found;
 	const int u_max[3] = {s->ptz_max_x, s->ptz_max_y, s->ptz_max_z};
-	const float kp_zoom = raw2zoomfactor(s->ptz_query[2]);
+	const float kp_zoom = std::max(s->ptz_query[2], 1.0f);
 	const float kp[3] = {
 		s->kp_x / srwh / kp_zoom,
 		s->kp_y / srwh / kp_zoom,
@@ -687,6 +702,7 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 	};
 	for (int i=0; i<3; i++) {
 		float x = uf.v[i] * kp[i];
+		s->u_linear[i] = x;
 		int n = s->u[i];
 		switch(i) {
 			case 0:  n = pan_flt2raw(x); break;
@@ -761,10 +777,16 @@ static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 
 	if (s->face_lost_zoomout_timeout_ms > 0 && s->face_found_last_ns &&
 	    s->face_found_last_ns + s->face_lost_zoomout_timeout_ms * 1000000ULL < obs_get_video_frame_time()) {
-		s->u[2] = 1.0f;
+		s->u[2] = 1;
+		s->u_linear[2] = 1.0f;
 	}
 
-	for (int i=0; i<2 && s->ftm->dev && s->ftm->can_send_ptz_cmd(); i++) {
+	if (!s->ftm->dev)
+		return;
+
+	s->ftm->dev->set_pantiltzoom_speed(s->u_linear[0], s->u_linear[1], s->u_linear[2]);
+
+	for (int i=0; i<2 && s->ftm->can_send_ptz_cmd(); i++) {
 		if (s->ftm->ptz_last_cmd != ptz_cmd_state_pantilt) {
 			s->ftm->dev->set_pantilt_speed(s->u[0], s->u[1]);
 			s->ftm->ptz_last_cmd = ptz_cmd_state_pantilt;

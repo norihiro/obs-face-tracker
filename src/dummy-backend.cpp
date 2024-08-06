@@ -42,7 +42,7 @@ void dummy_backend::recall_preset(int preset)
 	blog(LOG_INFO, "recall_preset: %d", preset);
 }
 
-int dummy_backend::get_zoom()
+float dummy_backend::get_zoom()
 {
-	return 0;
+	return 1.0f;
 }
