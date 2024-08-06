@@ -204,11 +204,9 @@ FTDock::FTDock(QWidget *parent)
 	mainLayout->addWidget(enableButton);
 	connect(enableButton, &QPushButton::clicked, this, &FTDock::enableButtonClicked);
 
-#ifdef HAVE_PROPERTY_BUTTON
 	propertyButton = new QPushButton(obs_module_text("Properties"), this);
 	mainLayout->addWidget(propertyButton);
 	connect(propertyButton, &QPushButton::clicked, this, &FTDock::propertyButtonClicked);
-#endif
 
 	ftWidget = new FTWidget(data, this);
 	mainLayout->addWidget(ftWidget);
@@ -473,7 +471,6 @@ void FTDock::enableButtonClicked(bool checked)
 	}
 }
 
-#ifdef HAVE_PROPERTY_BUTTON
 void FTDock::propertyButtonClicked(bool checked)
 {
 	UNUSED_PARAMETER(checked);
@@ -493,7 +490,6 @@ void FTDock::propertyButtonClicked(bool checked)
 
 	obs_source_release(target);
 }
-#endif // HAVE_PROPERTY_BUTTON
 
 void FTDock::notrackButtonChanged(int state)
 {
