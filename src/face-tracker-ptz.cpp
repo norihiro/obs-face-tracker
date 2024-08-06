@@ -900,7 +900,7 @@ static inline bool operator != (const struct video_scale_info &a, const struct v
 	return false;
 }
 
-static bool scale_set_texture(struct face_tracker_ptz *s, std::shared_ptr<texture_object> &cvtex, struct obs_source_frame *frame)
+static bool scale_set_texture(struct face_tracker_ptz *s, texture_object *cvtex, struct obs_source_frame *frame)
 {
 	const struct video_scale_info scaler_src_info = {
 		frame->format,
@@ -946,10 +946,10 @@ static bool scale_set_texture(struct face_tracker_ptz *s, std::shared_ptr<textur
 
 	if (!video_scaler_scale(s->scaler, scaled_frame.data, scaled_frame.linesize, frame->data, frame->linesize)) {
 		blog(LOG_ERROR, "video_scaler_scale failed");
-		return NULL;
+		return false;
 	}
 
-	cvtex.get()->set_texture_obsframe(&scaled_frame, 1);
+	cvtex->set_texture_obsframe(&scaled_frame, 1);
 	return true;
 }
 
@@ -961,13 +961,14 @@ static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source
 	auto *s = (struct face_tracker_ptz*)data;
 
 	std::shared_ptr<texture_object> cvtex(new texture_object());
-	cvtex.get()->scale = s->ftm->scale;
-	cvtex.get()->tick = s->ftm->tick_cnt;
+	cvtex->scale = s->ftm->scale;
+	cvtex->tick = s->ftm->tick_cnt;
 
 	if (is_rgb_format(frame->format)) {
-		cvtex.get()->set_texture_obsframe(frame, s->ftm->scale);
+		cvtex->set_texture_obsframe(frame, s->ftm->scale);
 	} else {
-		scale_set_texture(s, cvtex, frame);
+		if (!scale_set_texture(s, cvtex.get(), frame))
+			return frame;
 	}
 
 	s->known_width = frame->width;
