@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        obs: [27, 28]
+        obs: [28]
         ubuntu: ['ubuntu-20.04', 'ubuntu-22.04']
     defaults:
       run:
@@ -70,12 +70,6 @@ jobs:
           mkdir build
           cd build
           case ${{ matrix.obs }} in
-            27)
-              cmake_opt=(
-                -D CMAKE_INSTALL_LIBDIR=/usr/lib/
-                -D CPACK_DEBIAN_PACKAGE_DEPENDS='obs-studio (>= 27), obs-studio (<< 28)'
-              )
-              ;;
             28)
               cmake_opt=(
                 -D CPACK_DEBIAN_PACKAGE_DEPENDS='obs-studio (>= 28)'
@@ -104,7 +98,6 @@ jobs:
           set -ex
           sudo apt install '${{ env.FILE_NAME }}'
           case ${{ matrix.obs }} in
-            27) plugins_dir=/usr/lib/obs-plugins ;;
             28) plugins_dir=/usr/lib/x86_64-linux-gnu/obs-plugins ;;
           esac
           ldd $plugins_dir/${PLUGIN_NAME}.so > ldd.out
@@ -119,7 +112,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        obs: [27, 28]
+        obs: [28]
         arch: [x86_64, arm64]
     defaults:
       run:
@@ -224,9 +217,6 @@ jobs:
           export OPENBLAS_HOME=${{ env.OPENBLAS_HOME }}
           set -e
           case "${{ matrix.obs }}" in
-            27)
-              cmake_opt=()
-              ;;
             28)
               cmake_opt=(
                 -D MACOSX_PLUGIN_BUNDLE_TYPE=BNDL
@@ -251,10 +241,6 @@ jobs:
           . build/ci/ci_includes.generated.sh
           cmake --install build --config RelWithDebInfo --prefix=release
           case ${{ matrix.obs }} in
-            27)
-              (cd release/${PLUGIN_NAME} && ../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ bin/${PLUGIN_NAME}.so)
-              cp LICENSE release/${PLUGIN_NAME}/data/LICENSE-$PLUGIN_NAME
-              ;;
             28)
               (cd release/${PLUGIN_NAME}.plugin/Contents && ../../../ci/macos/change-rpath.sh -obs 28 -lib lib/ MacOS/${PLUGIN_NAME})
               cp LICENSE release/${PLUGIN_NAME}.plugin/Contents/Resources/LICENSE-$PLUGIN_NAME
@@ -267,12 +253,6 @@ jobs:
           . build/ci/ci_includes.generated.sh
           set -ex
           case ${{ matrix.obs }} in
-            27)
-              files=(
-                $(find release/${PLUGIN_NAME}/ -name '*.dylib')
-                release/${PLUGIN_NAME}/bin/${PLUGIN_NAME}.so
-              )
-              ;;
             28)
               files=(
                 $(find release/${PLUGIN_NAME}.plugin/ -name '*.dylib')
@@ -294,7 +274,6 @@ jobs:
           zipfile=$PWD/package/${PLUGIN_NAME}${PKG_SUFFIX}.zip
           mkdir package
           case ${{ matrix.obs }} in
-            27) (cd release/ && zip -r $zipfile ${PLUGIN_NAME}) ;;
             28) (cd release/ && zip -r $zipfile ${PLUGIN_NAME}.plugin) ;;
           esac
           ci/macos/install-packagesbuild.sh
@@ -331,7 +310,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        obs: [27, 28]
+        obs: [28]
         arch: [x64]
     env:
       visualStudio: 'Visual Studio 17 2022'
