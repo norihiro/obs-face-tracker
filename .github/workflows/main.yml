@@ -62,7 +62,9 @@ jobs:
       - name: Build plugin
         run: |
           set -ex
-          sudo apt install apt install libopenblas-dev libopenblas0 || true
+          sudo apt install -y \
+            libopenblas-dev libopenblas0 \
+            || true
           export OPENBLAS_HOME=/lib/x86_64-linux-gnu/
           OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
           mkdir build
