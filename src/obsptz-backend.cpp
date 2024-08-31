@@ -8,6 +8,9 @@
 #define debug(...) blog(LOG_INFO, __VA_ARGS__)
 
 #define SAME_CNT_TH 4
+#define PTZ_MAX_X 0x18
+#define PTZ_MAX_Y 0x14
+#define PTZ_MAX_Z 0x07
 
 obsptz_backend::obsptz_backend()
 {
@@ -20,6 +23,10 @@ obsptz_backend::~obsptz_backend()
 void obsptz_backend::set_config(struct obs_data *data)
 {
 	device_id = (int)obs_data_get_int(data, "device_id");
+
+	ptz_max_x = obs_data_get_int(data, "max_x");
+	ptz_max_y = obs_data_get_int(data, "max_y");
+	ptz_max_z = obs_data_get_int(data, "max_z");
 }
 
 bool obsptz_backend::can_send()
@@ -53,6 +60,9 @@ proc_handler_t *obsptz_backend::get_ptz_ph()
 
 void obsptz_backend::set_pantilt_speed(int pan, int tilt)
 {
+	pan = std::clamp(pan, -ptz_max_x, ptz_max_x);
+	tilt = std::clamp(tilt, -ptz_max_y, ptz_max_y);
+
 	if (pan==prev_pan && tilt==prev_tilt) {
 		if (same_pantilt_cnt > SAME_CNT_TH)
 			return;
@@ -82,6 +92,8 @@ void obsptz_backend::set_pantilt_speed(int pan, int tilt)
 
 void obsptz_backend::set_zoom_speed(int zoom)
 {
+	zoom = std::clamp(zoom, -ptz_max_z, ptz_max_z);
+
 	if (zoom==prev_zoom) {
 		if (same_zoom_cnt > SAME_CNT_TH)
 			return;
@@ -132,5 +144,10 @@ bool obsptz_backend::ptz_type_modified(obs_properties_t *pp, obs_data_t *)
 		return false;
 
 	obs_properties_add_int(pp, "ptz.obsptz.device_id", obs_module_text("Device ID"), 0, 99, 1);
+
+	obs_properties_add_int_slider(pp, "ptz.obsptz.max_x", "Max control (pan)",  0, PTZ_MAX_X, 1);
+	obs_properties_add_int_slider(pp, "ptz.obsptz.max_y", "Max control (tilt)", 0, PTZ_MAX_Y, 1);
+	obs_properties_add_int_slider(pp, "ptz.obsptz.max_z", "Max control (zoom)", 0, PTZ_MAX_Z, 1);
+
 	return true;
 }

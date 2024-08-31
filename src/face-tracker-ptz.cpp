@@ -228,10 +228,6 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	debug_data_open(&s->debug_data_error, &s->debug_data_error_last, settings, "debug_data_error");
 	debug_data_open(&s->debug_data_control, &s->debug_data_control_last, settings, "debug_data_control");
 
-	s->ptz_max_x = obs_data_get_int(settings, "ptz_max_x");
-	s->ptz_max_y = obs_data_get_int(settings, "ptz_max_y");
-	s->ptz_max_z = obs_data_get_int(settings, "ptz_max_z");
-
 	static const struct {
 		const char *old_name;
 		const char *new_name;
@@ -239,6 +235,9 @@ static void ftptz_update(void *data, obs_data_t *settings)
 		{ "ptz-obsptz-device_id", "ptz.obsptz.device_id" },
 		{ "ptz-viscaip-address", "ptz.visca-over-tcp.address" },
 		{ "ptz-viscaip-port", "ptz.visca-over-tcp.port" },
+		{ "ptz_max_x", "ptz.obsptz.max_x" },
+		{ "ptz_max_y", "ptz.obsptz.max_y" },
+		{ "ptz_max_z", "ptz.obsptz.max_z" },
 		{ nullptr, nullptr }
 	};
 	for (int i = 0; renames[i].old_name; i++) {
@@ -455,9 +454,6 @@ static obs_properties_t *ftptz_properties(void *data)
 #endif // WITH_PTZ_TCP
 		obs_property_set_modified_callback(p, ptz_type_modified);
 
-		obs_properties_add_int_slider(pp, "ptz_max_x", "Max control (pan)",  0, PTZ_MAX_X, 1);
-		obs_properties_add_int_slider(pp, "ptz_max_y", "Max control (tilt)", 0, PTZ_MAX_Y, 1);
-		obs_properties_add_int_slider(pp, "ptz_max_z", "Max control (zoom)", 0, PTZ_MAX_Z, 1);
 		obs_properties_add_bool(pp, "invert_x", obs_module_text("Invert control (Pan)"));
 		obs_properties_add_bool(pp, "invert_y", obs_module_text("Invert control (Tilt)"));
 		obs_properties_add_bool(pp, "invert_z", obs_module_text("Invert control (Zoom)"));
@@ -514,9 +510,9 @@ static void ftptz_get_defaults(obs_data_t *settings)
 
 	obs_data_set_default_string(settings, "ptz-type", "obsptz");
 	obs_data_set_default_int(settings, "ptz.visca-over-tcp.port", 1259);
-	obs_data_set_default_int(settings, "ptz_max_x", PTZ_MAX_X);
-	obs_data_set_default_int(settings, "ptz_max_y", PTZ_MAX_Y);
-	obs_data_set_default_int(settings, "ptz_max_z", PTZ_MAX_Z);
+	obs_data_set_default_int(settings, "ptz.obsptz.max_x", PTZ_MAX_X);
+	obs_data_set_default_int(settings, "ptz.obsptz.max_y", PTZ_MAX_Y);
+	obs_data_set_default_int(settings, "ptz.obsptz.max_z", PTZ_MAX_Z);
 }
 
 static inline int pan_flt2raw(float x)
@@ -693,7 +689,6 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 			uf.v[i] = (e.v[i] + s->filter_int.v[i]) * second + (s->filter_lpf.v[i] - filter_lpf_prev.v[i]) * s->klpf.v[i];
 	}
 	s->face_found_last = s->face_found;
-	const int u_max[3] = {s->ptz_max_x, s->ptz_max_y, s->ptz_max_z};
 	const float kp_zoom = std::max(s->ptz_query[2], 1.0f);
 	const float kp[3] = {
 		s->kp_x / srwh / kp_zoom,
@@ -709,8 +704,6 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 			case 1:  n = tilt_flt2raw(x); break;
 			default: n = zoom_flt2raw(x, n); break;
 		}
-		if      (n < -u_max[i]) n = -u_max[i];
-		else if (n > +u_max[i]) n = +u_max[i];
 		s->u[i] = n;
 	}
 
