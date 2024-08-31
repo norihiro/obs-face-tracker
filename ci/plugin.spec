@@ -69,6 +69,7 @@ mv %{buildroot}/%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/LICENSE-shape_predicto
 %files
 %{_libdir}/obs-plugins/@PLUGIN_NAME@.so
 %{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/locale/
+%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/ptz/
 %{_datadir}/licenses/%{name}/*
 
 %files data
