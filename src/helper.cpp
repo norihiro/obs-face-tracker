@@ -136,6 +136,62 @@ void draw_landmark(const std::vector<pointf_s> &landmark)
 	gs_render_stop(GS_LINES);
 }
 
+static void render_circle(float cx, float cy, float r)
+{
+	gs_render_start(false);
+	int n = r > 2.0f ? (int)ceilf(M_PI * 2.0f * r / sqrtf(2.0f * r - 1.0f)) : 8;
+	float d = M_PI * 4.0f / n;
+	for (int i = 0; i <= n; i++)
+		gs_vertex2f(cx + r * sinf(d * i), cy + r * cosf(d * i));
+	gs_render_stop(GS_LINESTRIP);
+}
+
+void render_reference_line::render() const
+{
+	gs_render_start(false);
+	gs_vertex2f(rcx-r, rcy);
+	gs_vertex2f(rcx+r, rcy);
+	gs_vertex2f(rcx, rcy-r);
+	gs_vertex2f(rcx, rcy+r);
+
+	if (e_deadband.v[0] > 1e-4f) {
+		float dx = e_deadband.v[0];
+		gs_vertex2f(rcx - dx, rcy - r * 0.5f);
+		gs_vertex2f(rcx - dx, rcy + r * 0.5f);
+		gs_vertex2f(rcx + dx, rcy - r * 0.5f);
+		gs_vertex2f(rcx + dx, rcy + r * 0.5f);
+	}
+
+	if (e_deadband.v[1] > 1e-4f) {
+		float dy = e_deadband.v[1];
+		gs_vertex2f(rcx - r * 0.5f, rcy - dy);
+		gs_vertex2f(rcx + r * 0.5f, rcy - dy);
+		gs_vertex2f(rcx - r * 0.5f, rcy + dy);
+		gs_vertex2f(rcx + r * 0.5f, rcy + dy);
+	}
+
+	if (e_nonlinear.v[0] > 1e-4f) {
+		float dx = (e_nonlinear.v[0] + e_deadband.v[0]);
+		gs_vertex2f(rcx - dx, rcy - r * 0.25f);
+		gs_vertex2f(rcx - dx, rcy + r * 0.25f);
+		gs_vertex2f(rcx + dx, rcy - r * 0.25f);
+		gs_vertex2f(rcx + dx, rcy + r * 0.25f);
+	}
+
+	if (e_nonlinear.v[1] > 1e-4f) {
+		float dy = (e_nonlinear.v[1] + e_deadband.v[1]);
+		gs_vertex2f(rcx - r * 0.25f, rcy - dy);
+		gs_vertex2f(rcx + r * 0.25f, rcy - dy);
+		gs_vertex2f(rcx - r * 0.25f, rcy + dy);
+		gs_vertex2f(rcx + r * 0.25f, rcy + dy);
+	}
+
+	gs_render_stop(GS_LINES);
+
+	if (has_landmark)
+		render_circle(rcx, rcy, r);
+}
+
 void debug_data_open(FILE **dest, char **last_name, obs_data_t *settings, const char *name)
 {
 	const char *debug_data = obs_data_get_string(settings, name);
