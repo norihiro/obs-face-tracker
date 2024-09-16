@@ -183,19 +183,43 @@ void *ptz_http_backend::thread_main(void *data)
 struct read_cb_data
 {
 	const char *data;
+	size_t offset;
 	size_t size;
 };
 
 static size_t read_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	auto *ctx = static_cast<struct read_cb_data*>(userdata);
-	size_t ret = std::min(nmemb, ctx->size / size);
 
-	memcpy(ptr, ctx->data, ret * size);
-	ctx->data += ret * size;
-	ctx->size -= ret * size;
+	if (ctx->offset > ctx->size)
+		return 0;
+	size_t ret = std::min(nmemb, (ctx->size - ctx->offset) / size);
+
+	memcpy(ptr, ctx->data + ctx->offset, ret * size);
+	ctx->offset += ret * size;
 
 	return ret;
+}
+
+static int seek_cb(void *userdata, curl_off_t offset, int origin)
+{
+	auto *ctx = static_cast<struct read_cb_data*>(userdata);
+
+	switch (origin) {
+	case SEEK_SET:
+		ctx->offset = offset;
+		break;
+	case SEEK_CUR:
+		ctx->offset += offset;
+		break;
+	case SEEK_END:
+		ctx->offset = ctx->size + offset;
+		break;
+	default:
+		return CURL_SEEKFUNC_FAIL;
+	}
+
+	return CURL_SEEKFUNC_OK;
 }
 
 static void call_url(obs_data_t *data, const char *method, const char *url, const char *payload)
@@ -204,6 +228,7 @@ static void call_url(obs_data_t *data, const char *method, const char *url, cons
 
 	struct read_cb_data read_cb_data = {
 		.data = payload,
+		.offset = 0,
 		.size = strlen(payload),
 	};
 
@@ -229,6 +254,8 @@ static void call_url(obs_data_t *data, const char *method, const char *url, cons
 
 		curl_easy_setopt(c, CURLOPT_READFUNCTION, read_cb);
 		curl_easy_setopt(c, CURLOPT_READDATA, &read_cb_data);
+		curl_easy_setopt(c, CURLOPT_SEEKFUNCTION, seek_cb);
+		curl_easy_setopt(c, CURLOPT_SEEKDATA, &read_cb_data);
 	}
 
 	char error[CURL_ERROR_SIZE];
