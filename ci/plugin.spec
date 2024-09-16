@@ -13,6 +13,7 @@ BuildRequires: obs-studio-devel
 BuildRequires: qt6-qtbase-devel qt6-qtbase-private-devel
 BuildRequires: dlib-devel ffmpeg-free-devel sqlite-devel blas-devel lapack-devel
 BuildRequires: flexiblas-devel
+BuildRequires: libcurl-devel
 # dlib-devel requires /usr/include/ffmpeg so that install ffmpeg-free-devel
 
 %package data
@@ -68,6 +69,7 @@ mv %{buildroot}/%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/LICENSE-shape_predicto
 %files
 %{_libdir}/obs-plugins/@PLUGIN_NAME@.so
 %{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/locale/
+%{_datadir}/obs/obs-plugins/@PLUGIN_NAME@/ptz/
 %{_datadir}/licenses/%{name}/*
 
 %files data

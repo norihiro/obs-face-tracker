@@ -17,6 +17,7 @@
 #ifdef WITH_PTZ_TCP
 #include "libvisca-thread.hpp"
 #endif
+#include "ptz-http-backend.hpp"
 #include "dummy-backend.hpp"
 
 #define PTZ_MAX_X 0x18
@@ -107,6 +108,7 @@ static const struct ptz_backend_type_s backends[] =
 #ifdef WITH_PTZ_TCP
 	BACKEND("visca-over-tcp", libvisca_thread),
 #endif // WITH_PTZ_TCP
+	BACKEND("http", ptz_http_backend),
 	BACKEND("dummy", dummy_backend),
 	{NULL, NULL, NULL}
 #undef BACKEND
@@ -452,6 +454,7 @@ static obs_properties_t *ftptz_properties(void *data)
 #ifdef WITH_PTZ_TCP
 		obs_property_list_add_string(p, obs_module_text("VISCA over TCP"), "visca-over-tcp");
 #endif // WITH_PTZ_TCP
+		obs_property_list_add_string(p, obs_module_text("HTTP"), "http");
 		obs_property_set_modified_callback(p, ptz_type_modified);
 
 		obs_properties_add_bool(pp, "invert_x", obs_module_text("Invert control (Pan)"));

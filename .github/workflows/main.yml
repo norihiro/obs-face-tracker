@@ -64,6 +64,7 @@ jobs:
           set -ex
           sudo apt install -y \
             libopenblas-dev libopenblas0 \
+            libcurl4-openssl-dev \
             || true
           export OPENBLAS_HOME=/lib/x86_64-linux-gnu/
           cmake -S . -B build \

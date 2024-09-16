@@ -1,0 +1,25 @@
+{
+	"camera-models": [
+		{
+			"id": "hikvision",
+			"name": "HikVision PTZ (HTTP)",
+			"properties": {
+			},
+			"settings": {
+				"ptz-method": "PUT",
+				"ptz-url": "http://{host}/ISAPI/PTZCtrl/channels/1/continuous",
+				"ptz-payload": "<?xml version: \"1.0\" encoding=\"UTF-8\"?><PTZData><pan>{p}</pan><tilt>{t}</tilt><zoom>{z}</zoom></PTZData>"
+			},
+			"control-function": {
+				"p": { "type": "linear-int", "k1": 1.0, "k0": 0, "max": 15 },
+				"t": { "type": "linear-int", "k1": 1.0, "k0": 0, "max": 15 },
+				"z": { "type": "linear-int", "k1": 1.0, "k0": 0, "max": 3 },
+				"TODO": "\"max\" should be configurable."
+			}
+		},
+		{
+			"id": "sony-srg300se",
+			"name": "Sony SRG-300SE (HTTP)"
+		}
+	]
+}
