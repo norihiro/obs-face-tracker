@@ -947,8 +947,11 @@ static bool scale_set_texture(struct face_tracker_ptz *s, texture_object *cvtex,
 
 		s->scaler_src_info = scaler_src_info;
 		s->scaler_dst_info = scaler_dst_info;
-		bfree(s->scaler_buffer);
-		s->scaler_buffer = (uint8_t *)bmalloc(dst_linesize * scaler_dst_info.height);
+		size_t n = dst_linesize * scaler_dst_info.height;
+		if (n) {
+			bfree(s->scaler_buffer);
+			s->scaler_buffer = (uint8_t *)bmalloc(n);
+		}
 	}
 
 	struct obs_source_frame scaled_frame;
