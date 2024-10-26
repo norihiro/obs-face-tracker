@@ -1,4 +1,4 @@
-# OBS Face Tracker Plugin
+# Face Tracker Plugin for OBS Studio
 
 ## Introduction
 
