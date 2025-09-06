@@ -19,7 +19,11 @@ bool obs_module_load(void)
 {
 	blog(LOG_INFO, "registering face_tracker_filter_info (version %s)", PLUGIN_VERSION);
 
+#if LIBOBS_API_VER < MAKE_SEMANTIC_VERSION(31, 0, 0)
 	config_t *cfg = obs_frontend_get_global_config();
+#else
+	config_t *cfg = obs_frontend_get_app_config();
+#endif
 
 	config_set_default_bool(cfg, CONFIG_SECTION_NAME, "ShowFilter", true);
 	config_set_default_bool(cfg, CONFIG_SECTION_NAME, "ShowSource", true);
