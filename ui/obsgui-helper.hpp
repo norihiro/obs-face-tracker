@@ -19,23 +19,20 @@ bool QTToGSWindow(QWindow *window, gs_window &gswindow)
 #else
 #ifdef ENABLE_WAYLAND
 	switch (obs_get_nix_platform()) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-	case OBS_NIX_PLATFORM_X11_GLX:
-#pragma GCC diagnostic pop
 	case OBS_NIX_PLATFORM_X11_EGL:
 #endif // ENABLE_WAYLAND
 		gswindow.id = window->winId();
 		gswindow.display = obs_get_nix_platform_display();
 #ifdef ENABLE_WAYLAND
 		break;
-	case OBS_NIX_PLATFORM_WAYLAND:
-		QPlatformNativeInterface *native =
-			QGuiApplication::platformNativeInterface();
-		gswindow.display =
-			native->nativeResourceForWindow("surface", window);
+	case OBS_NIX_PLATFORM_WAYLAND: {
+		QPlatformNativeInterface *native = QGuiApplication::platformNativeInterface();
+		gswindow.display = native->nativeResourceForWindow("surface", window);
 		success = gswindow.display != nullptr;
 		break;
+	}
+	default:
+		return false;
 	}
 #endif // ENABLE_WAYLAND
 #endif

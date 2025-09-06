@@ -16,7 +16,7 @@
 
 void FTDock::closeEvent(QCloseEvent *event)
 {
-	QDockWidget::closeEvent(event);
+	QFrame::closeEvent(event);
 }
 
 // accessed only from UI thread
@@ -45,12 +45,12 @@ void ft_dock_add(const char *name, obs_data_t *props)
 	dock->name = name ? name : generate_unique_name();
 	dock->setObjectName(QString::fromUtf8(dock->name.c_str()) + OBJ_NAME_SUFFIX);
 	dock->setWindowTitle(dock->name.c_str());
-	dock->setAllowedAreas(Qt::AllDockWidgetAreas);
 
 	dock->load_properties(props);
 
-	main_window->addDockWidget(Qt::BottomDockWidgetArea, dock);
-	dock->action = (QAction*)obs_frontend_add_dock(dock);
+	std::string id = "ft." + dock->name;
+	if (!obs_frontend_add_dock_by_id(id.c_str(), dock->name.c_str(), static_cast<QWidget *>(dock)))
+		return;
 
 	if (docks)
 		docks->push_back(dock);
@@ -170,7 +170,7 @@ void FTDock::frontendEvent_cb(enum obs_frontend_event event, void *private_data)
 }
 
 FTDock::FTDock(QWidget *parent)
-	: QDockWidget(parent)
+	: QFrame(parent)
 {
 	data = face_tracker_dock_create();
 
@@ -181,9 +181,6 @@ FTDock::FTDock(QWidget *parent)
 	setAttribute(Qt::WA_DeleteOnClose);
 
 	mainLayout = new QVBoxLayout(this);
-	auto *dockWidgetContents = new QWidget;
-	dockWidgetContents->setObjectName(QStringLiteral("contextContainer"));
-	dockWidgetContents->setLayout(mainLayout);
 
 	targetSelector = new QComboBox(this);
 	init_target_selector(targetSelector);
@@ -213,9 +210,15 @@ FTDock::FTDock(QWidget *parent)
 
 	notrackButton = new QCheckBox(obs_module_text("Show all region"), this);
 	mainLayout->addWidget(notrackButton);
-	connect(notrackButton, &QCheckBox::stateChanged, this, &FTDock::notrackButtonChanged);
+	connect(notrackButton,
+#if QT_VERSION < QT_VERSION_CHECK(6, 7, 0)
+			&QCheckBox::stateChanged,
+#else
+			&QCheckBox::checkStateChanged,
+#endif
+			this, &FTDock::notrackButtonChanged);
 
-	setWidget(dockWidgetContents);
+	setLayout(mainLayout);
 
 	connect(this, &FTDock::scenesMayChanged, this, &FTDock::checkTargetSelector);
 	updateState();
@@ -235,8 +238,6 @@ FTDock::~FTDock()
 	}
 
 	face_tracker_dock_release(data);
-	if (action)
-		delete action;
 	if (docks) for (size_t i=0; i<docks->size(); i++) {
 		if ((*docks)[i] == this) {
 			docks->erase(docks->begin()+i);
@@ -491,7 +492,13 @@ void FTDock::propertyButtonClicked(bool checked)
 	obs_source_release(target);
 }
 
-void FTDock::notrackButtonChanged(int state)
+void FTDock::notrackButtonChanged(
+#if QT_VERSION < QT_VERSION_CHECK(6, 7, 0)
+		int state
+#else
+		Qt::CheckState state
+#endif
+		)
 {
 	if (!data || !data->src_monitor)
 		return;

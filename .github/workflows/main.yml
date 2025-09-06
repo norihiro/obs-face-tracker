@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        obs: [28]
+        obs: [30]
         ubuntu: ['ubuntu-22.04']
     defaults:
       run:
@@ -97,7 +97,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        obs: [28]
+        obs: [30]
         arch: [x86_64, arm64]
     defaults:
       run:
@@ -274,7 +274,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        obs: [28]
+        obs: [30]
         arch: [x64]
     env:
       visualStudio: 'Visual Studio 17 2022'

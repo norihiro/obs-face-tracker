@@ -1,21 +1,18 @@
 #pragma once
 
 #ifdef __cplusplus
-#include <QDockWidget>
-#include <QPointer>
-#include <QAction>
+#include <QFrame>
 #include <string>
 #include <obs.h>
 #include <obs.hpp>
 #include <obs-frontend-api.h>
 
-class FTDock : public QDockWidget {
+class FTDock : public QFrame {
 	Q_OBJECT
 
 public:
 	class FTWidget *widget;
 	std::string name;
-	QPointer<QAction> action = 0;
 	struct face_tracker_dock_s *data;
 
 	class QVBoxLayout *mainLayout;
@@ -66,7 +63,13 @@ private slots:
 	void resetButtonClicked(bool checked);
 	void enableButtonClicked(bool checked);
 	void propertyButtonClicked(bool checked);
-	void notrackButtonChanged(int state);
+	void notrackButtonChanged(
+#if QT_VERSION < QT_VERSION_CHECK(6, 7, 0)
+		int state
+#else
+		Qt::CheckState state
+#endif
+		);
 };
 
 extern "C" {
