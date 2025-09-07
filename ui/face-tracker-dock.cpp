@@ -2,6 +2,7 @@
 #include <obs-frontend-api.h>
 #include <QAction>
 #include <QMainWindow>
+#include <QDockWidget>
 #include <QVBoxLayout>
 #include <QComboBox>
 #include <QCheckBox>
@@ -38,7 +39,7 @@ static std::string generate_unique_name()
 	}
 }
 
-void ft_dock_add(const char *name, obs_data_t *props)
+void ft_dock_add(const char *name, obs_data_t *props, bool show)
 {
 	auto *main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
 	auto *dock = new FTDock(main_window);
@@ -54,6 +55,24 @@ void ft_dock_add(const char *name, obs_data_t *props)
 
 	if (docks)
 		docks->push_back(dock);
+
+	if (show) {
+		/* Workaround to show the dock */
+		QMetaObject::invokeMethod(
+			dock,
+			[dock]() {
+				auto *main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
+				if (!main_window)
+					return;
+				QList<QDockWidget *> dd = main_window->findChildren<QDockWidget *>();
+				for (QDockWidget *d : dd) {
+					if (d->widget() != dock)
+						continue;
+					d->setVisible(true);
+				}
+			},
+			Qt::QueuedConnection);
+	}
 }
 
 struct init_target_selector_s
@@ -207,6 +226,8 @@ FTDock::FTDock(QWidget *parent)
 
 	ftWidget = new FTWidget(data, this);
 	mainLayout->addWidget(ftWidget);
+
+	connect(ftWidget, &FTWidget::removeDock, this, &FTDock::removeDock);
 
 	notrackButton = new QCheckBox(obs_module_text("Show all region"), this);
 	mainLayout->addWidget(notrackButton);
@@ -548,7 +569,7 @@ static void save_load_ft_docks(obs_data_t *save_data, bool saving, void *)
 			obs_data_t *obj = obs_data_array_item(array, i);
 			FTDock::default_properties(obj);
 			const char *name = obs_data_get_string(obj, "name");
-			ft_dock_add(name, obj);
+			ft_dock_add(name, obj, false);
 			obs_data_release(obj);
 		}
 		obs_data_array_release(array);
@@ -567,7 +588,7 @@ void ft_docks_init()
 	auto cb = [] {
 		obs_data_t *props = obs_data_create();
 		FTDock::default_properties(props);
-		ft_dock_add(NULL, props);
+		ft_dock_add(NULL, props, true);
 		obs_data_release(props);
 	};
 	QAction::connect(action, &QAction::triggered, cb);
@@ -614,6 +635,12 @@ void FTDock::load_properties(obs_data_t *props)
 	pthread_mutex_unlock(&data->mutex);
 
 	dataChanged();
+}
+
+void FTDock::removeDock()
+{
+	std::string id = "ft." + name;
+	obs_frontend_remove_dock(id.c_str());
 }
 
 struct face_tracker_dock_s *face_tracker_dock_create()

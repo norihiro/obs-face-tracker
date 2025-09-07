@@ -56,6 +56,7 @@ public slots:
 	void checkTargetSelector();
 	void updateState();
 	void updateWidget();
+	void removeDock();
 
 private slots:
 	void targetSelectorChanged();
@@ -74,7 +75,7 @@ private slots:
 
 extern "C" {
 #endif // __cplusplus
-void ft_dock_add(const char *name, obs_data_t *props);
+void ft_dock_add(const char *name, obs_data_t *props, bool show);
 void ft_docks_init();
 void ft_docks_release();
 

@@ -67,7 +67,8 @@ FTWidget::FTWidget(struct face_tracker_dock_s *data_, QWidget *parent)
 	setAttribute(Qt::WA_DontCreateNativeAncestors);
 	setAttribute(Qt::WA_NativeWindow);
 
-	setMouseTracking(true);
+	setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(this, &QWidget::customContextMenuRequested, this, &FTWidget::openMenu);
 }
 
 FTWidget::~FTWidget()
@@ -140,4 +141,15 @@ void FTWidget::setShown(bool shown)
 		obs_display_destroy(data->disp);
 		data->disp = NULL;
 	}
+}
+
+void FTWidget::openMenu(const class QPoint &pos)
+{
+	QMenu popup(this);
+
+	auto *act = new QAction(obs_module_text("dock.menu.close"), this);
+	connect(act, &QAction::triggered, this, &FTWidget::removeDock, Qt::QueuedConnection);
+	popup.addAction(act);
+
+	popup.exec(mapToGlobal(pos));
 }
