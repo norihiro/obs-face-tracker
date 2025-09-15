@@ -57,6 +57,13 @@ brew install openblas
 export OPENBLAS_HOME=/usr/local/opt/openblas/
 ```
 
+You will need CMake
+install cmake by running the following:
+```
+brew install --cask cmake
+
+```
+
 For Linux and macOS,
 expand `obs-face-tracker` outside `obs-studio` and build.
 ```
