@@ -93,12 +93,17 @@ jobs:
           ls /usr/share/obs/obs-plugins/${PLUGIN_NAME}/
 
   macos_build:
-    runs-on: macos-13
+    runs-on: ${{ matrix.macos }}
     strategy:
       fail-fast: false
       matrix:
-        obs: [30]
-        arch: [x86_64, arm64]
+        include:
+          - obs: 30
+            arch: x86_64
+            macos: macos-13 # Intel x86_64
+          - obs: 30
+            arch: arm64
+            macos: macos-14 # Apple arm64
     defaults:
       run:
         shell: bash
@@ -168,15 +173,16 @@ jobs:
           verbose: true
 
       - name: Prepare dlib dependency
-        if: ${{ matrix.arch == 'x86_64' }}
         run: |
           brew install openblas
-          echo "OPENBLAS_HOME=/usr/local/opt/openblas/" >> $GITHUB_ENV
-          cp /usr/local/opt/openblas/LICENSE data/LICENSE-openblas
-
-      - name: Prepare dlib dependency
-        if: ${{ matrix.arch == 'arm64' }}
-        run: ci/macos/download-openblas-arm64.sh
+          for d in '/usr/local/opt/openblas/' '/opt/homebrew/opt/openblas/'; do
+            if test -d "$d"; then
+              OPENBLAS_HOME="$d"
+              break
+            fi
+          done
+          echo "OPENBLAS_HOME=$OPENBLAS_HOME" >> $GITHUB_ENV
+          cp $OPENBLAS_HOME/LICENSE data/LICENSE-openblas
 
       - name: Download dlib-models
         run: |
