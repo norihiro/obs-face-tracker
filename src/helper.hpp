@@ -37,6 +37,7 @@ struct f3
 {
 	float v[3];
 
+	f3 () {}
 	f3 (const f3 &a) {*this=a;}
 	f3 (float a, float b, float c) { v[0]=a; v[1]=b; v[2]=c; }
 	f3 (const rect_s &a) { v[0]=(float)(a.x0+a.x1)*0.5f; v[1]=(float)(a.y0+a.y1)*0.5f; v[2]=sqrtf((float)(a.x1-a.x0)*(float)(a.y1-a.y0)); }
@@ -102,6 +103,18 @@ void draw_rect_upsize(rect_s r, float upsize_l=0.0f, float upsize_r=0.0f, float 
 void draw_landmark(const std::vector<pointf_s> &landmark);
 float landmark_area(const std::vector<pointf_s> &landmark);
 pointf_s landmark_center(const std::vector<pointf_s> &landmark);
+
+struct render_reference_line
+{
+	float rcx, rcy;
+	float gmwh; // geometric mean of width and height
+	float r;
+	f3 e_deadband;
+	f3 e_nonlinear;
+	bool has_landmark;
+
+	void render() const;
+};
 
 inline double from_dB(double x)
 {
