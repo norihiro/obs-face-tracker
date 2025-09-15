@@ -107,21 +107,21 @@ static void init_target_selector_cb_add(struct init_target_selector_s *ctx, obs_
 	const char *name = obs_source_get_name(source);
 	const char *filter_name = NULL;
 	text = QString::fromUtf8(name);
-	val.append(QVariant(name));
+	val.append(QByteArray(name));
 
 	if (filter) {
 		filter_name = obs_source_get_name(filter);
 		text += " / ";
 		text += QString::fromUtf8(filter_name);
-		val.append(QVariant(filter_name));
+		val.append(QByteArray(filter_name));
 	}
 
 	if (ctx->index < ctx->q->count()) {
 		ctx->q->setItemText(ctx->index, text);
-		ctx->q->setItemData(ctx->index, QVariant(val));
+		ctx->q->setItemData(ctx->index, val);
 	}
 	else
-		ctx->q->insertItem(ctx->index, text, QVariant(val));
+		ctx->q->insertItem(ctx->index, text, val);
 
 	if (ctx->source_name) {
 		if (init_target_selector_compare_name(ctx, name, filter_name))
@@ -504,6 +504,10 @@ void FTDock::propertyButtonClicked(bool checked)
 	const char *name = data[0].toByteArray().constData();
 
 	obs_source_t *target = obs_get_source_by_name(name);
+	if (!target) {
+		blog(LOG_ERROR, "Cannot find the target for name='%s'", name);
+		return;
+	}
 
 	if (data.count() == 1)
 		obs_frontend_open_source_properties(target);
