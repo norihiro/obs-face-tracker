@@ -23,53 +23,48 @@
 #define PTZ_MAX_Y 0x14
 #define PTZ_MAX_Z 0x07
 
-enum ptz_cmd_state_e
-{
+enum ptz_cmd_state_e {
 	ptz_cmd_state_none = 0,
 	ptz_cmd_state_pantilt,
 	ptz_cmd_state_zoom,
 };
 
-class ft_manager_for_ftptz : public face_tracker_manager
-{
-	public:
-		struct face_tracker_ptz *ctx;
-		std::shared_ptr<texture_object> cvtex_cache;
-		enum ptz_cmd_state_e ptz_last_cmd;
-		class ptz_backend *dev;
+class ft_manager_for_ftptz : public face_tracker_manager {
+public:
+	struct face_tracker_ptz *ctx;
+	std::shared_ptr<texture_object> cvtex_cache;
+	enum ptz_cmd_state_e ptz_last_cmd;
+	class ptz_backend *dev;
 
-	public:
-		ft_manager_for_ftptz(struct face_tracker_ptz *ctx_) {
-			ctx = ctx_;
-			cvtex_cache = NULL;
+public:
+	ft_manager_for_ftptz(struct face_tracker_ptz *ctx_)
+	{
+		ctx = ctx_;
+		cvtex_cache = NULL;
+		dev = NULL;
+	}
+
+	bool can_send_ptz_cmd()
+	{
+		if (dev) {
+			return dev->can_send();
+		}
+		return false;
+	}
+
+	void release_dev()
+	{
+		if (dev) {
+			dev->set_pantilt_speed(0, 0);
+			dev->set_zoom_speed(0);
+			dev->release();
 			dev = NULL;
 		}
+	}
 
-		bool can_send_ptz_cmd() {
-			if (dev) {
-				return dev->can_send();
-			}
-			return false;
-		}
+	~ft_manager_for_ftptz() { release_dev(); }
 
-		void release_dev() {
-			if (dev) {
-				dev->set_pantilt_speed(0, 0);
-				dev->set_zoom_speed(0);
-				dev->release();
-				dev = NULL;
-			}
-		}
-
-		~ft_manager_for_ftptz()
-		{
-			release_dev();
-		}
-
-		std::shared_ptr<texture_object> get_cvtex() override
-		{
-			return cvtex_cache;
-		};
+	std::shared_ptr<texture_object> get_cvtex() override { return cvtex_cache; };
 };
 
 static const char *ftptz_get_name(void *unused)
@@ -85,8 +80,7 @@ struct ptz_backend_type_s
 	bool (*ptz_type_modified)(obs_properties_t *group_output, obs_data_t *settings);
 };
 
-template <class backend_class>
-static class ptz_backend *make_device_template(obs_data_t *data)
+template<class backend_class> static class ptz_backend *make_device_template(obs_data_t *data)
 {
 	if (!backend_class::check_data(data))
 		return nullptr;
@@ -95,14 +89,15 @@ static class ptz_backend *make_device_template(obs_data_t *data)
 	return dev;
 }
 
-static const struct ptz_backend_type_s backends[] =
-{
-#define BACKEND(name, cls) \
-	{ \
-		.backend_name = name, \
-		.make_device = make_device_template<cls>, \
+static const struct ptz_backend_type_s backends[] = {
+// clang-format off
+#define BACKEND(name, cls)                                   \
+	{                                                    \
+		.backend_name = name,                        \
+		.make_device = make_device_template<cls>,    \
 		.ptz_type_modified = cls::ptz_type_modified, \
 	}
+	// clang-format on
 	BACKEND("obsptz", obsptz_backend),
 #ifdef WITH_PTZ_TCP
 	BACKEND("visca-over-tcp", libvisca_thread),
@@ -142,7 +137,7 @@ static void copy_data_item(obs_data_t *data, const char *dst_name, obs_data_item
 		case OBS_DATA_NUM_INVALID:
 			break;
 		}
-	       break;
+		break;
 	case OBS_DATA_BOOLEAN:
 		obs_data_set_bool(data, dst_name, obs_data_item_get_bool(src_item));
 		break;
@@ -185,7 +180,7 @@ static void make_device(struct face_tracker_ptz *s, const char *ptz_type, obs_da
 
 static void ftptz_update(void *data, obs_data_t *settings)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 
 	s->ftm->update(settings);
 	s->ftm->scale = roundf(s->ftm->scale);
@@ -228,18 +223,17 @@ static void ftptz_update(void *data, obs_data_t *settings)
 	debug_data_open(&s->debug_data_error, &s->debug_data_error_last, settings, "debug_data_error");
 	debug_data_open(&s->debug_data_control, &s->debug_data_control_last, settings, "debug_data_control");
 
-	static const struct {
+	static const struct
+	{
 		const char *old_name;
 		const char *new_name;
-	} renames[] = {
-		{ "ptz-obsptz-device_id", "ptz.obsptz.device_id" },
-		{ "ptz-viscaip-address", "ptz.visca-over-tcp.address" },
-		{ "ptz-viscaip-port", "ptz.visca-over-tcp.port" },
-		{ "ptz_max_x", "ptz.obsptz.max_x" },
-		{ "ptz_max_y", "ptz.obsptz.max_y" },
-		{ "ptz_max_z", "ptz.obsptz.max_z" },
-		{ nullptr, nullptr }
-	};
+	} renames[] = {{"ptz-obsptz-device_id", "ptz.obsptz.device_id"},
+		       {"ptz-viscaip-address", "ptz.visca-over-tcp.address"},
+		       {"ptz-viscaip-port", "ptz.visca-over-tcp.port"},
+		       {"ptz_max_x", "ptz.obsptz.max_x"},
+		       {"ptz_max_y", "ptz.obsptz.max_y"},
+		       {"ptz_max_z", "ptz.obsptz.max_z"},
+		       {nullptr, nullptr}};
 	for (int i = 0; renames[i].old_name; i++) {
 		if (obs_data_has_user_value(settings, renames[i].new_name))
 			continue;
@@ -261,8 +255,7 @@ static void ftptz_update(void *data, obs_data_t *settings)
 		make_device(s, ptz_type, data);
 
 		obs_data_release(data);
-	}
-	else {
+	} else {
 		obs_data_t *data = get_ptz_settings(settings);
 		if (s->ftm->dev)
 			s->ftm->dev->set_config(data);
@@ -273,15 +266,12 @@ static void ftptz_update(void *data, obs_data_t *settings)
 static void cb_render_info(void *data, calldata_t *cd);
 static void cb_get_state(void *data, calldata_t *cd);
 static void cb_set_state(void *data, calldata_t *cd);
-static const char *ftptz_signals[] = {
-	"void state_changed()",
-	NULL
-};
+static const char *ftptz_signals[] = {"void state_changed()", NULL};
 static void emit_state_changed(struct face_tracker_ptz *);
 
 static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 {
-	auto *s = (struct face_tracker_ptz*)bzalloc(sizeof(struct face_tracker_ptz));
+	auto *s = (struct face_tracker_ptz *)bzalloc(sizeof(struct face_tracker_ptz));
 	s->ftm = new ft_manager_for_ftptz(s);
 	s->ftm->crop_cur.x1 = s->ftm->crop_cur.y1 = -2;
 	s->context = context;
@@ -304,7 +294,7 @@ static void *ftptz_create(obs_data_t *settings, obs_source_t *context)
 
 static void ftptz_destroy(void *data)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 
 	if (s->hotkey_pause != OBS_INVALID_HOTKEY_PAIR_ID)
 		obs_hotkey_pair_unregister(s->hotkey_pause);
@@ -331,7 +321,7 @@ static void ftptz_destroy(void *data)
 
 static bool ftptz_reset_tracking(obs_properties_t *, obs_property_t *, void *data)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 
 	s->detect_err = f3(0, 0, 0);
 	s->filter_int = f3(0, 0, 0);
@@ -370,15 +360,17 @@ static bool ptz_type_modified(obs_properties_t *props, obs_property_t *, obs_dat
 
 static obs_properties_t *ftptz_properties(void *data)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	obs_properties_t *props;
 	props = obs_properties_create();
 
-	obs_properties_add_button(props, "ftptz_reset_tracking", obs_module_text("Reset tracking"), ftptz_reset_tracking);
+	obs_properties_add_button(props, "ftptz_reset_tracking", obs_module_text("Reset tracking"),
+				  ftptz_reset_tracking);
 
 	{
 		obs_properties_t *pp = obs_properties_create();
-		obs_property_t *p = obs_properties_add_list(pp, "preset_name", obs_module_text("Preset"), OBS_COMBO_TYPE_EDITABLE, OBS_COMBO_FORMAT_STRING);
+		obs_property_t *p = obs_properties_add_list(pp, "preset_name", obs_module_text("Preset"),
+							    OBS_COMBO_TYPE_EDITABLE, OBS_COMBO_FORMAT_STRING);
 		obs_data_t *settings = obs_source_get_settings(s->context);
 		if (settings) {
 			ftf_preset_item_to_list(p, settings);
@@ -403,13 +395,14 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_properties_add_float(pp, "track_z", obs_module_text("Zoom"), 0.1, 2.0, 0.05);
 		obs_properties_add_float(pp, "track_x", obs_module_text("X"), -1.0, +1.0, 0.05);
 		obs_properties_add_float(pp, "track_y", obs_module_text("Y"), -1.0, +1.0, 0.05);
-		obs_properties_add_group(props, "track", obs_module_text("Tracking target location"), OBS_GROUP_NORMAL, pp);
+		obs_properties_add_group(props, "track", obs_module_text("Tracking target location"), OBS_GROUP_NORMAL,
+					 pp);
 	}
 
 	{
 		obs_properties_t *pp = obs_properties_create();
 		obs_property_t *p;
-		p = obs_properties_add_float(pp, "Kp_x_db", "Track Kp (X)",  -40.0, +80.0, 1.0);
+		p = obs_properties_add_float(pp, "Kp_x_db", "Track Kp (X)", -40.0, +80.0, 1.0);
 		obs_property_float_set_suffix(p, " dB");
 		p = obs_properties_add_float(pp, "Kp_y_db", "Track Kp (Y)", -40.0, +80.0, 1.0);
 		obs_property_float_set_suffix(p, " dB");
@@ -436,17 +429,20 @@ static obs_properties_t *ftptz_properties(void *data)
 	{
 		obs_properties_t *pp = obs_properties_create();
 		obs_property_t *p;
-		p = obs_properties_add_float(pp, "face_lost_preset_timeout", "Timeout until recalling memory", 0.1, 60.0, 0.1);
+		p = obs_properties_add_float(pp, "face_lost_preset_timeout", "Timeout until recalling memory", 0.1,
+					     60.0, 0.1);
 		obs_property_float_set_suffix(p, " s");
 		obs_properties_add_int(pp, "face_lost_ptz_preset", "Recall memory (-1 for disable)", -1, 15, 1);
-		obs_properties_add_group(props, "facelost", obs_module_text("Face lost behavior"), OBS_GROUP_NORMAL, pp);
+		obs_properties_add_group(props, "facelost", obs_module_text("Face lost behavior"), OBS_GROUP_NORMAL,
+					 pp);
 		p = obs_properties_add_float(pp, "face_lost_zoomout_timeout", "Timeout until zoom-out", 0.0, 60.0, 0.1);
 		obs_property_float_set_suffix(p, " s");
 	}
 
 	{
 		obs_properties_t *pp = obs_properties_create();
-		obs_property_t *p = obs_properties_add_list(pp, "ptz-type", obs_module_text("PTZ Type"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+		obs_property_t *p = obs_properties_add_list(pp, "ptz-type", obs_module_text("PTZ Type"),
+							    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 		obs_property_list_add_string(p, obs_module_text("None"), "dummy");
 		obs_property_list_add_string(p, obs_module_text("through PTZ Controls"), "obsptz");
 #ifdef WITH_PTZ_TCP
@@ -466,11 +462,11 @@ static obs_properties_t *ftptz_properties(void *data)
 		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
 #ifdef ENABLE_DEBUG_DATA
 		obs_properties_add_path(pp, "debug_data_tracker", "Save correlation tracker data to file",
-				OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL );
+					OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL);
 		obs_properties_add_path(pp, "debug_data_error", "Save calculated error data to file",
-				OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL );
-		obs_properties_add_path(pp, "debug_data_control", "Save control data to file",
-				OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL );
+					OBS_PATH_FILE_SAVE, DEBUG_DATA_PATH_FILTER, NULL);
+		obs_properties_add_path(pp, "debug_data_control", "Save control data to file", OBS_PATH_FILE_SAVE,
+					DEBUG_DATA_PATH_FILTER, NULL);
 #endif
 		obs_properties_add_group(props, "debug", obs_module_text("Debugging"), OBS_GROUP_NORMAL, pp);
 	}
@@ -483,8 +479,9 @@ static void ftptz_get_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "preset_mask_track", true);
 	obs_data_set_default_bool(settings, "preset_mask_control", true);
 	face_tracker_manager::get_defaults(settings);
-	obs_data_set_default_double(settings, "tracking_th_dB", -40.0); // overwrite the default from face_tracker_manager
-	obs_data_set_default_double(settings, "track_z",  0.25); // Smaller is preferable for PTZ not to lose the face.
+	obs_data_set_default_double(settings, "tracking_th_dB",
+				    -40.0);                      // overwrite the default from face_tracker_manager
+	obs_data_set_default_double(settings, "track_z", 0.25);  // Smaller is preferable for PTZ not to lose the face.
 	obs_data_set_default_double(settings, "track_y", +0.00); // +0.00 +0.10 +0.30
 
 	obs_data_set_default_double(settings, "Kp_x_db", 50.0);
@@ -519,58 +516,104 @@ static inline int pan_flt2raw(float x)
 {
 	// TODO: configurable
 	// TODO: send zero with plus or minus sign, which makes small move.
-	if (x<0.0f) return -pan_flt2raw(-x);
-	if (x<0.50f) return  0;
-	if (x<1.25f) return  1;
-	if (x<1.85f) return  2;
-	if (x<2.30f) return  3;
-	if (x<2.50f) return  4;
-	if (x<2.70f) return  5;
-	if (x<2.90f) return  6;
-	if (x<3.10f) return  7;
-	if (x<3.30f) return  8;
-	if (x<3.60f) return  9;
-	if (x<4.15f) return 10;
-	if (x<5.25f) return 11;
-	if (x<7.50f) return 12;
-	if (x<12.0f) return 13;
-	if (x<17.0f) return 14;
-	if (x<22.0f) return 15;
-	if (x<28.5f) return 16;
-	if (x<35.0f) return 17;
-	if (x<41.5f) return 18;
-	if (x<51.5f) return 19;
-	if (x<66.5f) return 20;
-	if (x<81.5f) return 21;
-	if (x<96.5f) return 22;
-	if (x<112.5f) return 23;
-	else return 24;
+	if (x < 0.0f)
+		return -pan_flt2raw(-x);
+	if (x < 0.50f)
+		return 0;
+	if (x < 1.25f)
+		return 1;
+	if (x < 1.85f)
+		return 2;
+	if (x < 2.30f)
+		return 3;
+	if (x < 2.50f)
+		return 4;
+	if (x < 2.70f)
+		return 5;
+	if (x < 2.90f)
+		return 6;
+	if (x < 3.10f)
+		return 7;
+	if (x < 3.30f)
+		return 8;
+	if (x < 3.60f)
+		return 9;
+	if (x < 4.15f)
+		return 10;
+	if (x < 5.25f)
+		return 11;
+	if (x < 7.50f)
+		return 12;
+	if (x < 12.0f)
+		return 13;
+	if (x < 17.0f)
+		return 14;
+	if (x < 22.0f)
+		return 15;
+	if (x < 28.5f)
+		return 16;
+	if (x < 35.0f)
+		return 17;
+	if (x < 41.5f)
+		return 18;
+	if (x < 51.5f)
+		return 19;
+	if (x < 66.5f)
+		return 20;
+	if (x < 81.5f)
+		return 21;
+	if (x < 96.5f)
+		return 22;
+	if (x < 112.5f)
+		return 23;
+	else
+		return 24;
 }
 
 static inline int tilt_flt2raw(float x)
 {
 	// TODO: configurable
 	// TODO: send zero with plus or minus sign, which makes small move.
-	if (x<0.0f) return -tilt_flt2raw(-x);
-	if (x<0.50f) return  0;
-	if (x<1.25f) return  1;
-	if (x<1.85f) return  2;
-	if (x<2.30f) return  3;
-	if (x<4.15f) return  4;
-	if (x<5.35f) return  5;
-	if (x<7.00f) return  6;
-	if (x<9.00f) return  7;
-	if (x<11.0f) return  8;
-	if (x<13.5f) return  9;
-	if (x<16.5f) return 10;
-	if (x<20.5f) return 11;
-	if (x<26.5f) return 12;
-	if (x<34.5f) return 13;
-	if (x<43.5f) return 14;
-	if (x<53.5f) return 15;
-	if (x<64.0f) return 16;
-	if (x<74.5f) return 17;
-	else return 18;
+	if (x < 0.0f)
+		return -tilt_flt2raw(-x);
+	if (x < 0.50f)
+		return 0;
+	if (x < 1.25f)
+		return 1;
+	if (x < 1.85f)
+		return 2;
+	if (x < 2.30f)
+		return 3;
+	if (x < 4.15f)
+		return 4;
+	if (x < 5.35f)
+		return 5;
+	if (x < 7.00f)
+		return 6;
+	if (x < 9.00f)
+		return 7;
+	if (x < 11.0f)
+		return 8;
+	if (x < 13.5f)
+		return 9;
+	if (x < 16.5f)
+		return 10;
+	if (x < 20.5f)
+		return 11;
+	if (x < 26.5f)
+		return 12;
+	if (x < 34.5f)
+		return 13;
+	if (x < 43.5f)
+		return 14;
+	if (x < 53.5f)
+		return 15;
+	if (x < 64.0f)
+		return 16;
+	if (x < 74.5f)
+		return 17;
+	else
+		return 18;
 }
 
 static inline int zoom_flt2raw(float x, int u)
@@ -584,7 +627,7 @@ static bool hotkey_cb_pause(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hot
 {
 	UNUSED_PARAMETER(id);
 	UNUSED_PARAMETER(hotkey);
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	if (!pressed)
 		return false;
 	if (s->is_paused)
@@ -598,7 +641,7 @@ static bool hotkey_cb_pause_resume(void *data, obs_hotkey_pair_id id, obs_hotkey
 {
 	UNUSED_PARAMETER(id);
 	UNUSED_PARAMETER(hotkey);
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	if (!pressed)
 		return false;
 	if (!s->is_paused)
@@ -622,19 +665,16 @@ static void register_hotkeys(struct face_tracker_ptz *s, obs_source_t *target)
 		return;
 
 	if (s->hotkey_pause == OBS_INVALID_HOTKEY_PAIR_ID) {
-		s->hotkey_pause = obs_hotkey_pair_register_source(target,
-				"face-tracker.pause",
-				obs_module_text("Pause Face Tracker PTZ"),
-				"face-tracker.pause_resume",
-				obs_module_text("Resume Face Tracker PTZ"),
-				hotkey_cb_pause, hotkey_cb_pause_resume, s, s);
+		s->hotkey_pause = obs_hotkey_pair_register_source(target, "face-tracker.pause",
+								  obs_module_text("Pause Face Tracker PTZ"),
+								  "face-tracker.pause_resume",
+								  obs_module_text("Resume Face Tracker PTZ"),
+								  hotkey_cb_pause, hotkey_cb_pause_resume, s, s);
 	}
 
 	if (s->hotkey_reset == OBS_INVALID_HOTKEY_ID) {
-		s->hotkey_reset = obs_hotkey_register_source(target,
-				"face-tracker.reset",
-				obs_module_text("Reset Face Tracker PTZ"),
-				hotkey_cb_reset, s);
+		s->hotkey_reset = obs_hotkey_register_source(
+			target, "face-tracker.reset", obs_module_text("Reset Face Tracker PTZ"), hotkey_cb_reset, s);
 	}
 }
 
@@ -644,7 +684,7 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 
 	f3 e = s->detect_err;
 	f3 e_int = e;
-	for (int i=0; i<3; i++) {
+	for (int i = 0; i < 3; i++) {
 		float x = e.v[i];
 		float d = srwh * s->e_deadband.v[i];
 		float n = srwh * s->e_nonlinear.v[i];
@@ -655,8 +695,7 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 				x = +sqf(x - d) / (2.0f * n);
 			else
 				x = -sqf(x - d) / (2.0f * n);
-		}
-		else if (x > 0)
+		} else if (x > 0)
 			x -= d + n * 0.5f;
 		else
 			x += d + n * 0.5f;
@@ -672,7 +711,7 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 	}
 
 	f3 filter_lpf_prev = s->filter_lpf;
-	for (int i=0; i<3; i++)
+	for (int i = 0; i < 3; i++)
 		s->filter_int.v[i] += e_int.v[i] * s->ki.v[i] * second;
 	if (!s->face_found) {
 		float x = second * s->f_att_int;
@@ -681,37 +720,38 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 		else
 			s->filter_int = f3(0.0f, 0.0f, 0.0f);
 	}
-	for (int i=0; i<3; i++)
+	for (int i = 0; i < 3; i++)
 		s->filter_lpf.v[i] = (s->filter_lpf.v[i] * s->tlpf.v[i] + e.v[i] * second) / (s->tlpf.v[i] + second);
-	f3 uf (0.0f, 0.0f, 0.0f);
+	f3 uf(0.0f, 0.0f, 0.0f);
 	if (s->face_found && s->face_found_last) {
-		for (int i=0; i<3; i++)
-			uf.v[i] = (e.v[i] + s->filter_int.v[i]) * second + (s->filter_lpf.v[i] - filter_lpf_prev.v[i]) * s->klpf.v[i];
+		for (int i = 0; i < 3; i++)
+			uf.v[i] = (e.v[i] + s->filter_int.v[i]) * second +
+				  (s->filter_lpf.v[i] - filter_lpf_prev.v[i]) * s->klpf.v[i];
 	}
 	s->face_found_last = s->face_found;
 	const float kp_zoom = std::max(s->ptz_query[2], 1.0f);
-	const float kp[3] = {
-		s->kp_x / srwh / kp_zoom,
-		s->kp_y / srwh / kp_zoom,
-		s->kp_z / srwh
-	};
-	for (int i=0; i<3; i++) {
+	const float kp[3] = {s->kp_x / srwh / kp_zoom, s->kp_y / srwh / kp_zoom, s->kp_z / srwh};
+	for (int i = 0; i < 3; i++) {
 		float x = uf.v[i] * kp[i];
 		s->u_linear[i] = x;
 		int n = s->u[i];
-		switch(i) {
-			case 0:  n = pan_flt2raw(x); break;
-			case 1:  n = tilt_flt2raw(x); break;
-			default: n = zoom_flt2raw(x, n); break;
+		switch (i) {
+		case 0:
+			n = pan_flt2raw(x);
+			break;
+		case 1:
+			n = tilt_flt2raw(x);
+			break;
+		default:
+			n = zoom_flt2raw(x, n);
+			break;
 		}
 		s->u[i] = n;
 	}
 
 	if (s->debug_data_control) {
-		fprintf(s->debug_data_control, "%f\t%f\t%f\t%f\t%d\t%d\t%d\n",
-				os_gettime_ns() * 1e-9,
-				uf.v[0], uf.v[1], uf.v[2],
-				s->u[0], s->u[1], s->u[2] );
+		fprintf(s->debug_data_control, "%f\t%f\t%f\t%f\t%d\t%d\t%d\n", os_gettime_ns() * 1e-9, uf.v[0], uf.v[1],
+			uf.v[2], s->u[0], s->u[1], s->u[2]);
 	}
 
 	if (s->face_found) {
@@ -722,19 +762,19 @@ static void tick_filter(struct face_tracker_ptz *s, float second)
 
 static void ftf_activate(void *data)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	s->is_active = true;
 }
 
 static void ftf_deactivate(void *data)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	s->is_active = false;
 }
 
-template <typename T> static inline bool diff3(T a, T b, T c)
+template<typename T> static inline bool diff3(T a, T b, T c)
 {
-	return a!=b || b!=c || c!=a;
+	return a != b || b != c || c != a;
 }
 
 static bool send_ptz_cmd_recall_if_timeout(struct face_tracker_ptz *s)
@@ -779,12 +819,11 @@ static inline void send_ptz_cmd_immediate(struct face_tracker_ptz *s)
 
 	s->ftm->dev->set_pantiltzoom_speed(s->u_linear[0], s->u_linear[1], s->u_linear[2]);
 
-	for (int i=0; i<2 && s->ftm->can_send_ptz_cmd(); i++) {
+	for (int i = 0; i < 2 && s->ftm->can_send_ptz_cmd(); i++) {
 		if (s->ftm->ptz_last_cmd != ptz_cmd_state_pantilt) {
 			s->ftm->dev->set_pantilt_speed(s->u[0], s->u[1]);
 			s->ftm->ptz_last_cmd = ptz_cmd_state_pantilt;
-		}
-		else {
+		} else {
 			s->ftm->dev->set_zoom_speed(s->u[2]);
 			s->ftm->ptz_last_cmd = ptz_cmd_state_zoom;
 		}
@@ -795,7 +834,7 @@ static inline void calculate_error(struct face_tracker_ptz *s);
 
 static void ftptz_tick(void *data, float second)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	const bool was_rendered = s->rendered;
 	s->ftm->tick(second);
 
@@ -805,16 +844,13 @@ static void ftptz_tick(void *data, float second)
 
 	s->rendered = false;
 
-	if (
-			s->hotkey_pause == OBS_INVALID_HOTKEY_PAIR_ID ||
-			s->hotkey_reset == OBS_INVALID_HOTKEY_ID
-	   )
+	if (s->hotkey_pause == OBS_INVALID_HOTKEY_PAIR_ID || s->hotkey_reset == OBS_INVALID_HOTKEY_ID)
 		register_hotkeys(s, obs_filter_get_parent(s->context));
 
 	s->known_width = obs_source_get_base_width(target);
 	s->known_height = obs_source_get_base_height(target);
 
-	if (s->known_width<=0 || s->known_height<=0)
+	if (s->known_width <= 0 || s->known_height <= 0)
 		return;
 
 	if (was_rendered) {
@@ -842,7 +878,7 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 	bool found = false;
 	auto &tracker_rects = s->ftm->tracker_rects;
 	for (size_t i = 0; i < tracker_rects.size(); i++) {
-		f3 r (tracker_rects[i].rect);
+		f3 r(tracker_rects[i].rect);
 		float score = tracker_rects[i].rect.score;
 
 		if (s->ftm->landmark_detection_data) {
@@ -857,18 +893,17 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 		}
 
 		if (s->debug_data_tracker) {
-			fprintf(s->debug_data_tracker, "%f\t%f\t%f\t%f\t%f\n",
-					os_gettime_ns() * 1e-9,
-					r.v[0], r.v[1], r.v[2], score );
+			fprintf(s->debug_data_tracker, "%f\t%f\t%f\t%f\t%f\n", os_gettime_ns() * 1e-9, r.v[0], r.v[1],
+				r.v[2], score);
 		}
 
 		r.v[0] -= get_width(tracker_rects[i].crop_rect) * s->track_x;
 		r.v[1] += get_height(tracker_rects[i].crop_rect) * s->track_y;
 		r.v[2] /= s->track_z;
-		f3 w (tracker_rects[i].crop_rect);
+		f3 w(tracker_rects[i].crop_rect);
 
-		f3 e = (r-w) * score;
-		if (score>0.0f && !isnan(e)) {
+		f3 e = (r - w) * score;
+		if (score > 0.0f && !isnan(e)) {
 			e_tot += e;
 			sc_tot += score;
 			found = true;
@@ -882,9 +917,8 @@ static inline void calculate_error(struct face_tracker_ptz *s)
 	s->face_found = found;
 
 	if (s->debug_data_error) {
-		fprintf(s->debug_data_error, "%f\t%f\t%f\t%f\n",
-				os_gettime_ns() * 1e-9,
-				s->detect_err.v[0], s->detect_err.v[1], s->detect_err.v[2] );
+		fprintf(s->debug_data_error, "%f\t%f\t%f\t%f\n", os_gettime_ns() * 1e-9, s->detect_err.v[0],
+			s->detect_err.v[1], s->detect_err.v[2]);
 	}
 }
 
@@ -901,7 +935,7 @@ static inline bool is_rgb_format(enum video_format format)
 	}
 }
 
-static inline bool operator != (const struct video_scale_info &a, const struct video_scale_info &b)
+static inline bool operator!=(const struct video_scale_info &a, const struct video_scale_info &b)
 {
 	if (a.format != b.format)
 		return true;
@@ -918,10 +952,8 @@ static inline bool operator != (const struct video_scale_info &a, const struct v
 static bool scale_set_texture(struct face_tracker_ptz *s, texture_object *cvtex, struct obs_source_frame *frame)
 {
 	const struct video_scale_info scaler_src_info = {
-		frame->format,
-		frame->width,
-		frame->height,
-		frame->full_range ? VIDEO_RANGE_FULL : VIDEO_RANGE_PARTIAL,
+		frame->format,    frame->width,
+		frame->height,    frame->full_range ? VIDEO_RANGE_FULL : VIDEO_RANGE_PARTIAL,
 		VIDEO_CS_DEFAULT,
 	};
 	const struct video_scale_info scaler_dst_info = {
@@ -934,12 +966,14 @@ static bool scale_set_texture(struct face_tracker_ptz *s, texture_object *cvtex,
 	uint32_t dst_linesize = (scaler_dst_info.width * 4 + 31) / 32 * 32;
 
 	if (!s->scaler || scaler_src_info != s->scaler_src_info || scaler_dst_info != s->scaler_dst_info) {
-		blog(LOG_DEBUG, "creating video-scaler: width=%u height=%u scale=%f -> %ux%u", frame->width, frame->height, s->ftm->scale, scaler_dst_info.width, scaler_dst_info.height);
+		blog(LOG_DEBUG, "creating video-scaler: width=%u height=%u scale=%f -> %ux%u", frame->width,
+		     frame->height, s->ftm->scale, scaler_dst_info.width, scaler_dst_info.height);
 
 		video_scaler_destroy(s->scaler);
 		s->scaler = NULL;
 
-		int ret = video_scaler_create(&s->scaler, &scaler_dst_info, &scaler_src_info, VIDEO_SCALE_FAST_BILINEAR);
+		int ret =
+			video_scaler_create(&s->scaler, &scaler_dst_info, &scaler_src_info, VIDEO_SCALE_FAST_BILINEAR);
 		if (ret != VIDEO_SCALER_SUCCESS) {
 			blog(LOG_ERROR, "video_scaler_create failed %d", ret);
 			return false;
@@ -976,7 +1010,7 @@ static struct obs_source_frame *ftptz_filter_video(void *data, struct obs_source
 	if (!frame)
 		return NULL;
 
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 
 	std::shared_ptr<texture_object> cvtex(new texture_object());
 	cvtex->scale = s->ftm->scale;
@@ -1014,7 +1048,8 @@ static void draw_frame_info(struct face_tracker_ptz *s, bool landmark_only = fal
 		if (draw_det) {
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF0000FF);
 			for (size_t i = 0; i < s->ftm->detect_rects.size(); i++)
-				draw_rect_upsize(s->ftm->detect_rects[i], s->ftm->upsize_l, s->ftm->upsize_r, s->ftm->upsize_t, s->ftm->upsize_b);
+				draw_rect_upsize(s->ftm->detect_rects[i], s->ftm->upsize_l, s->ftm->upsize_r,
+						 s->ftm->upsize_t, s->ftm->upsize_b);
 		}
 
 		gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFF00FF00);
@@ -1030,18 +1065,18 @@ static void draw_frame_info(struct face_tracker_ptz *s, bool landmark_only = fal
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
 			gs_render_start(false);
 			const float srwhr2 = sqrtf((float)s->known_width * s->known_height) * 0.5f;
-			const float rcx = (float)s->known_width*(0.5f + s->track_x);
-			const float rcy = (float)s->known_height*(0.5f - s->track_y);
-			gs_vertex2f(rcx-srwhr2*s->track_z, rcy);
-			gs_vertex2f(rcx+srwhr2*s->track_z, rcy);
-			gs_vertex2f(rcx, rcy-srwhr2*s->track_z);
-			gs_vertex2f(rcx, rcy+srwhr2*s->track_z);
+			const float rcx = (float)s->known_width * (0.5f + s->track_x);
+			const float rcy = (float)s->known_height * (0.5f - s->track_y);
+			gs_vertex2f(rcx - srwhr2 * s->track_z, rcy);
+			gs_vertex2f(rcx + srwhr2 * s->track_z, rcy);
+			gs_vertex2f(rcx, rcy - srwhr2 * s->track_z);
+			gs_vertex2f(rcx, rcy + srwhr2 * s->track_z);
 			gs_render_stop(GS_LINES);
 
 			if (s->ftm->landmark_detection_data) {
 				gs_render_start(false);
 				float r = srwhr2 * s->track_z;
-				for (int i=0; i<=32; i++)
+				for (int i = 0; i <= 32; i++)
 					gs_vertex2f(rcx + r * sinf(M_PI * i / 8), rcy + r * cosf(M_PI * i / 8));
 				gs_render_stop(GS_LINESTRIP);
 			}
@@ -1051,7 +1086,7 @@ static void draw_frame_info(struct face_tracker_ptz *s, bool landmark_only = fal
 
 static void ftptz_video_render(void *data, gs_effect_t *)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	obs_source_skip_video_filter(s->context);
 
 	if (s->debug_faces && (!s->is_active || s->debug_always_show))
@@ -1060,7 +1095,7 @@ static void ftptz_video_render(void *data, gs_effect_t *)
 
 static void cb_render_info(void *data, calldata_t *cd)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	bool landmark_only = false;
 	calldata_get_bool(cd, "landmark_only", &landmark_only);
 
@@ -1069,13 +1104,13 @@ static void cb_render_info(void *data, calldata_t *cd)
 
 static void cb_get_state(void *data, calldata_t *cd)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	calldata_set_bool(cd, "paused", s->is_paused);
 }
 
 static void cb_set_state(void *data, calldata_t *cd)
 {
-	auto *s = (struct face_tracker_ptz*)data;
+	auto *s = (struct face_tracker_ptz *)data;
 	bool is_paused = s->is_paused;
 	calldata_get_bool(cd, "paused", &is_paused);
 	if (is_paused != s->is_paused) {
@@ -1102,8 +1137,7 @@ static void emit_state_changed(struct face_tracker_ptz *s)
 	signal_handler_signal(sh, "state_changed", &cd);
 }
 
-extern "C"
-void register_face_tracker_ptz(bool hide_ptz)
+extern "C" void register_face_tracker_ptz(bool hide_ptz)
 {
 	struct obs_source_info info = {};
 	info.id = "face_tracker_ptz";
@@ -1117,9 +1151,7 @@ void register_face_tracker_ptz(bool hide_ptz)
 	info.update = ftptz_update;
 	info.get_properties = ftptz_properties;
 	info.get_defaults = ftptz_get_defaults;
-	info.activate = ftf_activate,
-	info.deactivate = ftf_deactivate,
-	info.video_tick = ftptz_tick;
+	info.activate = ftf_activate, info.deactivate = ftf_deactivate, info.video_tick = ftptz_tick;
 	info.filter_video = ftptz_filter_video;
 	info.video_render = ftptz_video_render;
 	obs_register_source(&info);

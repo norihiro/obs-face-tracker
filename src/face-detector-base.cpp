@@ -29,24 +29,21 @@ face_detector_base::~face_detector_base()
 
 void *face_detector_base::thread_routine(void *p)
 {
-	face_detector_base *base = (face_detector_base*)p;
+	face_detector_base *base = (face_detector_base *)p;
 #ifndef _WIN32
 	setpriority(PRIO_PROCESS, 0, 19);
-#else // _WIN32
+#else  // _WIN32
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif // _WIN32
 	os_set_thread_name("face-det");
 
-
 	base->lock();
-	while(!base->request_stop) {
+	while (!base->request_stop) {
 		try {
 			base->detect_main();
-		}
-		catch (std::exception &e) {
+		} catch (std::exception &e) {
 			blog(LOG_ERROR, "detect_main: exception %s", e.what());
-		}
-		catch (...) {
+		} catch (...) {
 			blog(LOG_ERROR, "detect_main: unknown exception");
 		}
 		pthread_cond_wait(&base->cond, &base->mutex);
@@ -59,7 +56,7 @@ void face_detector_base::start()
 {
 	blog(LOG_INFO, "face_detector_base: starting the thread.");
 	request_stop = 0;
-	pthread_create(&thread, NULL, thread_routine, (void*)this);
+	pthread_create(&thread, NULL, thread_routine, (void *)this);
 	running = 1;
 }
 

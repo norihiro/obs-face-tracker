@@ -1,8 +1,7 @@
 #pragma once
 #include "ptz-backend.hpp"
 
-class obsptz_backend : public ptz_backend
-{
+class obsptz_backend : public ptz_backend {
 	uint64_t available_ns = 0;
 	int device_id = -1;
 	int ptz_max_x = 0, ptz_max_y = 0, ptz_max_z = 0;
@@ -13,6 +12,7 @@ class obsptz_backend : public ptz_backend
 	int prev_zoom = 0;
 	int same_pantilt_cnt = 0;
 	int same_zoom_cnt = 0;
+
 public:
 	obsptz_backend();
 	~obsptz_backend() override;

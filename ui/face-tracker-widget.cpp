@@ -13,7 +13,6 @@
 #include "face-tracker-dock-internal.hpp"
 #include "obsgui-helper.hpp"
 
-
 static void draw(void *param, uint32_t cx, uint32_t cy)
 {
 	auto *data = (struct face_tracker_dock_s *)param;
@@ -41,7 +40,7 @@ static void draw(void *param, uint32_t cx, uint32_t cy)
 		gs_projection_push();
 		gs_viewport_push();
 
-		gs_set_viewport((cx-w)*0.5, (cy-h)*0.5, w, h);
+		gs_set_viewport((cx - w) * 0.5, (cy - h) * 0.5, w, h);
 		gs_ortho(0.0f, w_src, -1.0f, h_src, -100.0f, 100.0f);
 
 		obs_source_video_render(data->src_monitor);
@@ -56,8 +55,7 @@ err:
 	pthread_mutex_unlock(&data->mutex);
 }
 
-FTWidget::FTWidget(struct face_tracker_dock_s *data_, QWidget *parent)
-	: QWidget(parent)
+FTWidget::FTWidget(struct face_tracker_dock_s *data_, QWidget *parent) : QWidget(parent)
 {
 	face_tracker_dock_addref((data = data_));
 	setAttribute(Qt::WA_PaintOnScreen);

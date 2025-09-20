@@ -14,11 +14,13 @@
 #define MAX_ERROR 2
 
 using namespace dlib;
-template <long num_filters, typename SUBNET> using con5d = con<num_filters,5,5,2,2,SUBNET>;
-template <long num_filters, typename SUBNET> using con5  = con<num_filters,5,5,1,1,SUBNET>;
-template <typename SUBNET> using downsampler  = relu<affine<con5d<32, relu<affine<con5d<32, relu<affine<con5d<16,SUBNET>>>>>>>>>;
-template <typename SUBNET> using rcon5  = relu<affine<con5<45,SUBNET>>>;
-using net_type = loss_mmod<con<1,9,9,1,1,rcon5<rcon5<rcon5<downsampler<input_rgb_image_pyramid<pyramid_down<6>>>>>>>>;
+template<long num_filters, typename SUBNET> using con5d = con<num_filters, 5, 5, 2, 2, SUBNET>;
+template<long num_filters, typename SUBNET> using con5 = con<num_filters, 5, 5, 1, 1, SUBNET>;
+template<typename SUBNET>
+using downsampler = relu<affine<con5d<32, relu<affine<con5d<32, relu<affine<con5d<16, SUBNET>>>>>>>>>;
+template<typename SUBNET> using rcon5 = relu<affine<con5<45, SUBNET>>>;
+using net_type =
+	loss_mmod<con<1, 9, 9, 1, 1, rcon5<rcon5<rcon5<downsampler<input_rgb_image_pyramid<pyramid_down<6>>>>>>>>;
 typedef dlib::matrix<dlib::rgb_pixel> image_t;
 
 struct private_s
@@ -43,7 +45,8 @@ face_detector_dlib_cnn::~face_detector_dlib_cnn()
 	delete p;
 }
 
-void face_detector_dlib_cnn::set_texture(std::shared_ptr<texture_object> &tex, int crop_l, int crop_r, int crop_t, int crop_b)
+void face_detector_dlib_cnn::set_texture(std::shared_ptr<texture_object> &tex, int crop_l, int crop_r, int crop_t,
+					 int crop_b)
 {
 	p->tex = tex;
 	p->crop_l = crop_l;
@@ -71,27 +74,24 @@ void face_detector_dlib_cnn::detect_main()
 		if (x1 - x0 < 80 || y1 - y0 < 80) {
 			if (p->n_error++ < MAX_ERROR)
 				blog(LOG_ERROR, "too small image: %dx%d cropped left=%d right=%d top=%d bottom=%d",
-						(int)img.nc(), (int)img.nr(),
-						p->crop_l, p->crop_r, p->crop_t, p->crop_b );
+				     (int)img.nc(), (int)img.nr(), p->crop_l, p->crop_r, p->crop_t, p->crop_b);
 			return;
-		}
-		else if (p->n_error) {
+		} else if (p->n_error) {
 			p->n_error--;
 		}
 		img_crop.set_size(y1 - y0, x1 - x0);
 		for (int y = y0; y < y1; y++) {
 			for (int x = x0; x < x1; x++) {
-				img_crop(y-y0, x-x0) = img(y, x);
+				img_crop(y - y0, x - x0) = img(y, x);
 			}
 		}
 		img = img_crop;
 	}
-	if (img.nc()<80 || img.nr()<80) {
+	if (img.nc() < 80 || img.nr() < 80) {
 		if (p->n_error++ < MAX_ERROR)
 			blog(LOG_ERROR, "too small image: %dx%d", (int)img.nc(), (int)img.nr());
 		return;
-	}
-	else if (p->n_error) {
+	} else if (p->n_error) {
 		p->n_error--;
 	}
 
@@ -101,8 +101,7 @@ void face_detector_dlib_cnn::detect_main()
 			blog(LOG_INFO, "loading file '%s'", p->model_filename.c_str());
 			deserialize(p->model_filename.c_str()) >> p->net;
 			p->has_error = false;
-		}
-		catch(...) {
+		} catch (...) {
 			blog(LOG_ERROR, "failed to load file '%s'", p->model_filename.c_str());
 			p->has_error = true;
 		}

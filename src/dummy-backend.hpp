@@ -2,11 +2,11 @@
 
 #include "ptz-backend.hpp"
 
-class dummy_backend : public ptz_backend
-{
+class dummy_backend : public ptz_backend {
 	int prev_pan = 0;
 	int prev_tilt = 0;
 	int prev_zoom = 0;
+
 public:
 	dummy_backend();
 	~dummy_backend() override;

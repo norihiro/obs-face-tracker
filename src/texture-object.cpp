@@ -7,8 +7,8 @@
 #include "texture-object.h"
 
 static uint32_t formats_found = 0;
-#define TEST_FORMAT(f) (0<=(uint32_t)(f) && (uint32_t)(f)<32 && !(formats_found&(1<<(uint32_t)(f))))
-#define SET_FORMAT(f) (0<=(uint32_t)(f) && (uint32_t)(f)<32 && (formats_found|=(1<<(uint32_t)(f))))
+#define TEST_FORMAT(f) (0 <= (uint32_t)(f) && (uint32_t)(f) < 32 && !(formats_found & (1 << (uint32_t)(f))))
+#define SET_FORMAT(f) (0 <= (uint32_t)(f) && (uint32_t)(f) < 32 && (formats_found |= (1 << (uint32_t)(f))))
 
 struct texture_object_private_s
 {
@@ -28,17 +28,18 @@ texture_object::~texture_object()
 	delete data;
 }
 
-static void obsframe2dlib_bgrx(dlib::matrix<dlib::rgb_pixel> &img, const struct obs_source_frame *frame, int scale, int size=4)
+static void obsframe2dlib_bgrx(dlib::matrix<dlib::rgb_pixel> &img, const struct obs_source_frame *frame, int scale,
+			       int size = 4)
 {
 	const int nr = img.nr();
 	const int nc = img.nc();
 	const int inc = size * scale;
-	for (int i=0; i<nr; i++) {
+	for (int i = 0; i < nr; i++) {
 		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
-		for (int j=0, js=0; j<nc; j++, js+=inc) {
-			img(i,j).red = line[js+2];
-			img(i,j).green = line[js+1];
-			img(i,j).blue = line[js+0];
+		for (int j = 0, js = 0; j < nc; j++, js += inc) {
+			img(i, j).red = line[js + 2];
+			img(i, j).green = line[js + 1];
+			img(i, j).blue = line[js + 0];
 		}
 	}
 }
@@ -47,12 +48,12 @@ static void obsframe2dlib_rgbx(dlib::matrix<dlib::rgb_pixel> &img, const struct 
 {
 	const int nr = img.nr();
 	const int nc = img.nc();
-	for (int i=0; i<nr; i++) {
+	for (int i = 0; i < nr; i++) {
 		uint8_t *line = frame->data[0] + frame->linesize[0] * scale * i;
-		for (int j=0, js=0; j<nc; j++, js+=4*scale) {
-			img(i,j).red = line[js+0];
-			img(i,j).green = line[js+1];
-			img(i,j).blue = line[js+2];
+		for (int j = 0, js = 0; j < nc; j++, js += 4 * scale) {
+			img(i, j).red = line[js + 0];
+			img(i, j).green = line[js + 1];
+			img(i, j).blue = line[js + 2];
 		}
 	}
 }
@@ -92,20 +93,20 @@ bool texture_object::get_dlib_rgb_image(dlib::matrix<dlib::rgb_pixel> &img) cons
 	if (TEST_FORMAT(frame->format))
 		blog(LOG_INFO, "received frame format=%d", frame->format);
 	img.set_size(frame->height / scale, frame->width / scale);
-	switch(frame->format) {
-		case VIDEO_FORMAT_BGRX:
-		case VIDEO_FORMAT_BGRA:
-			obsframe2dlib_bgrx(img, frame, scale);
-			break;
-		case VIDEO_FORMAT_BGR3:
-			obsframe2dlib_bgrx(img, frame, scale, 3);
-			break;
-		case VIDEO_FORMAT_RGBA:
-			obsframe2dlib_rgbx(img, frame, scale);
-			break;
-		default:
-			if (TEST_FORMAT(frame->format))
-				blog(LOG_ERROR, "Frame format %d has to be RGB", (int)frame->format);
+	switch (frame->format) {
+	case VIDEO_FORMAT_BGRX:
+	case VIDEO_FORMAT_BGRA:
+		obsframe2dlib_bgrx(img, frame, scale);
+		break;
+	case VIDEO_FORMAT_BGR3:
+		obsframe2dlib_bgrx(img, frame, scale, 3);
+		break;
+	case VIDEO_FORMAT_RGBA:
+		obsframe2dlib_rgbx(img, frame, scale);
+		break;
+	default:
+		if (TEST_FORMAT(frame->format))
+			blog(LOG_ERROR, "Frame format %d has to be RGB", (int)frame->format);
 	}
 	SET_FORMAT(frame->format);
 

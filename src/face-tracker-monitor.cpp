@@ -3,7 +3,6 @@
 #include "plugin-macros.generated.h"
 #include "helper.hpp"
 
-
 #define MAX_ERROR 2
 
 struct face_tracker_monitor
@@ -31,7 +30,7 @@ static const char *ftmon_get_name(void *unused)
 
 static void *ftmon_create(obs_data_t *settings, obs_source_t *context)
 {
-	auto *s = (struct face_tracker_monitor*)bzalloc(sizeof(struct face_tracker_monitor));
+	auto *s = (struct face_tracker_monitor *)bzalloc(sizeof(struct face_tracker_monitor));
 	s->context = context;
 
 	obs_source_update(context, settings);
@@ -41,7 +40,7 @@ static void *ftmon_create(obs_data_t *settings, obs_source_t *context)
 
 static void ftmon_destroy(void *data)
 {
-	auto *s = (struct face_tracker_monitor*)data;
+	auto *s = (struct face_tracker_monitor *)data;
 
 	bfree(s->source_name);
 	bfree(s->filter_name);
@@ -53,7 +52,7 @@ static void ftmon_destroy(void *data)
 
 static void ftmon_update(void *data, obs_data_t *settings)
 {
-	auto *s = (struct face_tracker_monitor*)data;
+	auto *s = (struct face_tracker_monitor *)data;
 
 	const char *source_name = obs_data_get_string(settings, "source_name");
 	const char *filter_name = obs_data_get_string(settings, "filter_name");
@@ -98,9 +97,7 @@ static obs_properties_t *ftmon_properties(void *)
 	return props;
 }
 
-static void ftmon_get_defaults(obs_data_t *)
-{
-}
+static void ftmon_get_defaults(obs_data_t *) {}
 
 static obs_source_t *get_source(struct face_tracker_monitor *s)
 {
@@ -138,7 +135,7 @@ static inline bool test_weak_source_name(obs_weak_source_t *ref, const char *nam
 }
 
 static inline void tick_source(struct face_tracker_monitor *s, obs_weak_source_t *&ref, const char *name,
-		obs_source_t *(*get_by_name)(struct face_tracker_monitor *))
+			       obs_source_t *(*get_by_name)(struct face_tracker_monitor *))
 {
 	if (!name || !*name)
 		return;
@@ -167,7 +164,7 @@ obs_source_t *get_filter_by_name(struct face_tracker_monitor *s)
 
 static void ftmon_tick(void *data, float)
 {
-	auto *s = (struct face_tracker_monitor*)data;
+	auto *s = (struct face_tracker_monitor *)data;
 
 	bool source_specified = s->source_name && *s->source_name;
 	bool filter_specified = s->filter_name && *s->filter_name;
@@ -180,23 +177,21 @@ static void ftmon_tick(void *data, float)
 	if (source_specified && !s->source_ref) {
 		if (s->n_error < MAX_ERROR) {
 			blog(LOG_INFO, "failed to get source \"%s\"", s->source_name);
-			s->n_error ++;
+			s->n_error++;
 		}
-	}
-	else if (filter_specified && !s->filter_ref) {
+	} else if (filter_specified && !s->filter_ref) {
 		if (s->n_error < MAX_ERROR) {
 			blog(LOG_INFO, "failed to get filter \"%s\"", s->filter_name);
-			s->n_error ++;
+			s->n_error++;
 		}
-	}
-	else {
+	} else {
 		s->n_error = 0;
 	}
 }
 
 static uint32_t ftmon_get_width(void *data)
 {
-	auto *s = (struct face_tracker_monitor*)data;
+	auto *s = (struct face_tracker_monitor *)data;
 
 	if (s->notrack) {
 		OBSSource target(get_target(s));
@@ -223,7 +218,7 @@ static uint32_t ftmon_get_width(void *data)
 
 static uint32_t ftmon_get_height(void *data)
 {
-	auto *s = (struct face_tracker_monitor*)data;
+	auto *s = (struct face_tracker_monitor *)data;
 
 	if (s->notrack) {
 		OBSSource target(get_target(s));
@@ -250,7 +245,7 @@ static uint32_t ftmon_get_height(void *data)
 
 static void ftmon_video_render(void *data, gs_effect_t *)
 {
-	auto *s = (struct face_tracker_monitor*)data;
+	auto *s = (struct face_tracker_monitor *)data;
 
 	OBSSource target(get_target(s));
 	obs_source_release(target);
@@ -278,8 +273,7 @@ static void ftmon_video_render(void *data, gs_effect_t *)
 	proc_handler_call(ph, "render_info", &cd);
 }
 
-extern "C"
-void register_face_tracker_monitor(bool hide_monitor)
+extern "C" void register_face_tracker_monitor(bool hide_monitor)
 {
 	struct obs_source_info info = {};
 	info.id = "face_tracker_monitor";

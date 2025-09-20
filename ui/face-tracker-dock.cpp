@@ -12,7 +12,7 @@
 #include "face-tracker-widget.hpp"
 #include "face-tracker-dock-internal.hpp"
 
-#define SAVE_DATA_NAME PLUGIN_NAME"-dock"
+#define SAVE_DATA_NAME PLUGIN_NAME "-dock"
 #define OBJ_NAME_SUFFIX "_ft_dock"
 
 void FTDock::closeEvent(QCloseEvent *event)
@@ -21,19 +21,20 @@ void FTDock::closeEvent(QCloseEvent *event)
 }
 
 // accessed only from UI thread
-static std::vector<FTDock*> *docks;
+static std::vector<FTDock *> *docks;
 
 static std::string generate_unique_name()
 {
-	for (int n=0;; n++) {
+	for (int n = 0;; n++) {
 		char name[32] = "FTDock";
 		if (n)
 			snprintf(name, sizeof(name), "FTDock-%d", n);
 		bool found = false;
-		if (docks) for (size_t i=0; i<docks->size(); i++) {
-			if ((*docks)[i]->name == name)
-				found = true;
-		}
+		if (docks)
+			for (size_t i = 0; i < docks->size(); i++) {
+				if ((*docks)[i]->name == name)
+					found = true;
+			}
 		if (!found)
 			return name;
 	}
@@ -83,7 +84,8 @@ struct init_target_selector_s
 	const char *filter_name;
 };
 
-static bool init_target_selector_compare_name(struct init_target_selector_s *ctx, const char *source_name, const char *filter_name)
+static bool init_target_selector_compare_name(struct init_target_selector_s *ctx, const char *source_name,
+					      const char *filter_name)
 {
 	if (strcmp(ctx->source_name, source_name) != 0)
 		return false;
@@ -119,8 +121,7 @@ static void init_target_selector_cb_add(struct init_target_selector_s *ctx, obs_
 	if (ctx->index < ctx->q->count()) {
 		ctx->q->setItemText(ctx->index, text);
 		ctx->q->setItemData(ctx->index, val);
-	}
-	else
+	} else
 		ctx->q->insertItem(ctx->index, text, val);
 
 	if (ctx->source_name) {
@@ -156,7 +157,7 @@ static bool init_target_selector_cb_source(void *data, obs_source_t *source)
 	return true;
 }
 
-static void init_target_selector(QComboBox *q, const char *source_name=NULL, const char *filter_name=NULL)
+static void init_target_selector(QComboBox *q, const char *source_name = NULL, const char *filter_name = NULL)
 {
 	QString current = q->currentText();
 
@@ -184,12 +185,11 @@ void FTDock::checkTargetSelector()
 
 void FTDock::frontendEvent_cb(enum obs_frontend_event event, void *private_data)
 {
-	auto *dock = static_cast<FTDock*>(private_data);
+	auto *dock = static_cast<FTDock *>(private_data);
 	dock->frontendEvent(event);
 }
 
-FTDock::FTDock(QWidget *parent)
-	: QFrame(parent)
+FTDock::FTDock(QWidget *parent) : QFrame(parent)
 {
 	data = face_tracker_dock_create();
 
@@ -233,11 +233,11 @@ FTDock::FTDock(QWidget *parent)
 	mainLayout->addWidget(notrackButton);
 	connect(notrackButton,
 #if QT_VERSION < QT_VERSION_CHECK(6, 7, 0)
-			&QCheckBox::stateChanged,
+		&QCheckBox::stateChanged,
 #else
-			&QCheckBox::checkStateChanged,
+		&QCheckBox::checkStateChanged,
 #endif
-			this, &FTDock::notrackButtonChanged);
+		this, &FTDock::notrackButtonChanged);
 
 	setLayout(mainLayout);
 
@@ -259,12 +259,13 @@ FTDock::~FTDock()
 	}
 
 	face_tracker_dock_release(data);
-	if (docks) for (size_t i=0; i<docks->size(); i++) {
-		if ((*docks)[i] == this) {
-			docks->erase(docks->begin()+i);
-			break;
+	if (docks)
+		for (size_t i = 0; i < docks->size(); i++) {
+			if ((*docks)[i] == this) {
+				docks->erase(docks->begin() + i);
+				break;
+			}
 		}
-	}
 }
 
 void FTDock::showEvent(QShowEvent *)
@@ -279,12 +280,12 @@ void FTDock::hideEvent(QHideEvent *)
 
 void FTDock::frontendEvent(enum obs_frontend_event event)
 {
-	if (event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CLEANUP ||
-			event == OBS_FRONTEND_EVENT_EXIT) {
-		if (docks) while (docks->size()) {
-			(*docks)[docks->size()-1]->close();
-			delete (*docks)[docks->size()-1];
-		}
+	if (event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CLEANUP || event == OBS_FRONTEND_EVENT_EXIT) {
+		if (docks)
+			while (docks->size()) {
+				(*docks)[docks->size() - 1]->close();
+				delete (*docks)[docks->size() - 1];
+			}
 	}
 }
 
@@ -301,12 +302,12 @@ OBSSource FTDock::get_source()
 	OBSSource target;
 	QList<QVariant> data = targetSelector->currentData().toList();
 
-	for (int i=0; i<data.count(); i++) {
+	for (int i = 0; i < data.count(); i++) {
 		const char *name = data[i].toByteArray().constData();
-		if (i==0) {
+		if (i == 0) {
 			target = obs_get_source_by_name(name);
 			obs_source_release(target);
-		} else if (i==1) {
+		} else if (i == 1) {
 			target = obs_source_get_filter_by_name(target, name);
 			obs_source_release(target);
 		}
@@ -332,7 +333,7 @@ static inline void set_monitor(obs_source_t *monitor, const QList<QVariant> &tar
 	obs_data_set_string(data, "source_name", target_data[0].toByteArray().constData());
 
 	obs_data_set_string(data, "filter_name",
-			target_data.count() > 1 ? target_data[1].toByteArray().constData() : "");
+			    target_data.count() > 1 ? target_data[1].toByteArray().constData() : "");
 
 	obs_source_update(monitor, data);
 }
@@ -391,7 +392,7 @@ void FTDock::updateState()
 	set_enable_button(enableButton, is_filter(targetSelector), obs_source_enabled(target));
 
 	signal_handler_t *sh = obs_source_get_signal_handler(target);
-	if (sh && sh!=source_sh) {
+	if (sh && sh != source_sh) {
 		if (source_sh)
 			signal_handler_disconnect(source_sh, "state_changed", onStateChanged, this);
 		source_sh = sh;
@@ -425,8 +426,7 @@ void FTDock::updateWidget()
 		const char *filter_name = obs_data_get_string(props, "filter_name");
 		init_target_selector(targetSelector, source_name, filter_name);
 
-		set_enable_button(enableButton, is_filter(targetSelector),
-				obs_source_enabled(get_source()));
+		set_enable_button(enableButton, is_filter(targetSelector), obs_source_enabled(get_source()));
 
 		bool notrack = obs_data_get_bool(props, "notrack");
 		notrackButton->setCheckState(notrack ? Qt::Checked : Qt::Unchecked);
@@ -519,16 +519,16 @@ void FTDock::propertyButtonClicked(bool checked)
 
 void FTDock::notrackButtonChanged(
 #if QT_VERSION < QT_VERSION_CHECK(6, 7, 0)
-		int state
+	int state
 #else
-		Qt::CheckState state
+	Qt::CheckState state
 #endif
-		)
+)
 {
 	if (!data || !data->src_monitor)
 		return;
 	obs_data_t *props = obs_data_create();
-	obs_data_set_bool(props, "notrack", state==Qt::Checked);
+	obs_data_set_bool(props, "notrack", state == Qt::Checked);
 	obs_source_update(data->src_monitor, props);
 	obs_data_release(props);
 }
@@ -541,7 +541,7 @@ static void save_load_ft_docks(obs_data_t *save_data, bool saving, void *)
 	if (saving) {
 		obs_data_t *props = obs_data_create();
 		obs_data_array_t *array = obs_data_array_create();
-		for (size_t i=0; i<docks->size(); i++) {
+		for (size_t i = 0; i < docks->size(); i++) {
 			FTDock *d = (*docks)[i];
 			obs_data_t *obj = obs_data_create();
 			d->save_properties(obj);
@@ -556,10 +556,11 @@ static void save_load_ft_docks(obs_data_t *save_data, bool saving, void *)
 	}
 
 	else /* loading */ {
-		if (docks) while (docks->size()) {
-			(*docks)[docks->size()-1]->close();
-			delete (*docks)[docks->size()-1];
-		}
+		if (docks)
+			while (docks->size()) {
+				(*docks)[docks->size() - 1]->close();
+				delete (*docks)[docks->size() - 1];
+			}
 
 		obs_data_t *props = obs_data_get_obj(save_data, SAVE_DATA_NAME);
 		if (!props) {
@@ -569,7 +570,7 @@ static void save_load_ft_docks(obs_data_t *save_data, bool saving, void *)
 
 		obs_data_array_t *array = obs_data_get_array(props, "docks");
 		size_t count = obs_data_array_count(array);
-		for (size_t i=0; i<count; i++) {
+		for (size_t i = 0; i < count; i++) {
 			obs_data_t *obj = obs_data_array_item(array, i);
 			FTDock::default_properties(obj);
 			const char *name = obs_data_get_string(obj, "name");
@@ -583,11 +584,11 @@ static void save_load_ft_docks(obs_data_t *save_data, bool saving, void *)
 
 void ft_docks_init()
 {
-	docks = new std::vector<FTDock*>;
+	docks = new std::vector<FTDock *>;
 	obs_frontend_add_save_callback(save_load_ft_docks, NULL);
 
-	QAction *action = static_cast<QAction *>(obs_frontend_add_tools_menu_qaction(
-				obs_module_text("New Face Tracker Dock...") ));
+	QAction *action = static_cast<QAction *>(
+		obs_frontend_add_tools_menu_qaction(obs_module_text("New Face Tracker Dock...")));
 	blog(LOG_INFO, "ft_docks_init: Adding face tracker dock menu action=%p", action);
 	auto cb = [] {
 		obs_data_t *props = obs_data_create();
@@ -604,9 +605,7 @@ void ft_docks_release()
 	docks = NULL;
 }
 
-void FTDock::default_properties(obs_data_t *)
-{
-}
+void FTDock::default_properties(obs_data_t *) {}
 
 void FTDock::save_properties(obs_data_t *props)
 {

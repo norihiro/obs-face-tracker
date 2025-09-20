@@ -29,24 +29,22 @@ face_tracker_base::~face_tracker_base()
 
 void *face_tracker_base::thread_routine(void *p)
 {
-	face_tracker_base *base = (face_tracker_base*)p;
+	face_tracker_base *base = (face_tracker_base *)p;
 #ifndef _WIN32
 	setpriority(PRIO_PROCESS, 0, 17);
-#else // _WIN32
+#else  // _WIN32
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif // _WIN32
 	os_set_thread_name("face-trk");
 
 	base->lock();
-	while(!base->stop_requested) {
+	while (!base->stop_requested) {
 		if (!base->suspend_requested) {
 			try {
 				base->track_main();
-			}
-			catch (std::exception &e) {
+			} catch (std::exception &e) {
 				blog(LOG_ERROR, "track_main: exception %s", e.what());
-			}
-			catch (...) {
+			} catch (...) {
 				blog(LOG_ERROR, "track_main: unknown exception");
 			}
 		}
@@ -64,10 +62,9 @@ void face_tracker_base::start()
 	suspend_requested = 0;
 	if (!running) {
 		blog(LOG_INFO, "face_tracker_base: starting a new thread.");
-		pthread_create(&thread, NULL, thread_routine, (void*)this);
+		pthread_create(&thread, NULL, thread_routine, (void *)this);
 		running = 1;
-	}
-	else {
+	} else {
 		lock();
 		signal();
 		unlock();
@@ -105,8 +102,7 @@ bool face_tracker_base::is_stopped()
 			running = 0;
 		}
 		return 1;
-	}
-	else
+	} else
 		return 0;
 }
 

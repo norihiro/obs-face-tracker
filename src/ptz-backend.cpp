@@ -8,9 +8,7 @@ ptz_backend::ptz_backend()
 	ref = 1;
 }
 
-ptz_backend::~ptz_backend()
-{
-}
+ptz_backend::~ptz_backend() {}
 
 void ptz_backend::release()
 {

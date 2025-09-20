@@ -5,9 +5,9 @@
 #include <dlib/array2d/array2d_kernel.h>
 #include "plugin-macros.generated.h"
 
-class texture_object
-{
+class texture_object {
 	struct texture_object_private_s *data;
+
 public:
 	texture_object();
 	~texture_object();

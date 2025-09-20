@@ -33,8 +33,8 @@ public:
 	void closeEvent(QCloseEvent *event) override;
 
 	static void default_properties(obs_data_t *);
-	void save_properties(obs_data_t*);
-	void load_properties(obs_data_t*);
+	void save_properties(obs_data_t *);
+	void load_properties(obs_data_t *);
 
 private:
 	void showEvent(QShowEvent *event) override;
@@ -70,7 +70,7 @@ private slots:
 #else
 		Qt::CheckState state
 #endif
-		);
+	);
 };
 
 extern "C" {

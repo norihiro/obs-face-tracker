@@ -19,12 +19,8 @@ struct face_detector_dlib_private_s
 	std::string model_filename;
 	int crop_l = 0, crop_r = 0, crop_t = 0, crop_b = 0;
 	int n_error = 0;
-	face_detector_dlib_private_s()
-	{
-	}
-	~face_detector_dlib_private_s()
-	{
-	}
+	face_detector_dlib_private_s() {}
+	~face_detector_dlib_private_s() {}
 };
 
 face_detector_dlib_hog::face_detector_dlib_hog()
@@ -37,7 +33,8 @@ face_detector_dlib_hog::~face_detector_dlib_hog()
 	delete p;
 }
 
-void face_detector_dlib_hog::set_texture(std::shared_ptr<texture_object> &tex, int crop_l, int crop_r, int crop_t, int crop_b)
+void face_detector_dlib_hog::set_texture(std::shared_ptr<texture_object> &tex, int crop_l, int crop_r, int crop_t,
+					 int crop_b)
 {
 	p->tex = tex;
 	p->crop_l = crop_l;
@@ -65,27 +62,24 @@ void face_detector_dlib_hog::detect_main()
 		if (x1 - x0 < 80 || y1 - y0 < 80) {
 			if (p->n_error++ < MAX_ERROR)
 				blog(LOG_ERROR, "too small image: %dx%d cropped left=%d right=%d top=%d bottom=%d",
-						(int)img.nc(), (int)img.nr(),
-						p->crop_l, p->crop_r, p->crop_t, p->crop_b );
+				     (int)img.nc(), (int)img.nr(), p->crop_l, p->crop_r, p->crop_t, p->crop_b);
 			return;
-		}
-		else if (p->n_error) {
+		} else if (p->n_error) {
 			p->n_error--;
 		}
 		img_crop.set_size(y1 - y0, x1 - x0);
 		for (int y = y0; y < y1; y++) {
 			for (int x = x0; x < x1; x++) {
-				img_crop(y-y0, x-x0) = img(y, x);
+				img_crop(y - y0, x - x0) = img(y, x);
 			}
 		}
 		img = img_crop;
 	}
-	if (img.nc()<80 || img.nr()<80) {
+	if (img.nc() < 80 || img.nr() < 80) {
 		if (p->n_error++ < MAX_ERROR)
 			blog(LOG_ERROR, "too small image: %dx%d", (int)img.nc(), (int)img.nr());
 		return;
-	}
-	else if (p->n_error) {
+	} else if (p->n_error) {
 		p->n_error--;
 	}
 
@@ -95,8 +89,7 @@ void face_detector_dlib_hog::detect_main()
 			blog(LOG_INFO, "loading file '%s'", p->model_filename.c_str());
 			dlib::deserialize(p->model_filename.c_str()) >> p->detector;
 			p->has_error = false;
-		}
-		catch(...) {
+		} catch (...) {
 			blog(LOG_ERROR, "failed to load file '%s'", p->model_filename.c_str());
 			p->has_error = true;
 		}
@@ -105,7 +98,7 @@ void face_detector_dlib_hog::detect_main()
 	if (!p->has_error) {
 		std::vector<dlib::rectangle> dets = p->detector(img);
 		p->rects.resize(dets.size());
-		for (size_t i=0; i<dets.size(); i++) {
+		for (size_t i = 0; i < dets.size(); i++) {
 			rect_s &r = p->rects[i];
 			r.x0 = (dets[i].left() + x0) * p->tex->scale;
 			r.y0 = (dets[i].top() + y0) * p->tex->scale;

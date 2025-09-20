@@ -27,7 +27,7 @@ libvisca_thread::libvisca_thread()
 
 	add_ref(); // release inside thread_main
 	pthread_t thread;
-	pthread_create(&thread, NULL, libvisca_thread::thread_main, (void*)this);
+	pthread_create(&thread, NULL, libvisca_thread::thread_main, (void *)this);
 	pthread_detach(thread);
 }
 
@@ -50,7 +50,7 @@ void libvisca_thread::thread_connect()
 
 	const char *address = obs_data_get_string(data, "address");
 	int port = (int)obs_data_get_int(data, "port");
-	auto *iface_new = (struct _VISCA_interface*)bzalloc(sizeof(struct _VISCA_interface));
+	auto *iface_new = (struct _VISCA_interface *)bzalloc(sizeof(struct _VISCA_interface));
 	debug("libvisca_thread::thread_connect connecting to address=%s port=%d...", address, port);
 	if (VISCA_open_tcp(iface_new, address, port) != VISCA_SUCCESS) {
 		blog(LOG_ERROR, "failed to connect %s:%d", address, port);
@@ -68,7 +68,7 @@ void libvisca_thread::thread_connect()
 	}
 	iface = iface_new;
 	if (!camera)
-		camera = (VISCACamera_t*)bzalloc(sizeof(VISCACamera_t));
+		camera = (VISCACamera_t *)bzalloc(sizeof(VISCACamera_t));
 	data_changed = false;
 
 	debug("libvisca_thread::thread_connect sending VISCA_clear...");
@@ -79,7 +79,7 @@ void libvisca_thread::thread_connect()
 
 void *libvisca_thread::thread_main(void *data)
 {
-	auto *visca = (libvisca_thread*)data;
+	auto *visca = (libvisca_thread *)data;
 
 	// add_ref() was called just before creating this thread.
 
@@ -90,32 +90,35 @@ void *libvisca_thread::thread_main(void *data)
 	return NULL;
 }
 
-static inline bool send_pantilt(struct _VISCA_interface *iface, struct _VISCA_camera *camera, int pan, int tilt, int retry=0)
+static inline bool send_pantilt(struct _VISCA_interface *iface, struct _VISCA_camera *camera, int pan, int tilt,
+				int retry = 0)
 {
 	debug("send_pantilt moving pan=%d tilt=%d", pan, tilt);
 	int pan_a = abs(pan);
 	int tilt_a = abs(tilt);
-	if (pan_a>127) pan_a = 127;
-	if (tilt_a>127) tilt_a = 127;
+	if (pan_a > 127)
+		pan_a = 127;
+	if (tilt_a > 127)
+		tilt_a = 127;
 
 	uint32_t res = VISCA_SUCCESS;
-	if      (tilt<0 && pan<0) // 1=up, 1=left
+	if (tilt < 0 && pan < 0) // 1=up, 1=left
 		res = VISCA_set_pantilt_upleft(iface, camera, pan_a, tilt_a);
-	else if (tilt<0 && pan==0) // 1=up
+	else if (tilt < 0 && pan == 0) // 1=up
 		res = VISCA_set_pantilt_up(iface, camera, pan_a, tilt_a);
-	else if (tilt<0 && pan>0) // 1=up, 2=right
+	else if (tilt < 0 && pan > 0) // 1=up, 2=right
 		res = VISCA_set_pantilt_upright(iface, camera, pan_a, tilt_a);
-	else if (tilt==0 && pan<0) // 1=left
+	else if (tilt == 0 && pan < 0) // 1=left
 		res = VISCA_set_pantilt_left(iface, camera, pan_a, tilt_a);
-	else if (tilt==0 && pan==0)
+	else if (tilt == 0 && pan == 0)
 		res = VISCA_set_pantilt_stop(iface, camera, pan_a, tilt_a);
-	else if (tilt==0 && pan>0) // 2=right
+	else if (tilt == 0 && pan > 0) // 2=right
 		res = VISCA_set_pantilt_right(iface, camera, pan_a, tilt_a);
-	else if (tilt>0 && pan<0) // 2=down, 1=left
+	else if (tilt > 0 && pan < 0) // 2=down, 1=left
 		res = VISCA_set_pantilt_downleft(iface, camera, pan_a, tilt_a);
-	else if (tilt>0 && pan==0) // 2=down
+	else if (tilt > 0 && pan == 0) // 2=down
 		res = VISCA_set_pantilt_down(iface, camera, pan_a, tilt_a);
-	else if (tilt>0 && pan>0)
+	else if (tilt > 0 && pan > 0)
 		res = VISCA_set_pantilt_downright(iface, camera, pan_a, tilt_a);
 
 	if (res != VISCA_SUCCESS)
@@ -129,16 +132,17 @@ static inline bool send_pantilt(struct _VISCA_interface *iface, struct _VISCA_ca
 	return true;
 }
 
-static inline bool send_zoom(struct _VISCA_interface *iface, struct _VISCA_camera *camera, int zoom, int retry=0)
+static inline bool send_zoom(struct _VISCA_interface *iface, struct _VISCA_camera *camera, int zoom, int retry = 0)
 {
 	debug("send_zoom moving zoom=%d", zoom);
 	uint32_t res;
 	int zoom_a = std::abs(zoom);
-	if (zoom_a > 7) zoom_a = 7;
+	if (zoom_a > 7)
+		zoom_a = 7;
 	// zoom>0 : wide
-	if (zoom>0)
+	if (zoom > 0)
 		res = VISCA_set_zoom_wide_speed(iface, camera, zoom_a);
-	else if (zoom<0)
+	else if (zoom < 0)
 		res = VISCA_set_zoom_tele_speed(iface, camera, zoom_a);
 	else
 		res = VISCA_set_zoom_stop(iface, camera);
@@ -156,15 +160,15 @@ static inline bool send_zoom(struct _VISCA_interface *iface, struct _VISCA_camer
 
 void libvisca_thread::thread_loop()
 {
-	int pan_prev=INT_MIN, tilt_prev=INT_MIN, zoom_prev=INT_MIN;
+	int pan_prev = INT_MIN, tilt_prev = INT_MIN, zoom_prev = INT_MIN;
 	int n_fail = 0;
 
 	while (get_ref() > 1) {
 		if (data_changed || n_fail > TH_FAIL) {
 			thread_connect();
-			pan_prev=INT_MIN;
-			tilt_prev=INT_MIN;
-			zoom_prev=INT_MIN;
+			pan_prev = INT_MIN;
+			tilt_prev = INT_MIN;
+			zoom_prev = INT_MIN;
 		}
 		if (!iface) {
 			os_sleep_ms(50);
@@ -174,24 +178,22 @@ void libvisca_thread::thread_loop()
 		int tilt = os_atomic_load_long(&tilt_rsvd);
 		int zoom = os_atomic_load_long(&zoom_rsvd);
 		bool ptz_changed = false;
-		if (pan!=pan_prev || tilt!=tilt_prev) {
+		if (pan != pan_prev || tilt != tilt_prev) {
 			if (send_pantilt(iface, camera, pan, tilt)) {
 				pan_prev = pan;
 				tilt_prev = tilt;
 				ptz_changed = true;
 				n_fail = 0;
-			}
-			else {
+			} else {
 				n_fail++;
 			}
 		}
-		if (zoom!=zoom_prev) {
+		if (zoom != zoom_prev) {
 			if (send_zoom(iface, camera, zoom)) {
 				zoom_prev = zoom;
 				ptz_changed = true;
 				n_fail = 0;
-			}
-			else {
+			} else {
 				n_fail++;
 			}
 		}
@@ -233,8 +235,7 @@ void libvisca_thread::set_config(struct obs_data *data_)
 			data_changed = true;
 		if (port_old != port_new)
 			data_changed = true;
-	}
-	else
+	} else
 		data_changed = true;
 	data = data_;
 

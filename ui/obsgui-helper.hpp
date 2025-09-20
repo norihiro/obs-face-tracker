@@ -7,8 +7,7 @@
 #endif
 
 // copied from obs-studio/UI/qt-wrappers.cpp and modified to support OBS-26
-static inline
-bool QTToGSWindow(QWindow *window, gs_window &gswindow)
+static inline bool QTToGSWindow(QWindow *window, gs_window &gswindow)
 {
 	bool success = true;
 

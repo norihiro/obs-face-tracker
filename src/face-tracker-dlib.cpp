@@ -48,7 +48,8 @@ face_tracker_dlib::face_tracker_dlib()
 face_tracker_dlib::~face_tracker_dlib()
 {
 	bfree(p->landmark_detection_data);
-	if (p->tracker) delete p->tracker;
+	if (p->tracker)
+		delete p->tracker;
 	delete p;
 }
 
@@ -61,8 +62,8 @@ void face_tracker_dlib::set_texture(std::shared_ptr<texture_object> &tex)
 void face_tracker_dlib::set_position(const rect_s &rect)
 {
 	if (!p->tex) {
-		blog(LOG_ERROR, "face_tracker_dlib::set_position: texture was not set. rect=(%d %d %d %d %f)",
-				rect.x0, rect.y0, rect.x1, rect.y1, rect.score);
+		blog(LOG_ERROR, "face_tracker_dlib::set_position: texture was not set. rect=(%d %d %d %d %f)", rect.x0,
+		     rect.y0, rect.x1, rect.y1, rect.score);
 		return;
 	}
 
@@ -93,8 +94,7 @@ void face_tracker_dlib::set_landmark_detection(const char *data_file_path)
 	}
 }
 
-template <typename Tx, typename Ta>
-inline Tx internal_division(Tx x0, Tx x1, Ta a0, Ta a1)
+template<typename Tx, typename Ta> inline Tx internal_division(Tx x0, Tx x1, Ta a0, Ta a1)
 {
 	return (x0 * a1 + x1 * a0) / (a0 + a1);
 }
@@ -113,7 +113,7 @@ void face_tracker_dlib::track_main()
 		if (!p->tex->get_dlib_rgb_image(img))
 			return;
 
-		dlib::rectangle r (p->rect.x0, p->rect.y0, p->rect.x1, p->rect.y1);
+		dlib::rectangle r(p->rect.x0, p->rect.y0, p->rect.x1, p->rect.y1);
 		p->tracker->start_track(img, r);
 		p->tracker_nc = img.nc();
 		p->tracker_nr = img.nr();
@@ -123,33 +123,33 @@ void face_tracker_dlib::track_main()
 		p->pslr_min = 1e9f;
 		p->scale_orig = p->tex->scale;
 		p->shape = dlib::full_object_detection();
-	}
-	else if (p->tex->scale != p->scale_orig) {
+	} else if (p->tex->scale != p->scale_orig) {
 		p->rect.score = 0.0f;
-	}
-	else {
+	} else {
 		dlib::matrix<dlib::rgb_pixel> img;
 		if (!p->tex->get_dlib_rgb_image(img))
 			return;
 
 		if (img.nc() != p->tracker_nc || img.nr() != p->tracker_nr) {
-			blog(LOG_ERROR, "face_tracker_dlib::track_main: cannot run correlation-tracker with different image size %dx%d, expected %dx%d",
-					(int)img.nc(), (int)img.nr(),
-					p->tracker_nc, p->tracker_nr );
+			blog(LOG_ERROR,
+			     "face_tracker_dlib::track_main: cannot run correlation-tracker with different image size %dx%d, expected %dx%d",
+			     (int)img.nc(), (int)img.nr(), p->tracker_nc, p->tracker_nr);
 			p->rect.score = 0;
 			p->n_track += 1; // to return score=0
 			return;
 		}
 
 		float s = p->tracker->update(img);
-		if (s>p->pslr_max) p->pslr_max = s;
-		if (s<p->pslr_min) p->pslr_min = s;
+		if (s > p->pslr_max)
+			p->pslr_max = s;
+		if (s < p->pslr_min)
+			p->pslr_min = s;
 		dlib::rectangle r = p->tracker->get_position();
 		p->rect.x0 = r.left() * p->tex->scale;
 		p->rect.y0 = r.top() * p->tex->scale;
 		p->rect.x1 = r.right() * p->tex->scale;
 		p->rect.y1 = r.bottom() * p->tex->scale;
-		s = p->pslr_max / p->pslr_min * ((ns-p->last_ns)*1e-9f);
+		s = p->pslr_max / p->pslr_min * ((ns - p->last_ns) * 1e-9f);
 		p->rect.score = (p->rect.score /*+ 0.0f*s */) / (1.0f + s);
 		p->n_track += 1;
 
@@ -166,11 +166,11 @@ void face_tracker_dlib::track_main()
 				}
 			}
 
-			dlib::rectangle r_face (
-					internal_division(r.left(), r.right(), p->upsize.x0, p->upsize.x1 + 1.0f),
-					internal_division(r.top(), r.bottom(), p->upsize.y0, p->upsize.y1 + 1.0f),
-					internal_division(r.left(), r.right(), p->upsize.x0 + 1.0f, p->upsize.x1),
-					internal_division(r.top(), r.bottom(), p->upsize.y0 + 1.0f, p->upsize.y1) );
+			dlib::rectangle r_face(
+				internal_division(r.left(), r.right(), p->upsize.x0, p->upsize.x1 + 1.0f),
+				internal_division(r.top(), r.bottom(), p->upsize.y0, p->upsize.y1 + 1.0f),
+				internal_division(r.left(), r.right(), p->upsize.x0 + 1.0f, p->upsize.x1),
+				internal_division(r.top(), r.bottom(), p->upsize.y0 + 1.0f, p->upsize.y1));
 
 			if (p->sp_available)
 				p->shape = p->sp(img, r_face);
@@ -184,11 +184,10 @@ void face_tracker_dlib::track_main()
 
 bool face_tracker_dlib::get_face(struct rect_s &rect)
 {
-	if (p->n_track>0) {
+	if (p->n_track > 0) {
 		rect = p->rect;
 		return true;
-	}
-	else
+	} else
 		return false;
 }
 
@@ -198,14 +197,13 @@ bool face_tracker_dlib::get_landmark(std::vector<pointf_s> &results)
 		const auto &shape = p->shape;
 		results.resize(shape.num_parts());
 
-		for (unsigned long i=0; i<shape.num_parts(); i++) {
-			const dlib::point pnt =shape.part(i);
+		for (unsigned long i = 0; i < shape.num_parts(); i++) {
+			const dlib::point pnt = shape.part(i);
 			results[i].x = (float)pnt.x() * p->last_scale;
 			results[i].y = (float)pnt.y() * p->last_scale;
 		}
 
 		return true;
-	}
-	else
+	} else
 		return false;
 }

@@ -7,4 +7,3 @@ int main()
 	std::cout << dlib::get_serialized_frontal_faces();
 	return 0;
 }
-

@@ -12,14 +12,13 @@ static void copy_data_double(obs_data_t *dst, obs_data_t *src, const char *name)
 
 #define preset_mask_track 1
 #define preset_mask_control 2
-static const struct {
+static const struct
+{
 	const uint32_t flag;
 	const char *name;
-} preset_mask_flags[] = {
-	{preset_mask_track, "preset_mask_track"},
-	{preset_mask_control, "preset_mask_control"},
-	{0, NULL}
-};
+} preset_mask_flags[] = {{preset_mask_track, "preset_mask_track"},
+			 {preset_mask_control, "preset_mask_control"},
+			 {0, NULL}};
 
 static uint32_t prop_to_preset_mask(obs_data_t *prop)
 {
@@ -31,43 +30,42 @@ static uint32_t prop_to_preset_mask(obs_data_t *prop)
 	return mask;
 }
 
-static const struct {
+static const struct
+{
 	const char *name;
-	void(*func)(obs_data_t *, obs_data_t *, const char *);
+	void (*func)(obs_data_t *, obs_data_t *, const char *);
 	uint32_t mask;
-} preset_property_list[] = {
-	{ "upsize_l",        copy_data_double, preset_mask_track },
-	{ "upsize_r",        copy_data_double, preset_mask_track },
-	{ "upsize_t",        copy_data_double, preset_mask_track },
-	{ "upsize_b",        copy_data_double, preset_mask_track },
-	{ "scale_max",       copy_data_double, preset_mask_track },
-	{ "track_z",         copy_data_double, preset_mask_track },
-	{ "track_x",         copy_data_double, preset_mask_track },
-	{ "track_y",         copy_data_double, preset_mask_track },
-	{ "Kp",              copy_data_double, preset_mask_control },
-	{ "Ki",              copy_data_double, preset_mask_control },
-	{ "Kd",              copy_data_double, preset_mask_control },
-	{ "Tdlpf",           copy_data_double, preset_mask_control },
-	{ "e_deadband_x",    copy_data_double, preset_mask_control },
-	{ "e_deadband_y",    copy_data_double, preset_mask_control },
-	{ "e_deadband_z",    copy_data_double, preset_mask_control },
-	{ "e_nonlineaeer_x", copy_data_double, preset_mask_control },
-	{ "e_nonlineaeer_y", copy_data_double, preset_mask_control },
-	{ "e_nonlineaeer_z", copy_data_double, preset_mask_control },
-	// specific to face_tracker_ptz
-	{ "Kp_x_db",         copy_data_double, preset_mask_control },
-	{ "Kp_y_db",         copy_data_double, preset_mask_control },
-	{ "Kp_z_db",         copy_data_double, preset_mask_control },
-	{ "Ki_x",            copy_data_double, preset_mask_control },
-	{ "Ki_y",            copy_data_double, preset_mask_control },
-	{ "Ki_z",            copy_data_double, preset_mask_control },
-	{ "Td_x",            copy_data_double, preset_mask_control },
-	{ "Td_y",            copy_data_double, preset_mask_control },
-	{ "Td_z",            copy_data_double, preset_mask_control },
-	{ "Tdlpf_z",         copy_data_double, preset_mask_control },
-	{ "Tatt_int",        copy_data_double, preset_mask_control },
-	{ NULL, NULL, 0 }
-};
+} preset_property_list[] = {{"upsize_l", copy_data_double, preset_mask_track},
+			    {"upsize_r", copy_data_double, preset_mask_track},
+			    {"upsize_t", copy_data_double, preset_mask_track},
+			    {"upsize_b", copy_data_double, preset_mask_track},
+			    {"scale_max", copy_data_double, preset_mask_track},
+			    {"track_z", copy_data_double, preset_mask_track},
+			    {"track_x", copy_data_double, preset_mask_track},
+			    {"track_y", copy_data_double, preset_mask_track},
+			    {"Kp", copy_data_double, preset_mask_control},
+			    {"Ki", copy_data_double, preset_mask_control},
+			    {"Kd", copy_data_double, preset_mask_control},
+			    {"Tdlpf", copy_data_double, preset_mask_control},
+			    {"e_deadband_x", copy_data_double, preset_mask_control},
+			    {"e_deadband_y", copy_data_double, preset_mask_control},
+			    {"e_deadband_z", copy_data_double, preset_mask_control},
+			    {"e_nonlineaeer_x", copy_data_double, preset_mask_control},
+			    {"e_nonlineaeer_y", copy_data_double, preset_mask_control},
+			    {"e_nonlineaeer_z", copy_data_double, preset_mask_control},
+			    // specific to face_tracker_ptz
+			    {"Kp_x_db", copy_data_double, preset_mask_control},
+			    {"Kp_y_db", copy_data_double, preset_mask_control},
+			    {"Kp_z_db", copy_data_double, preset_mask_control},
+			    {"Ki_x", copy_data_double, preset_mask_control},
+			    {"Ki_y", copy_data_double, preset_mask_control},
+			    {"Ki_z", copy_data_double, preset_mask_control},
+			    {"Td_x", copy_data_double, preset_mask_control},
+			    {"Td_y", copy_data_double, preset_mask_control},
+			    {"Td_z", copy_data_double, preset_mask_control},
+			    {"Tdlpf_z", copy_data_double, preset_mask_control},
+			    {"Tatt_int", copy_data_double, preset_mask_control},
+			    {NULL, NULL, 0}};
 
 static void copy_preset(obs_data_t *dst, obs_data_t *src, uint32_t mask)
 {
@@ -96,7 +94,7 @@ void ftf_preset_item_to_list(obs_property_t *p, obs_data_t *settings)
 
 bool ftf_preset_load(obs_properties_t *, obs_property_t *, void *ctx_data)
 {
-	auto *s = (struct face_tracker_filter*)ctx_data;
+	auto *s = (struct face_tracker_filter *)ctx_data;
 
 	obs_data_t *settings = NULL;
 	obs_data_t *presets = NULL;
@@ -104,11 +102,13 @@ bool ftf_preset_load(obs_properties_t *, obs_property_t *, void *ctx_data)
 	const char *preset_name;
 
 	settings = obs_source_get_settings(s->context);
-	if (!settings) goto err;
+	if (!settings)
+		goto err;
 	preset_name = obs_data_get_string(settings, "preset_name");
 	blog(LOG_INFO, "ftf_preset_load: loading preset %s", preset_name);
 	presets = obs_data_get_obj(settings, "presets");
-	if (!presets) goto err;
+	if (!presets)
+		goto err;
 
 	preset_data = obs_data_get_obj(presets, preset_name);
 	if (!preset_data) {
@@ -128,11 +128,11 @@ err:
 static inline void list_insert_string(obs_property_t *p, const char *name)
 {
 	size_t count = obs_property_list_item_count(p);
-	for (size_t i=0; i<count; i++) {
+	for (size_t i = 0; i < count; i++) {
 		const char *s = obs_property_list_item_name(p, i);
-		if (s && strcmp(s, name)==0)
+		if (s && strcmp(s, name) == 0)
 			return;
-		if (!s || strcmp(s, name)>0) {
+		if (!s || strcmp(s, name) > 0) {
 			obs_property_list_insert_string(p, i, name, name);
 			return;
 		}
@@ -143,9 +143,9 @@ static inline void list_insert_string(obs_property_t *p, const char *name)
 static inline void list_delete_string(obs_property_t *p, const char *name)
 {
 	size_t count = obs_property_list_item_count(p);
-	for (size_t i=0; i<count; i++) {
+	for (size_t i = 0; i < count; i++) {
 		const char *s = obs_property_list_item_name(p, i);
-		if (s && strcmp(s, name)==0) {
+		if (s && strcmp(s, name) == 0) {
 			obs_property_list_item_remove(p, i);
 			return;
 		}
@@ -154,7 +154,7 @@ static inline void list_delete_string(obs_property_t *p, const char *name)
 
 bool ftf_preset_save(obs_properties_t *props, obs_property_t *, void *ctx_data)
 {
-	auto *s = (struct face_tracker_filter*)ctx_data;
+	auto *s = (struct face_tracker_filter *)ctx_data;
 
 	obs_data_t *settings = NULL;
 	obs_data_t *presets = NULL;
@@ -190,7 +190,7 @@ err:
 
 bool ftf_preset_delete(obs_properties_t *props, obs_property_t *, void *ctx_data)
 {
-	auto *s = (struct face_tracker_filter*)ctx_data;
+	auto *s = (struct face_tracker_filter *)ctx_data;
 
 	obs_data_t *settings = NULL;
 	obs_data_t *presets = NULL;
@@ -218,4 +218,3 @@ err:
 	obs_data_release(settings);
 	return true;
 }
-

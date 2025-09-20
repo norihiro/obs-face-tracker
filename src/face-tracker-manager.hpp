@@ -4,91 +4,91 @@
 #include <string>
 #include "face-tracker-base.h"
 
-class face_tracker_manager
-{
-	public:
-		enum detector_engine_e {
-			engine_dlib_hog = 0,
-			engine_dlib_cnn = 1,
-			engine_uninitialized = -1,
-		};
+class face_tracker_manager {
+public:
+	enum detector_engine_e {
+		engine_dlib_hog = 0,
+		engine_dlib_cnn = 1,
+		engine_uninitialized = -1,
+	};
 
-		struct tracker_rect_s {
-			rect_s rect;
-			rectf_s crop_rect;
-			std::vector<pointf_s> landmark;
-		};
+	struct tracker_rect_s
+	{
+		rect_s rect;
+		rectf_s crop_rect;
+		std::vector<pointf_s> landmark;
+	};
 
-		struct tracker_inst_s
-		{
-			class face_tracker_base *tracker;
-			rect_s rect;
-			rectf_s crop_tracker; // crop corresponding to current processing image
-			rectf_s crop_rect; // crop corresponding to rect
-			std::vector<pointf_s> landmark;
-			float att;
-			float score_first;
-			enum tracker_state_e {
-				tracker_state_init = 0,
-				tracker_state_reset_texture, // texture has been set, position is not set.
-				tracker_state_constructing, // texture and positions have been set, starting to construct correlation_tracker.
-				tracker_state_first_track, // correlation_tracker has been prepared, running 1st tracking
-				tracker_state_available, // 1st tracking was done, `rect` is available, can accept next frame.
-				tracker_state_ending,
-			} state;
-			int tick_cnt;
-		};
-
-	public: // properties
-		float upsize_l, upsize_r, upsize_t, upsize_b;
-		volatile float scale;
-		volatile bool reset_requested;
-		float tracking_threshold;
-		enum detector_engine_e detector_engine = engine_uninitialized;
-		std::string detector_dlib_hog_model;
-		std::string detector_dlib_cnn_model;
-		int detector_crop_l, detector_crop_r, detector_crop_t, detector_crop_b;
-		char *landmark_detection_data;
-
-	public: // realtime status
-		rectf_s crop_cur;
+	struct tracker_inst_s
+	{
+		class face_tracker_base *tracker;
+		rect_s rect;
+		rectf_s crop_tracker; // crop corresponding to current processing image
+		rectf_s crop_rect;    // crop corresponding to rect
+		std::vector<pointf_s> landmark;
+		float att;
+		float score_first;
+		enum tracker_state_e {
+			tracker_state_init = 0,
+			tracker_state_reset_texture, // texture has been set, position is not set.
+			tracker_state_constructing, // texture and positions have been set, starting to construct correlation_tracker.
+			tracker_state_first_track, // correlation_tracker has been prepared, running 1st tracking
+			tracker_state_available,   // 1st tracking was done, `rect` is available, can accept next frame.
+			tracker_state_ending,
+		} state;
 		int tick_cnt;
+	};
 
-	public: // results
-		std::vector<rect_s> detect_rects;
-		std::vector<tracker_rect_s> tracker_rects;
+public: // properties
+	float upsize_l, upsize_r, upsize_t, upsize_b;
+	volatile float scale;
+	volatile bool reset_requested;
+	float tracking_threshold;
+	enum detector_engine_e detector_engine = engine_uninitialized;
+	std::string detector_dlib_hog_model;
+	std::string detector_dlib_cnn_model;
+	int detector_crop_l, detector_crop_r, detector_crop_t, detector_crop_b;
+	char *landmark_detection_data;
 
-	public: /* not sure they are necessary to be public */
-		class face_detector_base *detect;
-		int detect_tick;
+public: // realtime status
+	rectf_s crop_cur;
+	int tick_cnt;
 
-		// TODO: Just have two pairs
-		std::deque<struct tracker_inst_s> trackers;
-		std::deque<struct tracker_inst_s> trackers_idlepool;
+public: // results
+	std::vector<rect_s> detect_rects;
+	std::vector<tracker_rect_s> tracker_rects;
 
-	private:
-		int next_tick_stage_to_detector;
-		bool detector_in_progress;
+public: /* not sure they are necessary to be public */
+	class face_detector_base *detect;
+	int detect_tick;
 
-	public:
-		face_tracker_manager();
-		virtual ~face_tracker_manager();
-		void tick(float second);
-		void post_render();
-		void update(obs_data_t *settings);
-		static void get_properties(obs_properties_t *);
-		static void get_defaults(obs_data_t *settings);
+	// TODO: Just have two pairs
+	std::deque<struct tracker_inst_s> trackers;
+	std::deque<struct tracker_inst_s> trackers_idlepool;
 
-	protected:
-		virtual std::shared_ptr<texture_object> get_cvtex() = 0;
+private:
+	int next_tick_stage_to_detector;
+	bool detector_in_progress;
 
-	private:
-		inline void retire_tracker(int ix);
-		inline bool is_low_confident(const tracker_inst_s &t, float th1);
-		void remove_duplicated_tracker();
-		void attenuate_tracker();
-		void copy_detector_to_tracker();
-		void stage_to_detector();
-		int stage_surface_to_tracker(struct tracker_inst_s &t);
-		void stage_to_trackers();
+public:
+	face_tracker_manager();
+	virtual ~face_tracker_manager();
+	void tick(float second);
+	void post_render();
+	void update(obs_data_t *settings);
+	static void get_properties(obs_properties_t *);
+	static void get_defaults(obs_data_t *settings);
+
+protected:
+	virtual std::shared_ptr<texture_object> get_cvtex() = 0;
+
+private:
+	inline void retire_tracker(int ix);
+	inline bool is_low_confident(const tracker_inst_s &t, float th1);
+	void remove_duplicated_tracker();
+	void attenuate_tracker();
+	void copy_detector_to_tracker();
+	void stage_to_detector();
+	int stage_surface_to_tracker(struct tracker_inst_s &t);
+	void stage_to_trackers();
 };
