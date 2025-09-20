@@ -74,9 +74,56 @@ struct f3
 	f3 hp(const f3 &a) const { return f3(v[0] * a.v[0], v[1] * a.v[1], v[2] * a.v[2]); }
 };
 
+struct f4
+{
+	float v[4];
+
+	f4(const f4 &a) { *this = a; }
+	f4(float a, float b, float c, float d)
+	{
+		v[0] = a;
+		v[1] = b;
+		v[2] = c;
+		v[3] = d;
+	}
+	f4(const rect_s &a)
+	{
+		v[0] = (float)(a.x0 + a.x1) * 0.5f;
+		v[1] = (float)(a.y0 + a.y1) * 0.5f;
+		v[2] = sqrtf((float)(a.x1 - a.x0) * (float)(a.y1 - a.y0));
+		v[3] = 0.0f;
+	}
+	f4(const rectf_s &a)
+	{
+		v[0] = (a.x0 + a.x1) * 0.5f;
+		v[1] = (a.y0 + a.y1) * 0.5f;
+		v[2] = sqrtf((a.x1 - a.x0) * (a.y1 - a.y0));
+		v[3] = 0.0f;
+	}
+	f4 operator+(const f4 &a) { return f4(v[0] + a.v[0], v[1] + a.v[1], v[2] + a.v[2], v[3] + a.v[3]); }
+	f4 operator-(const f4 &a) { return f4(v[0] - a.v[0], v[1] - a.v[1], v[2] - a.v[2], v[3] - a.v[3]); }
+	f4 operator*(float a) { return f4(v[0] * a, v[1] * a, v[2] * a, v[3] * a); }
+	f4 &operator+=(const f4 &a) { return *this = *this + a; }
+	f4 &operator=(const f4 &a)
+	{
+		v[0] = a.v[0];
+		v[1] = a.v[1];
+		v[2] = a.v[2];
+		v[3] = a.v[3];
+		return *this;
+	}
+
+	f4 hp(const f4 &a) const { return f4(v[0] * a.v[0], v[1] * a.v[1], v[2] * a.v[2], v[3] * a.v[3]); }
+};
+
 static inline bool isnan(const f3 &a)
 {
 	return isnan(a.v[0]) || isnan(a.v[1]) || isnan(a.v[2]);
+}
+
+static inline bool isnan(const f4 &a)
+{
+	return isnan(a.v[0]) || isnan(a.v[1]) || isnan(a.v[2]) || isnan(a.v[3]);
 }
 
 static inline int get_width(const rect_s &r)
@@ -132,6 +179,19 @@ static inline float sqf(float x)
 }
 
 static inline rectf_s f3_to_rectf(const f3 &u, float w, float h)
+{
+	const float srwh = sqrtf(w * h);
+	const float s2h = h / srwh;
+	const float s2w = w / srwh;
+	rectf_s r;
+	r.x0 = u.v[0] - s2w * u.v[2] * 0.5f;
+	r.x1 = u.v[0] + s2w * u.v[2] * 0.5f;
+	r.y0 = u.v[1] - s2h * u.v[2] * 0.5f;
+	r.y1 = u.v[1] + s2h * u.v[2] * 0.5f;
+	return r;
+}
+
+static inline rectf_s f4_to_rectf(const f4 &u, float w, float h)
 {
 	const float srwh = sqrtf(w * h);
 	const float s2h = h / srwh;
