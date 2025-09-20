@@ -148,6 +148,7 @@ void draw_rect_upsize(rect_s r, float upsize_l = 0.0f, float upsize_r = 0.0f, fl
 		      float upsize_b = 0.0f);
 void draw_landmark(const std::vector<pointf_s> &landmark);
 float landmark_area(const std::vector<pointf_s> &landmark);
+float landmark_rotation(const std::vector<pointf_s> &landmark);
 pointf_s landmark_center(const std::vector<pointf_s> &landmark);
 
 inline double from_dB(double x)

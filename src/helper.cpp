@@ -73,6 +73,24 @@ float landmark_area(const std::vector<pointf_s> &landmark)
 	return ret;
 }
 
+float landmark_rotation(const std::vector<pointf_s> &landmark)
+{
+	if (landmark.size() == 5) {
+		// 2 -> 0: outer points of eyes
+		float x1 = landmark[0].x - landmark[2].x;
+		float y1 = landmark[0].y - landmark[2].y;
+
+		// 3 -> 1: inner points of eyes
+		float x2 = landmark[1].x - landmark[3].x;
+		float y2 = landmark[1].y - landmark[3].y;
+
+		// 4: unused, the mouth
+
+		return atan2f(y1 + y2, x1 + x2);
+	}
+	return 0.0f;
+}
+
 pointf_s landmark_center(const std::vector<pointf_s> &landmark)
 {
 	pointf_s ret = {0.0f, 0.0f};
