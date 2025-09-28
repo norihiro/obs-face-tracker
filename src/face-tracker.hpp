@@ -18,24 +18,25 @@ struct face_tracker_filter
 	bool rendered;
 	bool is_active;
 
-	f3 detect_err;
-	f3 range_min, range_max, range_min_out;
+	f4 detect_err;
+	f4 range_min, range_max, range_min_out;
 
 	class ft_manager_for_ftf *ftm;
 
 	float track_z, track_x, track_y;
 	float scale_max;
 
-	f3 kp;
+	f4 kp;
 	float ki;
-	f3 klpf;
-	f3 tlpf;
-	f3 e_deadband, e_nonlinear; // deadband and nonlinear amount for error input
-	f3 filter_int_out;
-	f3 filter_int;
-	f3 filter_lpf;
-	f3 u_last;
+	f4 klpf;
+	f4 tlpf;
+	f4 e_deadband, e_nonlinear; // deadband and nonlinear amount for error input
+	f4 filter_int_out;
+	f4 filter_int;
+	f4 filter_lpf;
+	f4 u_last;
 	int aspect_x, aspect_y;
+	bool rotate = false;
 
 	// face tracker source
 	char *target_name;

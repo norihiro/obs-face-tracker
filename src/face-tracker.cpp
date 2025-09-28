@@ -64,6 +64,7 @@ static void ftf_update(void *data, obs_data_t *settings)
 	s->track_x = obs_data_get_double(settings, "track_x");
 	s->track_y = obs_data_get_double(settings, "track_y");
 	s->scale_max = obs_data_get_double(settings, "scale_max");
+	s->rotate = obs_data_get_bool(settings, "rotate");
 
 	double kp = obs_data_get_double(settings, "Kp");
 	float ki = (float)obs_data_get_double(settings, "Ki");
@@ -71,10 +72,12 @@ static void ftf_update(void *data, obs_data_t *settings)
 	double att2 = from_dB(obs_data_get_double(settings, "att2_dB"));
 	s->kp.v[0] = s->kp.v[1] = (float)kp;
 	s->kp.v[2] = (float)(att2 * kp);
+	s->kp.v[3] = (float)kp;
 	s->ki = ki;
 	s->klpf = s->kp * td;
 	s->tlpf.v[0] = s->tlpf.v[1] = (float)obs_data_get_double(settings, "Tdlpf");
 	s->tlpf.v[2] = (float)obs_data_get_double(settings, "Tdlpf_z");
+	s->tlpf.v[3] = s->tlpf.v[0];
 	s->e_deadband.v[0] = (float)obs_data_get_double(settings, "e_deadband_x") * 1e-2;
 	s->e_deadband.v[1] = (float)obs_data_get_double(settings, "e_deadband_y") * 1e-2;
 	s->e_deadband.v[2] = (float)obs_data_get_double(settings, "e_deadband_z") * 1e-2;
@@ -191,10 +194,10 @@ static bool ftf_reset_tracking(obs_properties_t *, obs_property_t *, void *data)
 	float w = s->known_width;
 	float h = s->known_height;
 	float z = sqrtf(s->width_with_aspect * s->height_with_aspect);
-	s->detect_err = f3(0, 0, 0);
-	s->filter_int_out = f3(w * 0.5f, h * 0.5f, z);
-	s->filter_int = f3(0, 0, 0);
-	s->filter_lpf = f3(0, 0, 0);
+	s->detect_err = f4(0, 0, 0, 0);
+	s->filter_int_out = f4(w * 0.5f, h * 0.5f, z, 0);
+	s->filter_int = f4(0, 0, 0, 0);
+	s->filter_lpf = f4(0, 0, 0, 0);
 	s->ftm->reset_requested = true;
 
 	return true;
@@ -239,6 +242,7 @@ static obs_properties_t *ftf_properties(void *data)
 		obs_properties_add_float(pp, "scale_max", obs_module_text("Scale max"), 1.0, 20.0, 1.0);
 		obs_properties_add_group(props, "track", obs_module_text("Tracking target location"), OBS_GROUP_NORMAL,
 					 pp);
+		obs_properties_add_bool(pp, "rotate", obs_module_text("Rotate"));
 	}
 
 	{
@@ -329,9 +333,9 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 {
 	const float srwh = sqrtf((float)s->known_width * s->known_height);
 
-	f3 e = s->detect_err;
-	f3 e_int = e;
-	for (int i = 0; i < 3; i++) {
+	f4 e = s->detect_err;
+	f4 e_int = e;
+	for (int i = 0; i < 4; i++) {
 		float x = e.v[i];
 		float d = srwh * s->e_deadband.v[i];
 		float n = srwh * s->e_nonlinear.v[i];
@@ -359,12 +363,12 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 
 	s->filter_int_out += (e + s->filter_int).hp(s->kp * second);
 	s->filter_int += e_int * (second * s->ki);
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 4; i++)
 		s->filter_lpf.v[i] = (s->filter_lpf.v[i] * s->tlpf.v[i] + e.v[i] * second) / (s->tlpf.v[i] + second);
 
-	f3 u = s->filter_int_out + s->filter_lpf.hp(s->klpf);
+	f4 u = s->filter_int_out + s->filter_lpf.hp(s->klpf);
 
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		if (isnan(u.v[i]))
 			u.v[i] = (s->range_max.v[i] + s->range_min_out.v[i]) * 0.5f;
 		else if (u.v[i] < s->range_min_out.v[i]) {
@@ -384,7 +388,7 @@ static void tick_filter(struct face_tracker_filter *s, float second)
 		fprintf(s->debug_data_control, "%f\t%f\t%f\t%f\n", os_gettime_ns() * 1e-9, u.v[0], u.v[1], u.v[2]);
 	}
 
-	s->ftm->crop_cur = f3_to_rectf(u, s->width_with_aspect, s->height_with_aspect);
+	s->ftm->crop_cur = f4_to_rectf(u, s->width_with_aspect, s->height_with_aspect);
 }
 
 static void ftf_activate(void *data)
@@ -480,7 +484,7 @@ static void ft_tick_internal(struct face_tracker_filter *s, float second, bool w
 
 	if (s->ftm->crop_cur.x1 < -1 || s->ftm->crop_cur.y1 < -1) {
 		ftf_reset_tracking(NULL, NULL, s);
-		s->ftm->crop_cur = f3_to_rectf(s->filter_int_out, s->width_with_aspect, s->height_with_aspect);
+		s->ftm->crop_cur = f4_to_rectf(s->filter_int_out, s->width_with_aspect, s->height_with_aspect);
 	} else if (was_rendered && !s->is_paused) {
 		s->range_min.v[0] = get_width(s->ftm->crop_cur) * 0.5f;
 		s->range_max.v[0] = s->known_width - get_width(s->ftm->crop_cur) * 0.5f;
@@ -488,6 +492,8 @@ static void ft_tick_internal(struct face_tracker_filter *s, float second, bool w
 		s->range_max.v[1] = s->known_height - get_height(s->ftm->crop_cur) * 0.5f;
 		s->range_min.v[2] = sqrtf(s->known_width * s->known_height) / s->scale_max;
 		s->range_max.v[2] = sqrtf(s->width_with_aspect * s->height_with_aspect);
+		s->range_min.v[3] = -M_PI;
+		s->range_max.v[3] = M_PI;
 		s->range_min_out = s->range_min;
 		s->range_min_out.v[2] = std::max(std::min(s->range_min.v[2], s->u_last.v[2]), 1.0f);
 		calculate_error(s);
@@ -579,7 +585,7 @@ static inline void render_target(struct face_tracker_filter *s, obs_source_t *ta
 	s->ftm->release_cvtex();
 }
 
-static inline f3 ensure_range(f3 u, const struct face_tracker_filter *s)
+static inline f4 ensure_range(f4 u, const struct face_tracker_filter *s)
 {
 	if (isnan(u.v[2]))
 		u.v[2] = s->range_min.v[2];
@@ -588,7 +594,14 @@ static inline f3 ensure_range(f3 u, const struct face_tracker_filter *s)
 	else if (u.v[2] > s->range_max.v[2])
 		u.v[2] = s->range_max.v[2];
 
-	rectf_s r = f3_to_rectf(u, s->width_with_aspect, s->height_with_aspect);
+	if (isnan(u.v[3]))
+		u.v[3] = 0.0f;
+	else if (u.v[3] < s->range_min.v[3])
+		u.v[3] = s->range_min.v[3];
+	else if (u.v[3] > s->range_max.v[3])
+		u.v[3] = s->range_max.v[3];
+
+	rectf_s r = f4_to_rectf(u, s->width_with_aspect, s->height_with_aspect);
 
 	if (r.x0 < 0)
 		u.v[0] += -r.x0;
@@ -605,12 +618,12 @@ static inline f3 ensure_range(f3 u, const struct face_tracker_filter *s)
 
 static inline void calculate_error(struct face_tracker_filter *s)
 {
-	f3 e_tot(0.0f, 0.0f, 0.0f);
+	f4 e_tot(0.0f, 0.0f, 0.0f, 0.0f);
 	float sc_tot = 0.0f;
 	bool found = false;
 	auto &tracker_rects = s->ftm->tracker_rects;
 	for (size_t i = 0; i < tracker_rects.size(); i++) {
-		f3 r(tracker_rects[i].rect);
+		f4 r(tracker_rects[i].rect);
 		float score = tracker_rects[i].rect.score;
 
 		if (s->ftm->landmark_detection_data) {
@@ -619,9 +632,12 @@ static inline void calculate_error(struct face_tracker_filter *s)
 			if (area <= 0.0f)
 				continue;
 
+			float rotation = landmark_rotation(tracker_rects[i].landmark);
+
 			r.v[0] = center.x;
 			r.v[1] = center.y;
 			r.v[2] = sqrtf(area * (float)(4.0f / M_PI));
+			r.v[3] = rotation - s->u_last.v[3];
 		}
 
 		if (s->debug_data_tracker) {
@@ -633,9 +649,12 @@ static inline void calculate_error(struct face_tracker_filter *s)
 		r.v[1] += get_height(tracker_rects[i].crop_rect) * s->track_y;
 		r.v[2] /= s->track_z;
 		r = ensure_range(r, s);
-		f3 w(tracker_rects[i].crop_rect);
+		f4 w(tracker_rects[i].crop_rect);
 
-		f3 e = (r - w) * score;
+		f4 e = (r - w) * score;
+		if (!s->ftm->landmark_detection_data)
+			e.v[3] = 0;
+
 		if (score > 0.0f && !isnan(e)) {
 			e_tot += e;
 			sc_tot += score;
@@ -646,7 +665,7 @@ static inline void calculate_error(struct face_tracker_filter *s)
 	if (found)
 		s->detect_err = e_tot * (1.0f / sc_tot);
 	else
-		s->detect_err = f3(0, 0, 0);
+		s->detect_err = f4(0, 0, 0, 0);
 
 	if (s->debug_data_error) {
 		fprintf(s->debug_data_error, "%f\t%f\t%f\t%f\n", os_gettime_ns() * 1e-9, s->detect_err.v[0],
@@ -654,7 +673,7 @@ static inline void calculate_error(struct face_tracker_filter *s)
 	}
 }
 
-static inline void draw_sprite_crop(float width, float height, float x0, float y0, float x1, float y1);
+static inline void draw_sprite(float width, float height);
 
 static inline void scale_texture(struct face_tracker_filter *s, float scale)
 {
@@ -672,7 +691,7 @@ static inline void scale_texture(struct face_tracker_filter *s, float scale)
 			gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
 			gs_effect_set_texture(image, tex);
 			while (gs_effect_loop(effect, "Draw"))
-				draw_sprite_crop(cx, cy, 0, 0, 1, 1);
+				draw_sprite(cx, cy);
 		}
 		gs_texrender_end(s->texrender_scaled);
 	}
@@ -729,7 +748,7 @@ static inline std::shared_ptr<texture_object> surface_to_cvtex(struct face_track
 	return cvtex;
 }
 
-static inline void draw_sprite_crop(float width, float height, float x0, float y0, float x1, float y1)
+static inline void draw_sprite(float width, float height)
 {
 	gs_render_start(false);
 	gs_vertex2f(0.0f, 0.0f);
@@ -737,14 +756,65 @@ static inline void draw_sprite_crop(float width, float height, float x0, float y
 	gs_vertex2f(0.0f, height);
 	gs_vertex2f(width, height);
 	struct vec2 tv;
-	vec2_set(&tv, x0, y0);
+	vec2_set(&tv, 0.0f, 0.0f);
 	gs_texcoord2v(&tv, 0);
-	vec2_set(&tv, x1, y0);
+	vec2_set(&tv, 1.0f, 0.0f);
 	gs_texcoord2v(&tv, 0);
-	vec2_set(&tv, x0, y1);
+	vec2_set(&tv, 0.0f, 1.0f);
 	gs_texcoord2v(&tv, 0);
-	vec2_set(&tv, x1, y1);
+	vec2_set(&tv, 1.0f, 1.0f);
 	gs_texcoord2v(&tv, 0);
+	gs_render_stop(GS_TRISTRIP);
+}
+
+static inline float get_center(float x0, float x1, float t)
+{
+	return (x0 + x1) * 0.5 + (x1 - x0) * t;
+}
+
+static inline void draw_sprite_with_angle(struct face_tracker_filter *s, uint32_t width, uint32_t height)
+{
+	float rotation = s->rotate ? s->u_last.v[3] : 0.0f;
+
+	const rectf_s &crop_cur = s->ftm->crop_cur;
+
+	float xc = get_center(crop_cur.x0, crop_cur.x1, s->track_x);
+	float yc = get_center(crop_cur.y0, crop_cur.y1, -s->track_y);
+
+	float x0 = crop_cur.x0 - xc;
+	float x1 = crop_cur.x1 - xc;
+	float y0 = crop_cur.y0 - yc;
+	float y1 = crop_cur.y1 - yc;
+	float cr = cosf(rotation);
+	float sr = sinf(rotation);
+
+	float xt0 = cr * x0 - sr * y0;
+	float yt0 = sr * x0 + cr * y0;
+
+	float xt1 = cr * x1 - sr * y0;
+	float yt1 = sr * x1 + cr * y0;
+
+	float xt2 = cr * x0 - sr * y1;
+	float yt2 = sr * x0 + cr * y1;
+
+	float xt3 = cr * x1 - sr * y1;
+	float yt3 = sr * x1 + cr * y1;
+
+	gs_render_start(false);
+	gs_vertex2f(0.0f, 0.0f);
+	gs_vertex2f(width, 0.0f);
+	gs_vertex2f(0.0f, height);
+	gs_vertex2f(width, height);
+	auto f = [](float x, float y) {
+		struct vec2 tv;
+		vec2_set(&tv, x, y);
+		gs_texcoord2v(&tv, 0);
+	};
+	f((xt0 + xc) / s->known_width, (yt0 + yc) / s->known_height);
+	f((xt1 + xc) / s->known_width, (yt1 + yc) / s->known_height);
+	f((xt2 + xc) / s->known_width, (yt2 + yc) / s->known_height);
+	f((xt3 + xc) / s->known_width, (yt3 + yc) / s->known_height);
+
 	gs_render_stop(GS_TRISTRIP);
 }
 
@@ -752,7 +822,6 @@ static inline void draw_frame_texture(struct face_tracker_filter *s, bool debug_
 {
 	uint32_t width = s->width_with_aspect;
 	uint32_t height = s->height_with_aspect;
-	const rectf_s &crop_cur = s->ftm->crop_cur;
 
 	// TODO: linear_srgb, 27 only?
 
@@ -770,8 +839,7 @@ static inline void draw_frame_texture(struct face_tracker_filter *s, bool debug_
 		if (debug_notrack)
 			gs_draw_sprite(tex, 0, s->known_width, s->known_height);
 		else
-			draw_sprite_crop(width, height, crop_cur.x0 / s->known_width, crop_cur.y0 / s->known_height,
-					 crop_cur.x1 / s->known_width, crop_cur.y1 / s->known_height);
+			draw_sprite_with_angle(s, width, height);
 	}
 }
 
