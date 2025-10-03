@@ -2,6 +2,7 @@
 #include <util/platform.h>
 #include <util/threading.h>
 #include <graphics/vec2.h>
+#include <graphics/vec3.h>
 #include <graphics/graphics.h>
 #include "plugin-macros.generated.h"
 #include "texture-object.h"
@@ -772,7 +773,7 @@ static inline float get_center(float x0, float x1, float t)
 	return (x0 + x1) * 0.5 + (x1 - x0) * t;
 }
 
-static inline void draw_sprite_with_angle(struct face_tracker_filter *s, uint32_t width, uint32_t height)
+static void crop_points(struct vec3 res[4], const struct face_tracker_filter *s)
 {
 	float rotation = s->rotate ? s->u_last.v[3] : 0.0f;
 
@@ -788,32 +789,27 @@ static inline void draw_sprite_with_angle(struct face_tracker_filter *s, uint32_
 	float cr = cosf(rotation);
 	float sr = sinf(rotation);
 
-	float xt0 = cr * x0 - sr * y0;
-	float yt0 = sr * x0 + cr * y0;
+	vec3_set(res + 0, cr * x0 - sr * y0 + xc, sr * x0 + cr * y0 + yc, 0.0f);
+	vec3_set(res + 1, cr * x1 - sr * y0 + xc, sr * x1 + cr * y0 + yc, 0.0f);
+	vec3_set(res + 2, cr * x0 - sr * y1 + xc, sr * x0 + cr * y1 + yc, 0.0f);
+	vec3_set(res + 3, cr * x1 - sr * y1 + xc, sr * x1 + cr * y1 + yc, 0.0f);
+}
 
-	float xt1 = cr * x1 - sr * y0;
-	float yt1 = sr * x1 + cr * y0;
-
-	float xt2 = cr * x0 - sr * y1;
-	float yt2 = sr * x0 + cr * y1;
-
-	float xt3 = cr * x1 - sr * y1;
-	float yt3 = sr * x1 + cr * y1;
+static inline void draw_sprite_with_angle(struct face_tracker_filter *s, uint32_t width, uint32_t height)
+{
+	struct vec3 points[4];
+	crop_points(points, s);
 
 	gs_render_start(false);
 	gs_vertex2f(0.0f, 0.0f);
 	gs_vertex2f(width, 0.0f);
 	gs_vertex2f(0.0f, height);
 	gs_vertex2f(width, height);
-	auto f = [](float x, float y) {
+	for (int i = 0; i < 4; i++) {
 		struct vec2 tv;
-		vec2_set(&tv, x, y);
+		vec2_set(&tv, points[i].x / s->known_width, points[i].y / s->known_height);
 		gs_texcoord2v(&tv, 0);
-	};
-	f((xt0 + xc) / s->known_width, (yt0 + yc) / s->known_height);
-	f((xt1 + xc) / s->known_width, (yt1 + yc) / s->known_height);
-	f((xt2 + xc) / s->known_width, (yt2 + yc) / s->known_height);
-	f((xt3 + xc) / s->known_width, (yt3 + yc) / s->known_height);
+	}
 
 	gs_render_stop(GS_TRISTRIP);
 }
@@ -856,12 +852,17 @@ static inline void draw_frame_info(struct face_tracker_filter *s, bool debug_not
 		uint32_t height = s->height_with_aspect;
 		const float scale =
 			sqrtf((float)(width * height) / ((crop_cur.x1 - crop_cur.x0) * (crop_cur.y1 - crop_cur.y0)));
+		const float rotation = s->rotate ? s->u_last.v[3] : 0.0f;
 
 		gs_matrix_push();
 		struct matrix4 tr;
 		matrix4_identity(&tr);
-		matrix4_translate3f(&tr, &tr, -(crop_cur.x0 + crop_cur.x1) * 0.5f, -(crop_cur.y0 + crop_cur.y1) * 0.5f,
-				    0.0f);
+		float xc = width * s->track_x / scale;
+		float yc = height * s->track_y / scale;
+		matrix4_translate3f(&tr, &tr, -(crop_cur.x0 + crop_cur.x1) * 0.5f - xc,
+				    -(crop_cur.y0 + crop_cur.y1) * 0.5f + yc, 0.0f);
+		matrix4_rotate_aa4f(&tr, &tr, 0.0f, 0.0f, 1.0f, -rotation);
+		matrix4_translate3f(&tr, &tr, xc, -yc, 0.0f);
 		matrix4_scale3f(&tr, &tr, scale, scale, 1.0f);
 		matrix4_translate3f(&tr, &tr, width / 2, height / 2, 0.0f);
 		gs_matrix_mul(&tr);
@@ -887,15 +888,14 @@ static inline void draw_frame_info(struct face_tracker_filter *s, bool debug_not
 		if (debug_notrack && draw_ref) {
 			gs_effect_set_color(gs_effect_get_param_by_name(effect, "color"), 0xFFFFFF00); // amber
 			const rectf_s &r = s->ftm->crop_cur;
+			struct vec3 points[4];
+			crop_points(points, s);
 			gs_render_start(false);
-			gs_vertex2f(r.x0, r.y0);
-			gs_vertex2f(r.x0, r.y1);
-			gs_vertex2f(r.x0, r.y1);
-			gs_vertex2f(r.x1, r.y1);
-			gs_vertex2f(r.x1, r.y1);
-			gs_vertex2f(r.x1, r.y0);
-			gs_vertex2f(r.x1, r.y0);
-			gs_vertex2f(r.x0, r.y0);
+			static const int tris_to_rect[5] = {0, 1, 3, 2, 0};
+			for (int i = 0; i < 4; i++) {
+				gs_vertex3v(&points[tris_to_rect[i]]);
+				gs_vertex3v(&points[tris_to_rect[i + 1]]);
+			}
 			const float srwhr2 = sqrtf((r.x1 - r.x0) * (r.y1 - r.y0)) * 0.5f;
 			const float rcx = (r.x0 + r.x1) * 0.5f + (r.x1 - r.x0) * s->track_x;
 			const float rcy = (r.y0 + r.y1) * 0.5f - (r.y1 - r.y0) * s->track_y;
