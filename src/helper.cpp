@@ -88,6 +88,25 @@ float landmark_rotation(const std::vector<pointf_s> &landmark)
 
 		return atan2f(y1 + y2, x1 + x2);
 	}
+
+	if (landmark.size() == 68) {
+		float x = 0.0f, y = 0.0f;
+
+		// left eye
+		for (int i = 36; i <= 41; i++) {
+			x -= landmark[i].x;
+			y -= landmark[i].y;
+		}
+
+		// right eye
+		for (int i = 42; i <= 47; i++) {
+			x += landmark[i].x;
+			y += landmark[i].y;
+		}
+
+		return atan2f(y, x);
+	}
+
 	return 0.0f;
 }
 
