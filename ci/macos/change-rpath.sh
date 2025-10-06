@@ -23,7 +23,7 @@ function copy_local_dylib
 	local dylib
 	t=$(mktemp)
 	otool -L $1 > $t
-	awk '/^	\/usr\/local\/(opt|Cellar)\/.*\.dylib/{print $1}' $t |
+	awk '/^	(\/usr\/local\/opt|\/usr\/local\/Cellar|\/opt\/homebrew)\/.*\.dylib/{print $1}' $t |
 	while read -r dylib; do
 		echo "Changing dependency $1 -> $dylib"
 		local b=$(basename $dylib)
@@ -36,6 +36,12 @@ function copy_local_dylib
 		fi
 		install_name_tool -change "$dylib" "@loader_path/../$libdir/$b" $1
 	done
+
+	otool -L $1 > $t
+	if grep -v '\(:\|^\s@\|^\s/System/Library\|^\s/usr/lib\)' < $t >&2 ; then
+		echo "Error: $1: Detected bad dependency" >&2
+		exit 1
+	fi
 }
 
 function change_obs27_libs
