@@ -23,7 +23,7 @@ function copy_local_dylib
 	local dylib
 	t=$(mktemp)
 	otool -L $1 > $t
-	awk '/^	\/usr\/local\/(opt|Cellar)\/.*\.dylib/{print $1}' $t |
+	awk '/^	(\/usr\/local\/opt|\/usr\/local\/Cellar|\/opt\/homebrew)\/.*\.dylib/{print $1}' $t |
 	while read -r dylib; do
 		echo "Changing dependency $1 -> $dylib"
 		local b=$(basename $dylib)
