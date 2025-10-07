@@ -220,7 +220,19 @@ jobs:
           set -ex
           . build/ci/ci_includes.generated.sh
           cmake --install build --config RelWithDebInfo --prefix=release
-          (cd release/${PLUGIN_NAME}.plugin/Contents && ../../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ MacOS/${PLUGIN_NAME})
+          ci/macos/change-rpath.py \
+            --exclude-regex='(/usr/lib/|/System/Library/)' \
+            --exclude-regex='.*(obs-frontend-api|libobs|/Qt)' \
+            --libdir release/${PLUGIN_NAME}.plugin/Contents/lib \
+            --verbose \
+            release/${PLUGIN_NAME}.plugin/Contents/MacOS/obs-face-tracker
+          ci/macos/change-rpath.py \
+            --exclude-regex='(/usr/lib/|/System/Library/)' \
+            --exclude-regex='.*(obs-frontend-api|libobs|/Qt)' \
+            --check-invalid-regex='(/usr/local|/opt)' \
+            --check \
+            release/${PLUGIN_NAME}.plugin/Contents/MacOS/obs-face-tracker \
+            release/${PLUGIN_NAME}.plugin/Contents/lib/*
           cp LICENSE release/${PLUGIN_NAME}.plugin/Contents/Resources/LICENSE-$PLUGIN_NAME
 
       - name: Codesign
