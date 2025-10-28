@@ -41,6 +41,7 @@ struct face_tracker_filter
 	char *target_name;
 	obs_weak_source_t *target_ref;
 
+	bool inactive_reset = false;
 	bool debug_faces;
 	bool debug_notrack;
 	bool debug_always_show;

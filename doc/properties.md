@@ -148,6 +148,12 @@ If the aspect is set wider than the source, the width will be taken from the sou
 
 Known issue: The bottom or right pixels might show flicker. The workaround is to set `1` for the crop properties in transform dialog.
 
+## Automation
+
+### Reset while inactive
+If you enable this, the tracking will be reset and paused when the source got inactive, ie. not displayed on the program.
+Disabled by default.
+
 ## Debug
 These properties enables how the face detection and tracking works.
 Note that these features are automatically turned off when the source is displayed on the program of OBS Studio.

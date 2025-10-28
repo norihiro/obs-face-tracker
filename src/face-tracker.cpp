@@ -84,6 +84,8 @@ static void ftf_update(void *data, obs_data_t *settings)
 
 	get_aspect_from_str(s, obs_data_get_string(settings, "aspect"));
 
+	s->inactive_reset = obs_data_get_bool(settings, "inactive_reset");
+
 	s->debug_faces = obs_data_get_bool(settings, "debug_faces");
 	s->debug_notrack = obs_data_get_bool(settings, "debug_notrack");
 	s->debug_always_show = obs_data_get_bool(settings, "debug_always_show");
@@ -271,6 +273,12 @@ static obs_properties_t *ftf_properties(void *data)
 
 	{
 		obs_properties_t *pp = obs_properties_create();
+		obs_properties_add_bool(pp, "inactive_reset", obs_module_text("Prop.Automation.InactiveReset"));
+		obs_properties_add_group(props, "automation", obs_module_text("Automation"), OBS_GROUP_NORMAL, pp);
+	}
+
+	{
+		obs_properties_t *pp = obs_properties_create();
 		obs_properties_add_bool(pp, "debug_faces", "Show face detection results");
 		obs_properties_add_bool(pp, "debug_notrack", "Stop tracking faces");
 		obs_properties_add_bool(pp, "debug_always_show", "Always show information (useful for demo)");
@@ -397,6 +405,9 @@ static void ftf_deactivate(void *data)
 {
 	auto *s = (struct face_tracker_filter *)data;
 	s->is_active = false;
+
+	if (s->inactive_reset)
+		ftf_reset_tracking(nullptr, nullptr, data);
 }
 
 static inline void calculate_error(struct face_tracker_filter *s);
@@ -468,6 +479,17 @@ static void register_hotkeys(struct face_tracker_filter *s, obs_source_t *target
 		s->hotkey_reset = obs_hotkey_register_source(target, "face-tracker.reset",
 							     obs_module_text("Reset Face Tracker"), hotkey_cb_reset, s);
 	}
+}
+
+inline static bool is_running(struct face_tracker_filter *s)
+{
+	if (s->is_paused)
+		return false;
+
+	if (s->inactive_reset && !s->is_active)
+		return false;
+
+	return true;
 }
 
 static void ft_tick_internal(struct face_tracker_filter *s, float second, bool was_rendered)
@@ -878,7 +900,7 @@ static void ftf_render(void *data, gs_effect_t *)
 
 	if (!s->rendered) {
 		render_target(s, target, parent);
-		if (!s->is_paused)
+		if (is_running(s))
 			s->ftm->post_render();
 		s->rendered = true;
 	}
@@ -900,7 +922,7 @@ static void fts_render(void *data, gs_effect_t *)
 	if (!s->rendered) {
 		s->rendered = true;
 		render_target(s, target, NULL);
-		if (!s->is_paused)
+		if (is_running(s))
 			s->ftm->post_render();
 	}
 
