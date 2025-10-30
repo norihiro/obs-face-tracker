@@ -406,8 +406,10 @@ static void ftf_deactivate(void *data)
 	auto *s = (struct face_tracker_filter *)data;
 	s->is_active = false;
 
-	if (s->inactive_reset)
+	if (s->inactive_reset) {
 		ftf_reset_tracking(nullptr, nullptr, data);
+		s->ftm->crop_cur = f3_to_rectf(s->filter_int_out, s->width_with_aspect, s->height_with_aspect);
+	}
 }
 
 static inline void calculate_error(struct face_tracker_filter *s);
