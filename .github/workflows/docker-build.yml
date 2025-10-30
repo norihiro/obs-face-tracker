@@ -26,6 +26,7 @@ jobs:
         target:
           - fedora41
           - fedora42
+          - fedora43
     defaults:
       run:
         shell: bash
