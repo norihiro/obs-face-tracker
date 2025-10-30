@@ -48,6 +48,9 @@ git archive --format=tar --prefix=$PLUGIN_NAME_FEDORA-$VERSION/ HEAD | bzip2 > $
 (cd dlib-models-data && tar cj .) > $rpmbuild/SOURCES/$PLUGIN_NAME_FEDORA-$VERSION-dlib-models.tar.bz2
 
 docker run -v $rpmbuild:/home/rpm/rpmbuild $docker_image bash -c "
+if awk '/Fedora release/{fc=\$3} END{exit(fc>=43 ? 0 : 1)}' /etc/fedora-release; then
+	sudo dnf copr -y enable kamae/obs-studio-plugins
+fi
 sudo dnf builddep -y ~/rpmbuild/SPECS/$PLUGIN_NAME_FEDORA.spec &&
 sudo chown 0:0 ~/rpmbuild/SOURCES/* &&
 sudo chown 0:0 ~/rpmbuild/SPECS/* &&
