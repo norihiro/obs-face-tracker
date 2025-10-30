@@ -1026,7 +1026,9 @@ extern "C" void register_face_tracker_filter(bool hide_filter, bool hide_source)
 	info.update = ftf_update;
 	info.get_properties = ftf_properties;
 	info.get_defaults = ftf_get_defaults;
-	info.activate = ftf_activate, info.deactivate = ftf_deactivate, info.video_tick = ftf_tick;
+	info.activate = ftf_activate;
+	info.deactivate = ftf_deactivate;
+	info.video_tick = ftf_tick;
 	info.video_render = ftf_render;
 	info.get_width = ftf_width;
 	info.get_height = ftf_height;
