@@ -36,6 +36,8 @@ find_package(libobs REQUIRED)
 find_package(obs-frontend-api REQUIRED)
 include(cmake/ObsPluginHelpers.cmake)
 find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui)
+# Only the dock uses it, and only for Wayland with Qt before 6.9
+find_package(Qt${QT_VERSION} OPTIONAL_COMPONENTS GuiPrivate)
 
 if (WITH_DLIB_SUBMODULE)
 	set(CMAKE_POSITION_INDEPENDENT_CODE True)
@@ -110,7 +112,10 @@ add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
 
 if (WITH_DOCK)
 	set(plugin_additional_incs ${plugin_additional_incs} src)
-	set(plugin_additional_libs ${plugin_additional_libs} Qt::Gui Qt::Widgets Qt::GuiPrivate)
+	set(plugin_additional_libs ${plugin_additional_libs} Qt::Gui Qt::Widgets)
+	if (TARGET Qt${QT_VERSION}::GuiPrivate)
+		set(plugin_additional_libs ${plugin_additional_libs} Qt${QT_VERSION}::GuiPrivate)
+	endif()
 endif()
 
 include_directories(
