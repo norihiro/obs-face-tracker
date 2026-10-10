@@ -8,6 +8,7 @@
 #include <QAction>
 #include <QWindow>
 #include <QMouseEvent>
+#include <QPlatformSurfaceEvent>
 #include "plugin-macros.generated.h"
 #include "face-tracker-widget.hpp"
 #include "face-tracker-dock-internal.hpp"
@@ -78,7 +79,10 @@ void FTWidget::CreateDisplay()
 {
 	if (!data)
 		return;
-	if (data->disp || !windowHandle()->isExposed())
+	if (data->disp)
+		return;
+	QWindow *exposed = windowHandle();
+	if (!exposed || !exposed->isExposed())
 		return;
 
 	blog(LOG_INFO, "FTWidget::CreateDisplay %p", this);
@@ -100,10 +104,53 @@ void FTWidget::CreateDisplay()
 	}
 	data->disp = obs_display_create(&info, 0);
 	obs_display_add_draw_callback(data->disp, draw, data);
+
+	// Know when the window the display draws to is going, to stop drawing
+	// to it before it does
+	if (watched_window.data() != window) {
+		if (watched_window)
+			watched_window->removeEventFilter(this);
+		window->installEventFilter(this);
+		watched_window = window;
+	}
 #ifdef HAVE_DISPLAY_SET_INTERLEAVE
 	blog(LOG_INFO, "calling obs_display_set_interleave interleave=2");
 	obs_display_set_interleave(data->disp, 2);
 #endif
+}
+
+void FTWidget::DestroyDisplay()
+{
+	if (data && data->disp) {
+		obs_display_destroy(data->disp);
+		data->disp = NULL;
+	}
+}
+
+/*
+ * The display draws to the native window of the widget, which Qt makes
+ * again when the dock is moved, with the one it drew to destroyed.
+ * It then fails every frame, with invalid framebuffer operations, until the
+ * display is made again.
+ */
+bool FTWidget::eventFilter(QObject *watched, QEvent *event)
+{
+	if (watched == watched_window.data() && event->type() == QEvent::PlatformSurface) {
+		auto *surface = static_cast<QPlatformSurfaceEvent *>(event);
+		if (surface->surfaceEventType() == QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed)
+			DestroyDisplay();
+	}
+	return QWidget::eventFilter(watched, event);
+}
+
+bool FTWidget::event(QEvent *event)
+{
+	if (event->type() == QEvent::WinIdChange) {
+		DestroyDisplay();
+		// Once the new window is there to draw to
+		QMetaObject::invokeMethod(this, [this] { CreateDisplay(); }, Qt::QueuedConnection);
+	}
+	return QWidget::event(event);
 }
 
 void FTWidget::resizeEvent(QResizeEvent *event)
@@ -111,6 +158,8 @@ void FTWidget::resizeEvent(QResizeEvent *event)
 	QWidget::resizeEvent(event);
 	CreateDisplay();
 
+	if (!data || !data->disp)
+		return;
 	QSize size = GetPixelSize(this);
 	obs_display_resize(data->disp, size.width(), size.height());
 }
@@ -135,10 +184,8 @@ void FTWidget::setShown(bool shown)
 	if (shown && !data->disp) {
 		CreateDisplay();
 	}
-	if (!shown && data->disp) {
-		obs_display_destroy(data->disp);
-		data->disp = NULL;
-	}
+	if (!shown)
+		DestroyDisplay();
 }
 
 void FTWidget::openMenu(const class QPoint &pos)
