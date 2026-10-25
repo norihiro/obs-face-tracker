@@ -50,6 +50,11 @@ if (WITH_DLIB_SUBMODULE)
 	set(DLIB_WEBP_SUPPORT OFF)
 	set(DLIB_JXL_SUPPORT OFF)
 	set(DLIB_TEST_COMPILE_ALL_SOURCE_CPP OFF)
+	if (MSVC AND CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "ARM64")
+		# dlib turns SSE2 on for any processor with Visual Studio. A cache
+		# entry, as its option() does not see a variable
+		set(USE_SSE2_INSTRUCTIONS OFF CACHE BOOL "Compile your program with SSE2 instructions")
+	endif()
 	add_subdirectory(dlib)
 else()
 	find_package(dlib REQUIRED)
