@@ -10,6 +10,7 @@ set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
 option(WITH_PTZ_TCP "Enable to connect PTZ camera through TCP socket" ON)
 option(WITH_DLIB_SUBMODULE "Link dlib from submodule" ON)
+option(ENABLE_TESTS "Build the plugin of test sources that tests/integration loads next to this one" OFF)
 option(ENABLE_MONITOR_USER "Enable monitor source for user" OFF)
 option(ENABLE_DEBUG_DATA "Enable property to save error and control data" OFF)
 option(WITH_DOCK "Enable dock" ON)
@@ -186,4 +187,8 @@ if(ENABLE_DATAGEN)
 	target_link_libraries(face-detector-dlib-hog-datagen
 		dlib
 	)
+endif()
+
+if(ENABLE_TESTS)
+	add_subdirectory(tests/test-sources)
 endif()
