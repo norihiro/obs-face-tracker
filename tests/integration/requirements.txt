@@ -1,0 +1,3 @@
+pytest>=7
+websockets>=12
+pillow>=10
