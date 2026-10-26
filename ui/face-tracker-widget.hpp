@@ -2,6 +2,8 @@
 
 #include <obs.h>
 #include <QWidget>
+#include <QWindow>
+#include <QPointer>
 #include <memory>
 
 #define SCOPE_WIDGET_N_SRC 4
@@ -16,6 +18,9 @@ class FTWidget : public QWidget {
 	void paintEvent(QPaintEvent *event) override;
 	class QPaintEngine *paintEngine() const override;
 	void closeEvent(QCloseEvent *event) override;
+	bool event(QEvent *event) override;
+	bool eventFilter(QObject *watched, QEvent *event) override;
+	void DestroyDisplay();
 
 signals:
 	void removeDock();
@@ -28,6 +33,9 @@ public:
 
 private:
 	struct face_tracker_dock_s *data;
+	// The window the display draws to, which is replaced when the widget is
+	// docked, tabbed or floated
+	QPointer<QWindow> watched_window;
 };
 
 typedef std::function<bool(QObject *, QEvent *)> EventFilterFunc;

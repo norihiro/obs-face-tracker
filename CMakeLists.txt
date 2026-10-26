@@ -10,6 +10,7 @@ set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
 option(WITH_PTZ_TCP "Enable to connect PTZ camera through TCP socket" ON)
 option(WITH_DLIB_SUBMODULE "Link dlib from submodule" ON)
+option(ENABLE_TESTS "Build the plugin of test sources that tests/integration loads next to this one" OFF)
 option(ENABLE_MONITOR_USER "Enable monitor source for user" OFF)
 option(ENABLE_DEBUG_DATA "Enable property to save error and control data" OFF)
 option(WITH_DOCK "Enable dock" ON)
@@ -36,6 +37,8 @@ find_package(libobs REQUIRED)
 find_package(obs-frontend-api REQUIRED)
 include(cmake/ObsPluginHelpers.cmake)
 find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui)
+# Only the dock uses it, and only for Wayland with Qt before 6.9
+find_package(Qt${QT_VERSION} OPTIONAL_COMPONENTS GuiPrivate)
 
 if (WITH_DLIB_SUBMODULE)
 	set(CMAKE_POSITION_INDEPENDENT_CODE True)
@@ -48,6 +51,11 @@ if (WITH_DLIB_SUBMODULE)
 	set(DLIB_WEBP_SUPPORT OFF)
 	set(DLIB_JXL_SUPPORT OFF)
 	set(DLIB_TEST_COMPILE_ALL_SOURCE_CPP OFF)
+	if (MSVC AND CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "ARM64")
+		# dlib turns SSE2 on for any processor with Visual Studio. A cache
+		# entry, as its option() does not see a variable
+		set(USE_SSE2_INSTRUCTIONS OFF CACHE BOOL "Compile your program with SSE2 instructions")
+	endif()
 	add_subdirectory(dlib)
 else()
 	find_package(dlib REQUIRED)
@@ -110,7 +118,10 @@ add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
 
 if (WITH_DOCK)
 	set(plugin_additional_incs ${plugin_additional_incs} src)
-	set(plugin_additional_libs ${plugin_additional_libs} Qt::Gui Qt::Widgets Qt::GuiPrivate)
+	set(plugin_additional_libs ${plugin_additional_libs} Qt::Gui Qt::Widgets)
+	if (TARGET Qt${QT_VERSION}::GuiPrivate)
+		set(plugin_additional_libs ${plugin_additional_libs} Qt${QT_VERSION}::GuiPrivate)
+	endif()
 endif()
 
 include_directories(
@@ -176,4 +187,8 @@ if(ENABLE_DATAGEN)
 	target_link_libraries(face-detector-dlib-hog-datagen
 		dlib
 	)
+endif()
+
+if(ENABLE_TESTS)
+	add_subdirectory(tests/test-sources)
 endif()
