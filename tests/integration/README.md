@@ -36,7 +36,25 @@ The tests that need a face are skipped without `FACE_TRACKER_DATA`, the face det
 
 ## Running
 
-Build with the option, then run pytest with the plugin and OBS to use:
+A script builds the plugin with the option and runs the tests, passing on its arguments to pytest:
+
+```bash
+scripts/build-and-test.sh
+```
+
+```bat
+scripts\windows-build-and-test.bat arm64
+```
+
+`build-and-test.sh` is for macOS and Linux.
+On macOS it builds against the OBS development files an obs-ptz checkout beside this one has in its `.deps`, as obs-ptz's own build fetches them,
+or those in `OBS_DEPS`, and runs `/Applications/OBS.app`, or else the newest `/Applications/OBS <version>.app`.
+On Linux it builds against the system's, `libobs-dev` and Qt 6 on Ubuntu.
+`windows-build-and-test.bat` takes `arm64` or `x64`, fetches the development files the CI workflow builds against into `.deps`,
+and builds with Visual Studio 2022; the OBS it runs is described under [Windows](#windows).
+Both fetch the detector's model into a cache with `fetch_model.py`, unless `FACE_TRACKER_DATA` is set.
+
+They do what can be done by hand: build with the option, then run pytest with the plugin and OBS to use:
 
 ```bash
 cmake -S . -B build -DENABLE_TESTS=ON
@@ -74,9 +92,11 @@ OBS's output is in the file the run prints the name of.
 ### Windows
 
 `run.sh` is for macOS and Linux.
-On Windows, set the variables above and run pytest in this directory, with a Python that has `requirements.txt`.
+On Windows, `windows-build-and-test.bat` sets the variables above and runs pytest in this directory,
+in a Python environment it makes with `requirements.txt`.
 
-The OBS has to be one kept for the tests, as a copy of an OBS release's zip unpacked in a folder of its own:
+The OBS has to be one kept for the tests, as a copy of an OBS release's zip unpacked in a folder of its own,
+`C:\FT-Test\<arch>` for the script unless `FACE_TRACKER_OBS_BINARY` says otherwise:
 the tests make it portable, replace its profile on each run, keeping the last as `config.prev`,
 and copy both plugins into its `obs-plugins\64bit` and `data\obs-plugins`,
 as OBS on Windows loads plugins from those only.

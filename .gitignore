@@ -3,6 +3,8 @@
 /build/
 /build32/
 /build64/
+/build_*/
+/.deps/
 /release/
 /installer/Output/
 
