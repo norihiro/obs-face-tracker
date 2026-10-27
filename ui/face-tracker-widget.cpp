@@ -81,9 +81,13 @@ void FTWidget::CreateDisplay()
 	if (data->disp || !windowHandle()->isExposed())
 		return;
 
+	// A display with no area cannot be drawn to
+	QSize size = GetPixelSize(this);
+	if (size.isEmpty())
+		return;
+
 	blog(LOG_INFO, "FTWidget::CreateDisplay %p", this);
 
-	QSize size = GetPixelSize(this);
 	gs_init_data info = {};
 	info.cx = size.width();
 	info.cy = size.height();
@@ -111,7 +115,14 @@ void FTWidget::resizeEvent(QResizeEvent *event)
 	QWidget::resizeEvent(event);
 	CreateDisplay();
 
+	// Resized to no area, the display fails to draw every frame until it is
+	// resized again, so keep its last size until the dock has room again
 	QSize size = GetPixelSize(this);
+	if (size.isEmpty()) {
+		if (!event->oldSize().isEmpty())
+			blog(LOG_INFO, "FTWidget %p: no area, keeping the display at its size", this);
+		return;
+	}
 	obs_display_resize(data->disp, size.width(), size.height());
 }
 
