@@ -10,10 +10,10 @@ del package-version.txt
 copy ..\LICENSE          ..\release\data\obs-plugins\%PluginName%\LICENCE-%PluginName%.txt
 
 REM Package ZIP archive
-7z a "%PluginName%-%PackageVersion%-obs%1-Windows.zip" "..\release\*"
+7z a "%PluginName%-%PackageVersion%-obs%1-Windows-%2.zip" "..\release\*"
 
 REM Build installer
-iscc ..\build\installer-Windows.generated.iss /O. /F"%PluginName%-%PackageVersion%-obs%1-Windows-Installer"
+iscc ..\build\installer-Windows.generated.iss /O. /F"%PluginName%-%PackageVersion%-obs%1-Windows-%2-Installer"
 
-certutil.exe -hashfile "%PluginName%-%PackageVersion%-obs%1-Windows.zip" SHA1
-certutil.exe -hashfile "%PluginName%-%PackageVersion%-obs%1-Windows-Installer.exe" SHA1
+certutil.exe -hashfile "%PluginName%-%PackageVersion%-obs%1-Windows-%2.zip" SHA1
+certutil.exe -hashfile "%PluginName%-%PackageVersion%-obs%1-Windows-%2-Installer.exe" SHA1
