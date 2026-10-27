@@ -7,6 +7,7 @@
 #include <QComboBox>
 #include <QCheckBox>
 #include <QPushButton>
+#include <QEvent>
 #include "plugin-macros.generated.h"
 #include "face-tracker-dock.hpp"
 #include "face-tracker-widget.hpp"
@@ -276,6 +277,14 @@ void FTDock::showEvent(QShowEvent *)
 void FTDock::hideEvent(QHideEvent *)
 {
 	blog(LOG_INFO, "FTDock::hideEvent");
+}
+
+bool FTDock::event(QEvent *event)
+{
+	// OBS sends this to the widget of a dock when the dock is closed
+	if (event->type() == QEvent::Type(QEvent::User + QEvent::Close))
+		ftWidget->dockClosed();
+	return QFrame::event(event);
 }
 
 void FTDock::frontendEvent(enum obs_frontend_event event)
