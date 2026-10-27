@@ -288,14 +288,20 @@ jobs:
           path: package/*
 
   windows_build:
-    runs-on: windows-2022
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        obs: [30]
-        arch: [x64]
+        include:
+          - obs: 30
+            arch: 'x64'
+            runner: 'windows-2022'
+            visualStudio: 'Visual Studio 17 2022'
+          - obs: 32
+            arch: 'arm64'
+            runner: 'windows-11-arm'
+            visualStudio: 'Visual Studio 18 2026'
     env:
-      visualStudio: 'Visual Studio 17 2022'
       Configuration: 'RelWithDebInfo'
     defaults:
       run:
@@ -310,6 +316,7 @@ jobs:
         uses: norihiro/obs-studio-devel-action@v2
         with:
           obs: ${{ matrix.obs }}
+          arch: ${{ matrix.arch }}
 
       - name: Download dlib-models
         shell: bash
@@ -328,14 +335,14 @@ jobs:
       - name: Build plugin
         run: |
           $CmakeArgs = @(
-            '-G', "${{ env.visualStudio }}"
+            '-G', "${{ matrix.visualStudio }}"
             '-DCMAKE_SYSTEM_VERSION=10.0.18363.657'
           )
           cmake -S . -B build @CmakeArgs ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS_PS }}
           cmake --build build --config RelWithDebInfo -j 4
           cmake --install build --config RelWithDebInfo --prefix "$(Resolve-Path -Path .)/release"
       - name: Package plugin
-        run: ci/windows/package-windows.cmd ${{ matrix.obs }}
+        run: ci/windows/package-windows.cmd ${{ matrix.obs }} ${{ matrix.arch }}
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
