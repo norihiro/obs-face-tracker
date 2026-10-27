@@ -141,6 +141,37 @@ void FTWidget::closeEvent(QCloseEvent *)
 	setShown(false);
 }
 
+void FTWidget::showEvent(QShowEvent *event)
+{
+	QWidget::showEvent(event);
+	if (display_stale) {
+		// Disabled since the dock was hidden, so OBS no longer uses it
+		blog(LOG_INFO, "FTWidget %p: making the display again after the dock was closed", this);
+		setShown(false);
+		display_stale = false;
+	}
+	CreateDisplay();
+	if (data->disp)
+		obs_display_set_enabled(data->disp, true);
+}
+
+// Closing a floating dock takes away the window the display draws to right
+// after hiding it, so stop drawing to it once hidden. It is not destroyed, as
+// on macOS OBS still uses a display for a moment after resizing it.
+void FTWidget::hideEvent(QHideEvent *event)
+{
+	QWidget::hideEvent(event);
+	if (data->disp)
+		obs_display_set_enabled(data->disp, false);
+}
+
+// Closing a floating dock takes away the surface of its window, so the
+// display cannot be used again once the dock is opened again
+void FTWidget::dockClosed()
+{
+	display_stale = true;
+}
+
 void FTWidget::setShown(bool shown)
 {
 	if (shown && !data->disp) {
