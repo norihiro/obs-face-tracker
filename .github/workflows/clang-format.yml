@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Clang
       run: |
-        sudo apt-get install -y clang-format-18
+        sudo apt-get install -y clang-format
         clang-format -i -fallback-style=none $(git ls-files src/ ui/ | grep '[^/]\.[ch]')
 
     - name: Check
