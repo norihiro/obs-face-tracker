@@ -6,7 +6,6 @@
 #include "face-tracker-base.h"
 #ifndef _WIN32
 #include <sys/time.h>
-#include <sys/resource.h>
 #else // _WIN32
 #include <windows.h>
 #endif // _WIN32
@@ -30,9 +29,7 @@ face_tracker_base::~face_tracker_base()
 void *face_tracker_base::thread_routine(void *p)
 {
 	face_tracker_base *base = (face_tracker_base *)p;
-#ifndef _WIN32
-	setpriority(PRIO_PROCESS, 0, 17);
-#else  // _WIN32
+#ifdef _WIN32
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif // _WIN32
 	os_set_thread_name("face-trk");
