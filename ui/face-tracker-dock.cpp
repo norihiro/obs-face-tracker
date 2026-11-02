@@ -12,7 +12,7 @@
 #include "face-tracker-widget.hpp"
 #include "face-tracker-dock-internal.hpp"
 
-#define SAVE_DATA_NAME PLUGIN_NAME "-dock"
+#define SAVE_DATA_NAME "face-tracker-dock"
 #define OBJ_NAME_SUFFIX "_ft_dock"
 
 void FTDock::closeEvent(QCloseEvent *event)

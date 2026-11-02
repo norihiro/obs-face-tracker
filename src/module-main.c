@@ -15,6 +15,11 @@ void register_face_tracker_filter(bool hide_filter, bool hide_source);
 void register_face_tracker_ptz(bool hide_ptz);
 void register_face_tracker_monitor(bool hide_monitor);
 
+const char *obs_module_name(void)
+{
+	return obs_module_text("Module.Name");
+}
+
 bool obs_module_load(void)
 {
 	blog(LOG_INFO, "registering face_tracker_filter_info (version %s)", PLUGIN_VERSION);
@@ -49,6 +54,9 @@ bool obs_module_load(void)
 	if (load_dock)
 		ft_docks_init();
 #endif // WITH_DOCK
+
+	blog(LOG_INFO, "plugin loaded (plugin version %s, API version %d.%d.%d)", PLUGIN_VERSION, LIBOBS_API_MAJOR_VER,
+	     LIBOBS_API_MINOR_VER, LIBOBS_API_PATCH_VER);
 	return true;
 }
 
