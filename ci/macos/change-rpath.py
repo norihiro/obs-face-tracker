@@ -13,7 +13,7 @@ import subprocess
 def otool_list(f):
     'List depending libraries using otool'
     libs = []
-    res = subprocess.run(['otool', '-L', f], capture_output=True, check=True)
+    res = subprocess.run(['otool', '-L', f], stdout=subprocess.PIPE, check=True)
     for line in res.stdout.decode('utf-8').split('\n')[1:]:
         lib = line.strip('\t').split(' ')[0]
         if lib:
