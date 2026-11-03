@@ -305,6 +305,7 @@ jobs:
           path: package/*
 
       - name: 'Setup with onsdriver'
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         uses: noris-plugins-for-obs/onsdriver@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -314,11 +315,12 @@ jobs:
           obs-version: ${{ matrix.obs-onsdriver }}
 
       - name: 'Test with onsdriver'
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
           python -m unittest discover test-onsdriver/
 
       - name: 'Upload logs of onsdriver'
-        if: always()
+        if: ${{ always() && startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: test-${{ env.artifactName }}-macos-obs${{ matrix.obs }}-${{ matrix.arch }}
