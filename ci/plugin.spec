@@ -49,8 +49,8 @@ The model file came from https://github.com/davisking/dlib-models/.
 
 %build
 %{cmake} \
- -DLINUX_PORTABLE=OFF -DLINUX_RPATH=OFF \
  -DQT_VERSION=6 \
+ -DINSTALL_LICENSE_FILES:BOOL=OFF \
  -DWITH_DLIB_SUBMODULE=OFF \
  -DBUILD_SHARED_LIBS:BOOL=OFF
 %{cmake_build}

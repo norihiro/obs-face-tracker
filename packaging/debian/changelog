@@ -1,0 +1,5 @@
+face-tracker-plugin-for-obs (%VERSION%-%RELEASE%~%DISTRIBUTION%) %DISTRIBUTION%; urgency=medium
+
+  * Initial release
+
+ -- Norihiro Kamae (PPA) <norihiro-ppa-plugins-for-obs-studio@nagater.net>  %DATE%

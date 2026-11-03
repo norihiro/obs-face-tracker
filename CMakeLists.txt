@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(obs-face-tracker VERSION 0.9.1)
+project(face-tracker VERSION 0.9.1)
+set(PLUGIN_URL "https://obsproject.com/forum/resources/face-tracker.1294/")
 set(PLUGIN_AUTHOR "Norihiro Kamae")
 set(MACOS_BUNDLEID "net.nagater.obs-face-tracker")
-set(MACOS_PACKAGE_UUID "A2EB2F73-9828-40C4-A307-F47282BB8D3F")
+set(MACOS_PACKAGE_UUID   "A2EB2F73-9828-40C4-A307-F47282BB8D3F")
 set(MACOS_INSTALLER_UUID "652CF739-5A6F-4DAC-9611-B068FAC15BF3")
-set(PLUGIN_URL "https://obsproject.com/forum/resources/face-tracker.1294/")
+set(WIN_INSTALLER_UUID   "723828DB-04B8-41F7-9F7A-AF692B2CDF3D")
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
 option(WITH_PTZ_TCP "Enable to connect PTZ camera through TCP socket" ON)
@@ -35,7 +36,6 @@ endif()
 find_package(libobs REQUIRED)
 find_package(obs-frontend-api REQUIRED)
 include(cmake/ObsPluginHelpers.cmake)
-find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui)
 
 if (WITH_DLIB_SUBMODULE)
 	set(CMAKE_POSITION_INDEPENDENT_CODE True)
@@ -60,19 +60,6 @@ set(CMAKE_AUTOUIC ON)
 configure_file(
 	src/plugin-macros.h.in
 	plugin-macros.generated.h
-)
-configure_file(
-	installer/installer-Windows.iss.in
-	installer-Windows.generated.iss
-)
-
-configure_file(
-	ci/ci_includes.sh.in
-	ci/ci_includes.generated.sh
-)
-configure_file(
-	ci/ci_includes.cmd.in
-	ci/ci_includes.generated.cmd
 )
 
 set(PLUGIN_SOURCES
@@ -106,13 +93,16 @@ if (WITH_DOCK)
 	)
 endif()
 
-add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
+add_library(${PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
 
 if (WITH_DOCK)
+	set(QT_NO_CREATE_VERSIONLESS_TARGETS OFF)
+	find_package(Qt${QT_VERSION} COMPONENTS Widgets Core Gui)
 	set(plugin_additional_incs ${plugin_additional_incs} src)
 	set(plugin_additional_libs ${plugin_additional_libs} Qt::Gui Qt::Widgets)
 	# Only for Wayland with Qt before 6.9, where it comes with Qt Gui
 	if (OS_LINUX AND Qt${QT_VERSION}Core_VERSION VERSION_LESS 6.9)
+		find_package(Qt6 QUIET COMPONENTS GuiPrivate)
 		set(plugin_additional_libs ${plugin_additional_libs} Qt::GuiPrivate)
 	endif()
 endif()
@@ -122,14 +112,15 @@ include_directories(
 	${plugin_additional_incs}
 )
 
-target_link_libraries(${CMAKE_PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME}
 	OBS::libobs
 	OBS::obs-frontend-api
 	dlib
 	${plugin_additional_libs}
 )
 
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+target_include_directories(${PROJECT_NAME}
+	PRIVATE
 	${CMAKE_CURRENT_BINARY_DIR}
 )
 
@@ -142,11 +133,13 @@ if(OS_WINDOWS)
 		add_definitions("-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR") # TODO: Remove once requiring OBS 30.2 or later.
 	endif()
 
-	target_link_libraries(${CMAKE_PROJECT_NAME} OBS::w32-pthreads)
+	target_link_libraries(${PROJECT_NAME} OBS::w32-pthreads)
+
+	set(LICENSE_DESTINATION "${PROJECT_NAME}/data")
 endif()
 
 if(OS_LINUX)
-	target_compile_options(${CMAKE_PROJECT_NAME}
+	target_compile_options(${PROJECT_NAME}
 		PRIVATE
 		-Wall
 		-Wextra
@@ -154,21 +147,71 @@ if(OS_LINUX)
 		-Werror
 		-Wno-error=deprecated-declarations # TODO: Replace obs_frontend_add_dock with the new API.
 	)
-	target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-Wl,-z,defs")
+	target_link_options(${PROJECT_NAME} PRIVATE -Wl,-z,defs)
+
+	set(LICENSE_DESTINATION ${CMAKE_INSTALL_DOCDIR})
+
+	if(ENABLE_COVERAGE)
+		target_compile_options(${PROJECT_NAME} PRIVATE -coverage -fprofile-update=atomic)
+		target_link_options(${PROJECT_NAME} PRIVATE -coverage)
+	endif()
 endif()
 
-if(APPLE)
+if(OS_MACOS)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -fvisibility=default")
 
-	set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PREFIX "")
+	set(LICENSE_DESTINATION "${PROJECT_NAME}.plugin/Contents/Resources")
+
+	set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 	set(MACOSX_PLUGIN_GUI_IDENTIFIER "${MACOS_BUNDLEID}")
-	set(MACOSX_PLUGIN_BUNDLE_VERSION "${CMAKE_PROJECT_VERSION}")
+	set(MACOSX_PLUGIN_BUNDLE_VERSION "${PROJECT_VERSION}")
 	set(MACOSX_PLUGIN_SHORT_VERSION_STRING "1")
+
+	if(ENABLE_COVERAGE)
+		target_compile_options(${PROJECT_NAME} PRIVATE -coverage)
+		target_link_options(${PROJECT_NAME} PRIVATE --coverage)
+	endif()
 endif()
 
-setup_plugin_target(${CMAKE_PROJECT_NAME})
+file(GENERATE OUTPUT .gitignore CONTENT "*\n")
 
-configure_file(installer/installer-macOS.pkgproj.in installer-macOS.generated.pkgproj)
+setup_plugin_target(${PROJECT_NAME})
+
+option(INSTALL_LICENSE_FILES "Install license files" ON)
+if(INSTALL_LICENSE_FILES)
+	install(FILES
+		LICENSE
+		DESTINATION ${LICENSE_DESTINATION}
+	)
+	if (WITH_DLIB_SUBMODULE)
+		install(FILES
+			dlib/LICENSE.txt
+			RENAME LICENSE-dlib.txt
+			DESTINATION ${LICENSE_DESTINATION}
+		)
+	endif()
+endif()
+
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+	configure_file(
+		installer/installer-Windows.iss.in
+		installer-Windows.generated.iss
+	)
+
+	configure_file(
+		ci/ci_includes.sh.in
+		ci/ci_includes.generated.sh
+	)
+	configure_file(
+		ci/ci_includes.cmd.in
+		ci/ci_includes.generated.cmd
+	)
+
+	configure_file(
+		installer/installer-macOS.pkgproj.in
+		installer-macOS.generated.pkgproj
+	)
+endif()
 
 if(ENABLE_DATAGEN)
 	add_executable(face-detector-dlib-hog-datagen

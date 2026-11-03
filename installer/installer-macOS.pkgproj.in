@@ -63,7 +63,7 @@
 															<key>GID</key>
 															<integer>80</integer>
 															<key>PATH</key>
-															<string>../@RELATIVE_INSTALL_PATH@/@CMAKE_PROJECT_NAME@@FIRST_DIR_SUFFIX@</string>
+															<string>../@RELATIVE_INSTALL_PATH@/@PROJECT_NAME@@FIRST_DIR_SUFFIX@</string>
 															<key>PATH_TYPE</key>
 															<integer>1</integer>
 															<key>PERMISSIONS</key>
@@ -521,7 +521,7 @@
 				<key>LOCATION</key>
 				<integer>0</integer>
 				<key>NAME</key>
-				<string>@CMAKE_PROJECT_NAME@</string>
+				<string>@PROJECT_NAME@</string>
 				<key>OVERWRITE_PERMISSIONS</key>
 				<false/>
 				<key>PAYLOAD_SIZE</key>
@@ -533,7 +533,7 @@
 				<key>USE_HFS+_COMPRESSION</key>
 				<false/>
 				<key>VERSION</key>
-				<string>@CMAKE_PROJECT_VERSION@</string>
+				<string>@PROJECT_VERSION@</string>
 			</dict>
 			<key>TYPE</key>
 			<integer>0</integer>
@@ -905,7 +905,7 @@
 				</dict>
 			</array>
 			<key>NAME</key>
-			<string>@CMAKE_PROJECT_NAME@@PKG_SUFFIX@</string>
+			<string>@PROJECT_NAME@@PKG_SUFFIX@</string>
 			<key>PAYLOAD_ONLY</key>
 			<false/>
 			<key>TREAT_MISSING_PRESENTATION_DOCUMENTS_AS_WARNING</key>
