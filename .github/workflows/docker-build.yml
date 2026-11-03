@@ -24,9 +24,9 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - fedora41
-          - fedora42
           - fedora43
+          - fedora44
+          - fedora45
     defaults:
       run:
         shell: bash
