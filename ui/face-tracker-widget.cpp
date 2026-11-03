@@ -81,9 +81,13 @@ void FTWidget::CreateDisplay()
 	if (data->disp || !windowHandle()->isExposed())
 		return;
 
+	// A display with no area cannot be drawn to
+	QSize size = GetPixelSize(this);
+	if (size.isEmpty())
+		return;
+
 	blog(LOG_INFO, "FTWidget::CreateDisplay %p", this);
 
-	QSize size = GetPixelSize(this);
 	gs_init_data info = {};
 	info.cx = size.width();
 	info.cy = size.height();
@@ -111,7 +115,14 @@ void FTWidget::resizeEvent(QResizeEvent *event)
 	QWidget::resizeEvent(event);
 	CreateDisplay();
 
+	// Resized to no area, the display fails to draw every frame until it is
+	// resized again, so keep its last size until the dock has room again
 	QSize size = GetPixelSize(this);
+	if (size.isEmpty()) {
+		if (!event->oldSize().isEmpty())
+			blog(LOG_INFO, "FTWidget %p: no area, keeping the display at its size", this);
+		return;
+	}
 	obs_display_resize(data->disp, size.width(), size.height());
 }
 
@@ -128,6 +139,37 @@ class QPaintEngine *FTWidget::paintEngine() const
 void FTWidget::closeEvent(QCloseEvent *)
 {
 	setShown(false);
+}
+
+void FTWidget::showEvent(QShowEvent *event)
+{
+	QWidget::showEvent(event);
+	if (display_stale) {
+		// Disabled since the dock was hidden, so OBS no longer uses it
+		blog(LOG_INFO, "FTWidget %p: making the display again after the dock was closed", this);
+		setShown(false);
+		display_stale = false;
+	}
+	CreateDisplay();
+	if (data->disp)
+		obs_display_set_enabled(data->disp, true);
+}
+
+// Closing a floating dock takes away the window the display draws to right
+// after hiding it, so stop drawing to it once hidden. It is not destroyed, as
+// on macOS OBS still uses a display for a moment after resizing it.
+void FTWidget::hideEvent(QHideEvent *event)
+{
+	QWidget::hideEvent(event);
+	if (data->disp)
+		obs_display_set_enabled(data->disp, false);
+}
+
+// Closing a floating dock takes away the surface of its window, so the
+// display cannot be used again once the dock is opened again
+void FTWidget::dockClosed()
+{
+	display_stale = true;
 }
 
 void FTWidget::setShown(bool shown)
