@@ -186,18 +186,6 @@ jobs:
           obs: ${{ matrix.obs }}
           verbose: true
 
-      - name: Prepare dlib dependency
-        run: |
-          brew install openblas
-          for d in '/usr/local/opt/openblas/' '/opt/homebrew/opt/openblas/'; do
-            if test -d "$d"; then
-              OPENBLAS_HOME="$d"
-              break
-            fi
-          done
-          echo "OPENBLAS_HOME=$OPENBLAS_HOME" >> $GITHUB_ENV
-          cp $OPENBLAS_HOME/LICENSE data/LICENSE-openblas
-
       - name: Download dlib-models
         run: |
           set -ex
@@ -216,7 +204,6 @@ jobs:
           arch=${{ matrix.arch }}
           GIT_TAG=$(git describe --tags --always)
           PKG_SUFFIX=-${GIT_TAG}-obs${{ matrix.obs }}-macos-${{ matrix.arch }}
-          export OPENBLAS_HOME=${{ env.OPENBLAS_HOME }}
           set -e
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \

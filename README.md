@@ -50,13 +50,6 @@ This plugin requires [dlib](http://dlib.net/) to be built.
 The `dlib` should be extracted under `obs-face-tracker` so that it will be linked statically.
 I modified `dlib` so that `openblasp` won't be linked but `openblas`.
 
-For macOS,
-install openblas and configure the path.
-```
-brew install openblas
-export OPENBLAS_HOME=/usr/local/opt/openblas/
-```
-
 For Linux and macOS,
 expand `obs-face-tracker` outside `obs-studio` and build.
 ```
