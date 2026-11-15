@@ -20,9 +20,9 @@ void obsptz_backend::set_config(struct obs_data *data)
 {
 	device_id = (int)obs_data_get_int(data, "device_id");
 
-	ptz_max_x = obs_data_get_int(data, "max_x");
-	ptz_max_y = obs_data_get_int(data, "max_y");
-	ptz_max_z = obs_data_get_int(data, "max_z");
+	ptz_max_x = (int)obs_data_get_int(data, "max_x");
+	ptz_max_y = (int)obs_data_get_int(data, "max_y");
+	ptz_max_z = (int)obs_data_get_int(data, "max_z");
 }
 
 bool obsptz_backend::can_send()
