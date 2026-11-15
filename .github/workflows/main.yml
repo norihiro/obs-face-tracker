@@ -377,12 +377,8 @@ jobs:
 
       - name: Build plugin
         run: |
-          $CmakeArgs = @()
-          if ('${{ matrix.arch }}' -eq 'arm64') {
-            $CmakeArgs += '-DUSE_SSE2_INSTRUCTIONS=OFF'
-          }
 
-          cmake -S . -B build ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS_PS }} @CmakeArgs
+          cmake -S . -B build ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS_PS }}
           cmake --build build --config RelWithDebInfo -j 4
           cmake --install build --config RelWithDebInfo --prefix "$(Resolve-Path -Path .)/release"
 
