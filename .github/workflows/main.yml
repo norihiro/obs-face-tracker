@@ -113,17 +113,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - obs: 32
-            arch: 'x86_64'
-            obs-onsdriver: '< 33'
-            macos: macos-26-intel # Intel x86_64
           - obs: 33
             arch: 'x86_64'
             macos: macos-26-intel # Intel x86_64
-          - obs: 32
-            arch: 'arm64'
-            obs-onsdriver: '< 33'
-            macos: macos-26 # Apple arm64
           - obs: 33
             arch: 'arm64'
             macos: macos-26 # Apple arm64
