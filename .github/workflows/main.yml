@@ -108,17 +108,13 @@ jobs:
             logs/*
 
   macos_build:
-    runs-on: ${{ matrix.macos }}
+    runs-on: macos-26
     strategy:
       fail-fast: false
       matrix:
         include:
           - obs: 33
-            arch: 'x86_64'
-            macos: macos-26-intel # Intel x86_64
-          - obs: 33
-            arch: 'arm64'
-            macos: macos-26 # Apple arm64
+            arch: 'universal'
     defaults:
       run:
         shell: bash
@@ -208,7 +204,7 @@ jobs:
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_PREFIX_PATH="$PWD/release/" \
-            -DCMAKE_OSX_ARCHITECTURES=$arch \
+            -DCMAKE_OSX_ARCHITECTURES=${arch/#universal/x86_64;arm64} \
             -D PKG_SUFFIX=$PKG_SUFFIX \
             -D OBS_BUNDLE_CODESIGN_IDENTITY='${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}' \
             ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS }}
@@ -219,19 +215,6 @@ jobs:
           set -ex
           . build/ci/ci_includes.generated.sh
           cmake --install build --config RelWithDebInfo --prefix=release
-          ci/macos/change-rpath.py \
-            --exclude-regex='(/usr/lib/|/System/Library/)' \
-            --exclude-regex='.*(obs-frontend-api|libobs|/Qt)' \
-            --libdir release/${PLUGIN_NAME}.plugin/Contents/lib \
-            --verbose \
-            release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME}
-          ci/macos/change-rpath.py \
-            --exclude-regex='(/usr/lib/|/System/Library/)' \
-            --exclude-regex='.*(obs-frontend-api|libobs|/Qt)' \
-            --check-invalid-regex='(/usr/local|/opt)' \
-            --check \
-            release/${PLUGIN_NAME}.plugin/Contents/MacOS/${PLUGIN_NAME} \
-            release/${PLUGIN_NAME}.plugin/Contents/lib/*
 
       - name: Codesign
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
@@ -284,7 +267,6 @@ jobs:
           path: package/*
 
       - name: 'Setup with onsdriver'
-        if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         uses: noris-plugins-for-obs/onsdriver@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -294,12 +276,11 @@ jobs:
           obs-version: ${{ matrix.obs-onsdriver }}
 
       - name: 'Test with onsdriver'
-        if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
           python -m unittest discover test-onsdriver/
 
       - name: 'Upload logs of onsdriver'
-        if: ${{ always() && startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: test-${{ env.artifactName }}-macos-obs${{ matrix.obs }}-${{ matrix.arch }}
