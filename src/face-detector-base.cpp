@@ -6,7 +6,6 @@
 #include "face-detector-base.h"
 #ifndef _WIN32
 #include <sys/time.h>
-#include <sys/resource.h>
 #else // _WIN32
 #include <windows.h>
 #endif // _WIN32
@@ -30,9 +29,7 @@ face_detector_base::~face_detector_base()
 void *face_detector_base::thread_routine(void *p)
 {
 	face_detector_base *base = (face_detector_base *)p;
-#ifndef _WIN32
-	setpriority(PRIO_PROCESS, 0, 19);
-#else  // _WIN32
+#ifdef _WIN32
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif // _WIN32
 	os_set_thread_name("face-det");
