@@ -15,6 +15,7 @@ option(ENABLE_MONITOR_USER "Enable monitor source for user" OFF)
 option(ENABLE_DEBUG_DATA "Enable property to save error and control data" OFF)
 option(WITH_DOCK "Enable dock" ON)
 option(ENABLE_DATAGEN "Enable generating data" OFF)
+option(ENABLE_TRACKER_TESTS "Enable the correlation tracker regression test" OFF)
 
 set(CMAKE_PREFIX_PATH "${QTDIR}")
 
@@ -62,20 +63,24 @@ configure_file(
 	plugin-macros.generated.h
 )
 
-set(PLUGIN_SOURCES
-	src/module-main.c
-	src/face-tracker.cpp
-	src/source_list.cc
-	src/face-tracker-preset.cpp
+set(TRACKING_SOURCES
 	src/face-tracker-manager.cpp
-	src/face-tracker-ptz.cpp
-	src/face-tracker-monitor.cpp
 	src/face-detector-base.cpp
 	src/face-detector-dlib-hog.cpp
 	src/face-detector-dlib-cnn.cpp
 	src/face-tracker-base.cpp
 	src/face-tracker-dlib.cpp
 	src/texture-object.cpp
+)
+
+set(PLUGIN_SOURCES
+	src/module-main.c
+	src/face-tracker.cpp
+	src/source_list.cc
+	src/face-tracker-preset.cpp
+	src/face-tracker-ptz.cpp
+	src/face-tracker-monitor.cpp
+	${TRACKING_SOURCES}
 	src/helper.cpp
 	src/ptz-backend.cpp
 	src/obsptz-backend.cpp
@@ -223,4 +228,17 @@ if(ENABLE_DATAGEN)
 	target_link_libraries(face-detector-dlib-hog-datagen
 		dlib
 	)
+endif()
+
+if(ENABLE_TRACKER_TESTS)
+	enable_testing()
+	add_executable(tracker-scale-test tests/tracker-scale-test.cpp ${TRACKING_SOURCES})
+	set_target_properties(tracker-scale-test PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+	target_include_directories(tracker-scale-test PRIVATE src ${CMAKE_CURRENT_BINARY_DIR})
+	target_link_libraries(tracker-scale-test PRIVATE OBS::libobs dlib)
+	if(OS_WINDOWS)
+		target_link_libraries(tracker-scale-test PRIVATE OBS::w32-pthreads)
+	endif()
+	add_test(NAME tracker-scale-change COMMAND tracker-scale-test)
+	set_tests_properties(tracker-scale-change PROPERTIES TIMEOUT 30)
 endif()

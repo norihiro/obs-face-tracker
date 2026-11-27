@@ -57,6 +57,7 @@ void *face_tracker_base::thread_routine(void *p)
 
 void face_tracker_base::start()
 {
+	lock();
 	stop_requested = 0;
 	stopped = 0;
 	suspend_requested = 0;
@@ -65,10 +66,9 @@ void face_tracker_base::start()
 		pthread_create(&thread, NULL, thread_routine, (void *)this);
 		running = 1;
 	} else {
-		lock();
 		signal();
-		unlock();
 	}
+	unlock();
 }
 
 void face_tracker_base::stop()

@@ -74,6 +74,10 @@ make
 
 For Windows, see `.github/workflows/main.yml`.
 
+To run the tracker regression, configure the plugin build with `-DENABLE_TRACKER_TESTS=ON`,
+then run `ctest --test-dir build -C RelWithDebInfo --output-on-failure` after building.
+On Windows, include the matching OBS runtime DLL directory in `PATH`.
+
 ## Preparing data file
 
 You need to prepare a model file.
