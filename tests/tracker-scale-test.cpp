@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <random>
 #include <semaphore>
+#include <thread>
 
 // The manager's settings helpers reference module entry points. This test never loads a module.
 obs_module_t *obs_current_module()
@@ -197,10 +198,36 @@ void repeated_invalidations_reuse_worker()
 	}
 }
 
+void reuses_ready_worker_behind_busy_worker()
+{
+	auto *busy = new controlled_tracker();
+	auto *ready = new controlled_tracker();
+	fixture_manager manager(busy);
+	manager.trackers_idlepool.push_back({.tracker = ready});
+
+	std::binary_semaphore locked{0}, release{0};
+	std::thread lock_holder([&] {
+		busy->lock();
+		locked.release();
+		release.acquire();
+		busy->unlock();
+	});
+	locked.acquire();
+	manager.render(make_frame(1));
+	release.release();
+	lock_holder.join();
+
+	require(manager.trackers.size() == 1 && manager.trackers.front().tracker == ready,
+		"The detector should reuse a ready worker behind a busy worker");
+	require(manager.trackers_idlepool.size() == 1 && manager.trackers_idlepool.front().tracker == busy,
+		"The busy worker should remain in the idle pool");
+}
+
 } // namespace
 
 int main()
 {
 	recovers_at_new_scale();
 	repeated_invalidations_reuse_worker();
+	reuses_ready_worker_behind_busy_worker();
 }

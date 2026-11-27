@@ -207,11 +207,15 @@ inline void face_tracker_manager::stage_to_detector()
 		t.crop_rect = rectf_s{0.0f, 0.0f, 0.0f, 0.0f};
 		t.att = 0.0f;
 		t.score_first = 0.0f;
-		if (!trackers_idlepool.empty() && !trackers_idlepool.front().tracker->trylock()) {
-			t.tracker = trackers_idlepool[0].tracker;
-			trackers_idlepool[0].tracker = NULL;
-			trackers_idlepool.pop_front();
-		} else {
+		t.tracker = nullptr;
+		for (auto it = trackers_idlepool.begin(); it != trackers_idlepool.end(); ++it) {
+			if (it->tracker->trylock())
+				continue;
+			t.tracker = it->tracker;
+			trackers_idlepool.erase(it);
+			break;
+		}
+		if (!t.tracker) {
 			debug_track_thread(
 				"%p No available idle tracker, creating new tracker thread. There are %d existing thread.",
 				this, trackers.size());
