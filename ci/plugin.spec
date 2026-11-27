@@ -7,6 +7,7 @@ License: GPLv3+
 Source0: %{name}-%{version}.tar.bz2
 Source1: %{name}-%{version}-libvisca.tar.bz2
 Source2: %{name}-%{version}-dlib-models.tar.bz2
+Source3: %{name}-%{version}-noriscommonui.tar.bz2
 Requires: obs-studio >= @OBS_VERSION@
 BuildRequires: cmake, gcc, gcc-c++
 BuildRequires: obs-studio-devel
@@ -46,6 +47,7 @@ The model file came from https://github.com/davisking/dlib-models/.
 %autosetup -p1
 %setup -T -D -a 1
 %setup -T -D -a 2
+%setup -T -D -a 3
 
 %build
 %{cmake} \

@@ -44,13 +44,15 @@ sed \
 DESTDIR='dlib-models-data/' ci/download-dlib-models.sh --nonfree
 
 git archive --format=tar --prefix=$PLUGIN_NAME_FEDORA-$VERSION/ HEAD | bzip2 > $rpmbuild/SOURCES/$PLUGIN_NAME_FEDORA-$VERSION.tar.bz2
-(cd libvisca && git archive --format=tar --prefix=libvisca/ HEAD) | bzip2 > $rpmbuild/SOURCES/$PLUGIN_NAME_FEDORA-$VERSION-libvisca.tar.bz2
+git submodule status |
+while read -r sub_hash sub_name garbage; do
+	(cd $sub_name && git archive --format=tar --prefix=$sub_name/ HEAD) < /dev/null |\
+		bzip2 > $rpmbuild/SOURCES/$PLUGIN_NAME_FEDORA-$VERSION-$sub_name.tar.bz2
+done
 (cd dlib-models-data && tar cj .) > $rpmbuild/SOURCES/$PLUGIN_NAME_FEDORA-$VERSION-dlib-models.tar.bz2
 
 docker run -v $rpmbuild:/home/rpm/rpmbuild $docker_image bash -c "
-if awk '/Fedora release/{fc=\$3} END{exit(fc>=43 ? 0 : 1)}' /etc/fedora-release; then
-	sudo dnf copr -y enable kamae/obs-studio-plugins
-fi
+sudo dnf copr -y enable kamae/obs-studio-plugins
 sudo dnf builddep -y ~/rpmbuild/SPECS/$PLUGIN_NAME_FEDORA.spec &&
 sudo chown 0:0 ~/rpmbuild/SOURCES/* &&
 sudo chown 0:0 ~/rpmbuild/SPECS/* &&

@@ -4,3 +4,6 @@
 [submodule "dlib"]
 	path = dlib
 	url = https://github.com/norihiro/dlib.git
+[submodule "noriscommonui"]
+	path = noriscommonui
+	url = https://github.com/noris-plugins-for-obs/noriscommonui.git
