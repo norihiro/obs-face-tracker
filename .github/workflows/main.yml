@@ -41,7 +41,7 @@ jobs:
 
       - name: Restore ccache
         id: ccache-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.ccache
           key: linux-obs${{ matrix.obs }}-${{ matrix.ubuntu }}-ccache
@@ -151,7 +151,7 @@ jobs:
 
       - name: Restore ccache
         id: ccache-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.ccache
           key: macos-obs${{ matrix.obs }}-${{ matrix.arch }}-ccache

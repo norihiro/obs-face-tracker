@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
@@ -48,7 +48,7 @@ jobs:
 
       - name: Restore docker from cache
         id: docker-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/docker-cache
           key: docker-cache-${{ matrix.target }}-${{ hashFiles(format('.github/containers/{0}/Dockerfile', matrix.target)) }}
@@ -61,7 +61,7 @@ jobs:
           docker save obs-plugin-build/$target | gzip > docker-cache/obs-plugin-build-$target.tar.gz
 
       - name: Save docker to cache
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         if: ${{ steps.docker-cache.outputs.cache-hit != 'true' }}
         with:
           path: ${{ github.workspace }}/docker-cache
@@ -76,7 +76,7 @@ jobs:
         run: .github/containers/$target/build.sh
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.artifactName }}-${{ matrix.target }}
           path: '${{ env.FILE_NAME }}'
