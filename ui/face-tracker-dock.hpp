@@ -37,9 +37,6 @@ public:
 	void load_properties(obs_data_t *);
 
 private:
-	void showEvent(QShowEvent *event) override;
-	void hideEvent(QHideEvent *event) override;
-
 	void frontendEvent(enum obs_frontend_event event);
 	static void frontendEvent_cb(enum obs_frontend_event event, void *private_data);
 

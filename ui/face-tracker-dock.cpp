@@ -268,16 +268,6 @@ FTDock::~FTDock()
 		}
 }
 
-void FTDock::showEvent(QShowEvent *)
-{
-	blog(LOG_INFO, "FTDock::showEvent");
-}
-
-void FTDock::hideEvent(QHideEvent *)
-{
-	blog(LOG_INFO, "FTDock::hideEvent");
-}
-
 void FTDock::frontendEvent(enum obs_frontend_event event)
 {
 	if (event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CLEANUP || event == OBS_FRONTEND_EVENT_EXIT) {
