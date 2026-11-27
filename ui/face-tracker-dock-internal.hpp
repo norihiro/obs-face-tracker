@@ -5,7 +5,6 @@
 
 struct face_tracker_dock_s
 {
-	obs_display_t *disp;
 	pthread_mutex_t mutex;
 	volatile long ref;
 

@@ -55,90 +55,37 @@ err:
 	pthread_mutex_unlock(&data->mutex);
 }
 
-FTWidget::FTWidget(struct face_tracker_dock_s *data_, QWidget *parent) : QWidget(parent)
+FTWidget::FTWidget(struct face_tracker_dock_s *data_, QWidget *parent) : NorisQTDisplay(parent)
 {
 	face_tracker_dock_addref((data = data_));
-	setAttribute(Qt::WA_PaintOnScreen);
-	setAttribute(Qt::WA_StaticContents);
-	setAttribute(Qt::WA_NoSystemBackground);
-	setAttribute(Qt::WA_OpaquePaintEvent);
-	setAttribute(Qt::WA_DontCreateNativeAncestors);
-	setAttribute(Qt::WA_NativeWindow);
 
 	setContextMenuPolicy(Qt::CustomContextMenu);
 	connect(this, &QWidget::customContextMenuRequested, this, &FTWidget::openMenu);
+
+	connect(this, &NorisQTDisplay::DisplayCreated, this, &FTWidget::RegisterCallbackToDisplay);
 }
 
 FTWidget::~FTWidget()
 {
+	disconnect(this, &NorisQTDisplay::DisplayCreated, this, &FTWidget::RegisterCallbackToDisplay);
+
+	if (data) {
+		if (obs_display_t *display = GetDisplay())
+			obs_display_remove_draw_callback(display, draw, data);
+	}
+
 	face_tracker_dock_release(data);
 }
 
-void FTWidget::CreateDisplay()
+void FTWidget::RegisterCallbackToDisplay()
 {
-	if (!data)
-		return;
-	if (data->disp || !windowHandle()->isExposed())
-		return;
-
-	blog(LOG_INFO, "FTWidget::CreateDisplay %p", this);
-
-	QSize size = GetPixelSize(this);
-	gs_init_data info = {};
-	info.cx = size.width();
-	info.cy = size.height();
-	info.format = GS_BGRA;
-	info.zsformat = GS_ZS_NONE;
-	QWindow *window = windowHandle();
-	if (!window) {
-		blog(LOG_ERROR, "FTWidget %p: windowHandle() returns NULL", this);
-		return;
-	}
-	if (!QTToGSWindow(window, info.window)) {
-		blog(LOG_ERROR, "FTWidget %p: QTToGSWindow failed", this);
-		return;
-	}
-	data->disp = obs_display_create(&info, 0);
-	obs_display_add_draw_callback(data->disp, draw, data);
-#ifdef HAVE_DISPLAY_SET_INTERLEAVE
-	blog(LOG_INFO, "calling obs_display_set_interleave interleave=2");
-	obs_display_set_interleave(data->disp, 2);
-#endif
-}
-
-void FTWidget::resizeEvent(QResizeEvent *event)
-{
-	QWidget::resizeEvent(event);
-	CreateDisplay();
-
-	QSize size = GetPixelSize(this);
-	obs_display_resize(data->disp, size.width(), size.height());
-}
-
-void FTWidget::paintEvent(QPaintEvent *)
-{
-	CreateDisplay();
-}
-
-class QPaintEngine *FTWidget::paintEngine() const
-{
-	return NULL;
+	obs_display_t *display = GetDisplay();
+	obs_display_add_draw_callback(display, draw, data);
 }
 
 void FTWidget::closeEvent(QCloseEvent *)
 {
-	setShown(false);
-}
-
-void FTWidget::setShown(bool shown)
-{
-	if (shown && !data->disp) {
-		CreateDisplay();
-	}
-	if (!shown && data->disp) {
-		obs_display_destroy(data->disp);
-		data->disp = NULL;
-	}
+	DestroyDisplay();
 }
 
 void FTWidget::openMenu(const class QPoint &pos)

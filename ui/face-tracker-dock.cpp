@@ -656,8 +656,6 @@ struct face_tracker_dock_s *face_tracker_dock_create()
 
 void face_tracker_dock_destroy(struct face_tracker_dock_s *data)
 {
-	obs_display_destroy(data->disp);
-	data->disp = NULL;
 	obs_source_release(data->src_monitor);
 	pthread_mutex_destroy(&data->mutex);
 	bfree(data);
