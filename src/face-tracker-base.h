@@ -19,6 +19,8 @@ class face_tracker_base {
 	virtual void track_main() = 0;
 
 public:
+	enum class result { pending, available, scale_changed };
+
 	face_tracker_base();
 	virtual ~face_tracker_base();
 
@@ -31,7 +33,7 @@ public:
 	virtual void set_position(const rect_s &rect) = 0;
 	virtual void set_upsize_info(const rectf_s &upsize) = 0;
 	virtual void set_landmark_detection(const char *data_file_path) = 0;
-	virtual bool get_face(struct rect_s &) = 0;
+	virtual result get_face(struct rect_s &) = 0;
 	virtual bool get_landmark(std::vector<pointf_s> &) = 0;
 
 	void start();

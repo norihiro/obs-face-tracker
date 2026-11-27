@@ -160,8 +160,10 @@ inline void face_tracker_manager::copy_detector_to_tracker()
 	r.x1 += w * upsize_r;
 	r.y0 -= h * upsize_t;
 	r.y1 += h * upsize_b;
+	t.tracker->lock();
 	t.tracker->set_position(r); // TODO: consider how to track two or more faces.
 	t.tracker->set_upsize_info(rectf_s{upsize_l, upsize_t, upsize_r, upsize_b});
+	t.tracker->unlock();
 	t.tracker->start();
 	t.state = tracker_inst_s::tracker_state_constructing;
 }
@@ -205,7 +207,7 @@ inline void face_tracker_manager::stage_to_detector()
 		t.crop_rect = rectf_s{0.0f, 0.0f, 0.0f, 0.0f};
 		t.att = 0.0f;
 		t.score_first = 0.0f;
-		if (trackers_idlepool.size() > 0) {
+		if (!trackers_idlepool.empty() && !trackers_idlepool.front().tracker->trylock()) {
 			t.tracker = trackers_idlepool[0].tracker;
 			trackers_idlepool[0].tracker = NULL;
 			trackers_idlepool.pop_front();
@@ -214,6 +216,7 @@ inline void face_tracker_manager::stage_to_detector()
 				"%p No available idle tracker, creating new tracker thread. There are %d existing thread.",
 				this, trackers.size());
 			t.tracker = new face_tracker_dlib();
+			t.tracker->lock();
 			for (size_t i = 0; i < trackers.size(); i++) {
 				debug_track_thread("%p existing tracker[%d]: state=%d", this, i,
 						   (int)trackers[i].state);
@@ -224,6 +227,7 @@ inline void face_tracker_manager::stage_to_detector()
 		t.tick_cnt = tick_cnt;
 		t.tracker->set_texture(cvtex);
 		t.tracker->set_landmark_detection(landmark_detection_data);
+		t.tracker->unlock();
 		if (!landmark_detection_data)
 			t.landmark.clear();
 		trackers.push_back(t);
@@ -248,46 +252,39 @@ inline void face_tracker_manager::stage_to_trackers()
 	bool have_new_tracker = false;
 	for (size_t i = 0; i < trackers.size(); i++) {
 		struct tracker_inst_s &t = trackers[i];
+		const bool first_track = t.state == tracker_inst_s::tracker_state_first_track;
 		if (t.state == tracker_inst_s::tracker_state_constructing) {
 			if (!t.tracker->trylock()) {
-				if (!stage_surface_to_tracker(t)) {
-					t.crop_tracker = crop_cur;
+				if (!stage_surface_to_tracker(t))
 					t.state = tracker_inst_s::tracker_state_first_track;
-				}
 				t.tracker->unlock();
-				t.state = tracker_inst_s::tracker_state_first_track;
 			}
-		} else if (t.state == tracker_inst_s::tracker_state_first_track) {
-			if (!t.tracker->trylock()) {
-				bool ret = t.tracker->get_face(t.rect);
-				t.crop_rect = t.crop_tracker;
-				debug_track("tracker_state_first_track %p %d %d %d %d %f", t.tracker, t.rect.x0,
-					    t.rect.y0, t.rect.x1, t.rect.y1, t.rect.score);
+		} else if (first_track || t.state == tracker_inst_s::tracker_state_available) {
+			auto *worker = t.tracker;
+			if (worker->trylock())
+				continue;
+			const auto outcome = worker->get_face(t.rect);
+			if (outcome == face_tracker_base::result::scale_changed) {
+				retire_tracker(i);
+				worker->unlock();
+				i--;
+				continue;
+			}
+			const bool available = outcome == face_tracker_base::result::available;
+			t.crop_rect = t.crop_tracker;
+			debug_track("tracker result %p %d %d %d %d %f landmark=%d", worker, t.rect.x0, t.rect.y0,
+				    t.rect.x1, t.rect.y1, t.rect.score, t.landmark.size());
+			if (first_track && available) {
 				t.att = 1.0f;
 				t.score_first = t.rect.score;
-				if (!ret || !landmark_detection_data || !t.tracker->get_landmark(t.landmark))
-					t.landmark.resize(0);
-				stage_surface_to_tracker(t);
-				t.tracker->signal();
-				t.tracker->unlock();
-				if (ret) {
-					t.state = tracker_inst_s::tracker_state_available;
-					have_new_tracker = true;
-				}
+				t.state = tracker_inst_s::tracker_state_available;
+				have_new_tracker = true;
 			}
-		} else if (t.state == tracker_inst_s::tracker_state_available) {
-			if (!t.tracker->trylock()) {
-				bool ret = t.tracker->get_face(t.rect);
-				t.crop_rect = t.crop_tracker;
-				debug_track("tracker_state_available %p %d %d %d %d %f landmark=%d", t.tracker,
-					    t.rect.x0, t.rect.y0, t.rect.x1, t.rect.y1, t.rect.score,
-					    t.landmark.size());
-				if (!ret || !landmark_detection_data || !t.tracker->get_landmark(t.landmark))
-					t.landmark.resize(0);
-				stage_surface_to_tracker(t);
-				t.tracker->signal();
-				t.tracker->unlock();
-			}
+			if (!available || !landmark_detection_data || !worker->get_landmark(t.landmark))
+				t.landmark.clear();
+			stage_surface_to_tracker(t);
+			worker->signal();
+			worker->unlock();
 		}
 	}
 

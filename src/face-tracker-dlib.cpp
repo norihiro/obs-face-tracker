@@ -23,7 +23,7 @@ struct face_tracker_dlib_private_s
 	bool need_restart;
 	uint64_t last_ns;
 	float scale_orig;
-	int n_track;
+	face_tracker_base::result outcome = face_tracker_base::result::pending;
 	rectf_s upsize;
 	char *landmark_detection_data;
 	bool landmark_detection_data_updated;
@@ -56,7 +56,7 @@ face_tracker_dlib::~face_tracker_dlib()
 void face_tracker_dlib::set_texture(std::shared_ptr<texture_object> &tex)
 {
 	p->tex = tex;
-	p->n_track = 0;
+	p->outcome = result::pending;
 }
 
 void face_tracker_dlib::set_position(const rect_s &rect)
@@ -73,7 +73,7 @@ void face_tracker_dlib::set_position(const rect_s &rect)
 	p->rect.y1 = rect.y1 / p->tex->scale;
 	p->rect.score = 1.0f;
 	p->need_restart = true;
-	p->n_track = 0;
+	p->outcome = result::pending;
 }
 
 void face_tracker_dlib::set_upsize_info(const rectf_s &upsize)
@@ -125,6 +125,7 @@ void face_tracker_dlib::track_main()
 		p->shape = dlib::full_object_detection();
 	} else if (p->tex->scale != p->scale_orig) {
 		p->rect.score = 0.0f;
+		p->outcome = result::scale_changed;
 	} else {
 		dlib::matrix<dlib::rgb_pixel> img;
 		if (!p->tex->get_dlib_rgb_image(img))
@@ -135,7 +136,7 @@ void face_tracker_dlib::track_main()
 			     "face_tracker_dlib::track_main: cannot run correlation-tracker with different image size %dx%d, expected %dx%d",
 			     (int)img.nc(), (int)img.nr(), p->tracker_nc, p->tracker_nr);
 			p->rect.score = 0;
-			p->n_track += 1; // to return score=0
+			p->outcome = result::available; // report the zero score
 			return;
 		}
 
@@ -151,7 +152,7 @@ void face_tracker_dlib::track_main()
 		p->rect.y1 = r.bottom() * p->tex->scale;
 		s = p->pslr_max / p->pslr_min * ((ns - p->last_ns) * 1e-9f);
 		p->rect.score = (p->rect.score /*+ 0.0f*s */) / (1.0f + s);
-		p->n_track += 1;
+		p->outcome = result::available;
 
 		if (p->landmark_detection_data) {
 			if (p->landmark_detection_data_updated) {
@@ -182,13 +183,11 @@ void face_tracker_dlib::track_main()
 	p->tex.reset();
 }
 
-bool face_tracker_dlib::get_face(struct rect_s &rect)
+face_tracker_base::result face_tracker_dlib::get_face(struct rect_s &rect)
 {
-	if (p->n_track > 0) {
+	if (p->outcome == result::available)
 		rect = p->rect;
-		return true;
-	} else
-		return false;
+	return p->outcome;
 }
 
 bool face_tracker_dlib::get_landmark(std::vector<pointf_s> &results)
